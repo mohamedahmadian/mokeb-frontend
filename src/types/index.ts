@@ -1,4 +1,4 @@
-export type RoleName = 'Admin' | 'Pilgrim' | 'MawkibOwner';
+export type RoleName = 'Admin' | 'Pilgrim' | 'MawkibOwner' | 'HonoraryServant';
 
 export interface User {
   id: number;
@@ -97,6 +97,43 @@ export interface RegistrationRequest {
   status: 'Pending' | 'Approved' | 'Rejected';
   createdAt: string;
   owner?: { id: number; fullName: string; mobileNumber: string };
+}
+
+export type HonoraryVolunteerApplicationStatus = 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
+
+export type HonoraryVolunteerApplicantType = 'Volunteer' | 'MawkibOwner';
+
+export interface HonoraryVolunteerApplication {
+  id: number;
+  trackingCode: string;
+  applicantType: HonoraryVolunteerApplicantType;
+  firstName: string;
+  lastName: string;
+  mobileNumber: string;
+  province?: string | null;
+  city?: string | null;
+  mawkibId?: number | null;
+  description?: string | null;
+  serviceTypes: string[];
+  serviceDescription?: string | null;
+  availabilityStartDate: string;
+  availabilityEndDate: string;
+  availabilityDescription?: string | null;
+  status: HonoraryVolunteerApplicationStatus;
+  reviewNote?: string | null;
+  reviewedAt?: string | null;
+  reviewedByUserId?: number | null;
+  createdAt: string;
+  reviewedBy?: { id: number; fullName: string } | null;
+  submittedBy?: { id: number; fullName: string; mobileNumber?: string } | null;
+  mawkib?: {
+    id: number;
+    name: string;
+    address: string;
+    mawkibCity?: string | null;
+    phoneNumber: string;
+    owner?: { id: number; fullName: string; mobileNumber: string };
+  } | null;
 }
 
 export interface UserSocialFields {

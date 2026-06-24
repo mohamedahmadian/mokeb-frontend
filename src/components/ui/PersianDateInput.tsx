@@ -42,9 +42,7 @@ export function PersianDateInput({
   clearable = true,
 }: PersianDateInputProps) {
   const pickerValue = fromGregorianString(value);
-  const baseInputClass = compact
-    ? filterInputClass
-    : 'w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-emerald-500 focus:outline-none';
+  const baseInputClass = filterInputClass;
   const inputClass = clearable ? withClearPadding(baseInputClass, !!value) : baseInputClass;
 
   const picker = (

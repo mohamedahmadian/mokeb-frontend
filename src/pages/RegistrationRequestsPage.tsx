@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DataCard } from '../components/ui/DataCard';
 import { PageHeader } from '../components/ui/PageHeader';
 import api from '../lib/api';
-import { btnAction, btnDanger } from '../lib/styles';
+import { btnAction, btnDanger, btnPrimary } from '../lib/styles';
 import type { RegistrationRequest } from '../types';
 
 const statusLabels: Record<string, string> = {
@@ -13,7 +13,7 @@ const statusLabels: Record<string, string> = {
 
 const statusColors: Record<string, string> = {
   Pending: 'bg-amber-100 text-amber-700',
-  Approved: 'bg-emerald-100 text-emerald-700',
+  Approved: 'bg-[#e8eef6] text-[#3d5d8a]',
   Rejected: 'bg-red-100 text-red-700',
 };
 
@@ -42,7 +42,7 @@ export function RegistrationRequestsPage() {
       <>
         <button
           onClick={() => review.mutate({ id: req.id, status: 'Approved' })}
-          className={`${btnAction} bg-emerald-600 text-white hover:bg-emerald-700`}
+          className={`${btnAction} ${btnPrimary} !min-h-9 !px-2.5 !py-1.5 !text-xs`}
         >
           تایید
         </button>

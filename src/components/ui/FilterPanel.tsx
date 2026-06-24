@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { btnPrimary, btnSecondary } from '../../lib/styles';
 
 interface FilterPanelProps {
   title?: string;
@@ -16,7 +17,7 @@ export function FilterPanel({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="mb-4 rounded-xl bg-white p-4 shadow-sm">
+    <div className="mb-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -40,18 +41,10 @@ export function FilterPanel({
       <div className={`${open ? 'mt-3 block' : 'hidden'} md:block`}>
         {children}
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            onClick={onApply}
-            className="rounded-lg bg-slate-800 px-4 py-2.5 text-sm text-white hover:bg-slate-700"
-          >
+          <button type="button" onClick={onApply} className={btnPrimary}>
             اعمال فیلتر
           </button>
-          <button
-            type="button"
-            onClick={onReset}
-            className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50"
-          >
+          <button type="button" onClick={onReset} className={btnSecondary}>
             پاک کردن
           </button>
         </div>

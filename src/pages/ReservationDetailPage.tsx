@@ -8,7 +8,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { useAuth } from '../contexts/AuthContext';
 import { getApiErrorMessage } from '../lib/constants';
 import { reservationsApi } from '../lib/reservations';
-import { btnAction, btnDanger, btnSecondary } from '../lib/styles';
+import { btnAction, btnDanger, btnPrimary, btnSecondary } from '../lib/styles';
 
 export function ReservationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -80,7 +80,7 @@ export function ReservationDetailPage() {
           type="button"
           onClick={() => updateStatus.mutate()}
           disabled={updateStatus.isPending}
-          className={`${btnAction} bg-emerald-600 text-white hover:bg-emerald-700`}
+          className={`${btnAction} ${btnPrimary} !min-h-9 !px-2.5 !py-1.5 !text-xs`}
         >
           تایید رزرو
         </button>

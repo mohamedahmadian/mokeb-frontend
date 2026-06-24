@@ -21,6 +21,13 @@ import { GuestMawkibDetailPage } from './pages/GuestMawkibDetailPage';
 import { GuestMawkibsPage } from './pages/GuestMawkibsPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { MawkibOwnerRegisterPage } from './pages/MawkibOwnerRegisterPage';
+import { HonoraryVolunteerRegisterPage } from './pages/HonoraryVolunteerRegisterPage';
+import { HonoraryVolunteerSuccessPage } from './pages/HonoraryVolunteerSuccessPage';
+import { HonoraryVolunteerNeedsPage } from './pages/HonoraryVolunteerNeedsPage';
+import { HonoraryVolunteerTrackPage } from './pages/HonoraryVolunteerTrackPage';
+import { HonoraryVolunteerApplicationsPage } from './pages/HonoraryVolunteerApplicationsPage';
+import { MyHonoraryVolunteerApplicationsPage } from './pages/MyHonoraryVolunteerApplicationsPage';
+import { MawkibNeedRegisterPage } from './pages/MawkibNeedRegisterPage';
 import { PublicLayout } from './components/guest/PublicLayout';
 
 const queryClient = new QueryClient();
@@ -40,12 +47,23 @@ export default function App() {
               <Route path="/guest/mawkibs" element={<GuestMawkibsPage />} />
               <Route path="/guest/mawkibs/:id" element={<GuestMawkibDetailPage />} />
               <Route path="/guest/mawkib-owner/register" element={<MawkibOwnerRegisterPage />} />
+              <Route path="/guest/honorary-volunteer" element={<Navigate to="/guest/honorary-volunteer/register" replace />} />
+              <Route path="/guest/honorary-volunteer/register" element={<HonoraryVolunteerRegisterPage />} />
+              <Route path="/guest/honorary-volunteer/success" element={<HonoraryVolunteerSuccessPage />} />
+              <Route path="/guest/honorary-volunteer/needs" element={<HonoraryVolunteerNeedsPage />} />
+              <Route path="/guest/honorary-volunteer/track" element={<HonoraryVolunteerTrackPage />} />
             </Route>
             <Route element={<ProtectedRoute />}>
               <Route element={<AdminLayout />}>
-                <Route element={<RoleRoute allowedRoles={['Admin', 'MawkibOwner', 'Pilgrim']} />}>
+                <Route element={<RoleRoute allowedRoles={['Admin', 'MawkibOwner', 'Pilgrim', 'HonoraryServant']} />}>
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/profile" element={<ProfilePage />} />
+                  <Route
+                    path="/honorary-volunteers/my"
+                    element={<MyHonoraryVolunteerApplicationsPage />}
+                  />
+                </Route>
+                <Route element={<RoleRoute allowedRoles={['Admin', 'MawkibOwner', 'Pilgrim']} />}>
                   <Route path="/reservations" element={<ReservationsPage />} />
                   <Route path="/reservations/:id" element={<ReservationDetailPage />} />
                   <Route path="/mawkibs" element={<MawkibsPage />} />
@@ -53,6 +71,11 @@ export default function App() {
                 </Route>
                 <Route element={<RoleRoute allowedRoles={['Admin', 'MawkibOwner']} />}>
                   <Route path="/users/pilgrims" element={<PilgrimsPage />} />
+                  <Route
+                    path="/honorary-volunteers"
+                    element={<HonoraryVolunteerApplicationsPage />}
+                  />
+                  <Route path="/honorary-volunteers/new" element={<MawkibNeedRegisterPage />} />
                 </Route>
                 <Route element={<RoleRoute allowedRoles={['Admin']} />}>
                   <Route path="/users" element={<UsersPage />} />

@@ -191,6 +191,22 @@ export function HomePage() {
         tone="warm"
       />
 
+      {/* Honorary volunteers */}
+      <ShowcaseSection
+        badge="ویژه خادمان افتخاری"
+        title="خدمت با افتخار، همراهی با موکب"
+        description="هم موکب‌ها می‌توانند نیازهای نیروی انسانی خود را مطرح کنند و هم افرادی که تمایل به خدمت دارند، آمادگی خود را برای همکاری در موکب اعلام نمایند. این بخش به تطبیق نیاز دو طرفه کمک می‌کند."
+        features={[
+          'ثبت آمادگی خدمت در حوزه‌های مختلف (آشپزی، نظافت، حمل‌ونقل و ...)',
+          'مشخص کردن بازه زمانی و شرایط همکاری',
+          'ارتباط میان نیاز موکب‌ها و داوطلبان خدمت',
+          'ثبت درخواست ساده بدون نیاز به ورود اولیه',
+        ]}
+        cta={{ to: '/guest/honorary-volunteer/register', label: 'افتخار خادم‌یاری' }}
+        imageSrc="/images/home-volunteer.svg"
+        imageAlt="تصویر نمادین خادم‌یاری در موکب"
+      />
+
       {/* Quick links */}
       <section className="border-t border-slate-200/60 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-12 sm:py-14">

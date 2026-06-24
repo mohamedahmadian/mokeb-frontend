@@ -4,15 +4,15 @@ import { PublicFooter } from './PublicFooter';
 import { PublicNavbar } from './PublicNavbar';
 
 export function PublicLayout() {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
 
   return (
     <div className="flex min-h-screen min-h-dvh flex-col bg-[#f4f6f9]">
-      {!loading && !user && <PublicNavbar />}
+      {!loading && <PublicNavbar />}
       <main className="flex-1">
         <Outlet />
       </main>
-      {!loading && !user && <PublicFooter />}
+      {!loading && <PublicFooter />}
     </div>
   );
 }

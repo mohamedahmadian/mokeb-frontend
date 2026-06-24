@@ -1,4 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { guestTheme } from '../../lib/guest-theme';
+import { selectItemActive, selectItemHover } from '../../lib/styles';
 
 export interface SearchableSelectOption {
   value: string;
@@ -89,7 +91,7 @@ export function SearchableSelect({
           setOpen((prev) => !prev);
           if (open) setQuery('');
         }}
-        className={`flex w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-right text-sm transition focus:border-emerald-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 ${className}`}
+        className={`flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right text-sm transition focus:border-[#4a6fa5] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 ${className}`}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}
@@ -109,7 +111,7 @@ export function SearchableSelect({
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
+        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
           <div className="border-b border-slate-100 p-2">
             <input
               ref={searchRef}
@@ -117,7 +119,7 @@ export function SearchableSelect({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+              className={guestTheme.input}
             />
           </div>
           <ul id={listId} role="listbox" className="max-h-52 overflow-y-auto py-1">
@@ -126,8 +128,8 @@ export function SearchableSelect({
                 <button
                   type="button"
                   onClick={() => handleSelect('')}
-                  className={`w-full px-3 py-2 text-right text-sm hover:bg-emerald-50 ${
-                    !value ? 'bg-emerald-50 font-medium text-emerald-700' : 'text-slate-500'
+                  className={`w-full px-3 py-2 text-right text-sm ${selectItemHover} ${
+                    !value ? selectItemActive : 'text-slate-500'
                   }`}
                 >
                   {placeholder}
@@ -142,10 +144,8 @@ export function SearchableSelect({
                   <button
                     type="button"
                     onClick={() => handleSelect(option.value)}
-                    className={`w-full px-3 py-2 text-right text-sm hover:bg-emerald-50 ${
-                      option.value === value
-                        ? 'bg-emerald-50 font-medium text-emerald-700'
-                        : 'text-slate-800'
+                    className={`w-full px-3 py-2 text-right text-sm ${selectItemHover} ${
+                      option.value === value ? selectItemActive : 'text-slate-800'
                     }`}
                   >
                     {option.label}

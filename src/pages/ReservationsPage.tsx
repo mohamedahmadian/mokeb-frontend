@@ -40,7 +40,7 @@ import type { Mawkib, Reservation } from "../types";
 
 const statusColors: Record<string, string> = {
   Pending: "bg-amber-100 text-amber-700",
-  Confirmed: "bg-emerald-100 text-emerald-700",
+  Confirmed: "bg-[#e8eef6] text-[#3d5d8a]",
   Cancelled: "bg-red-100 text-red-700",
   Completed: "bg-slate-100 text-slate-700",
 };
@@ -264,7 +264,7 @@ export function ReservationsPage() {
             stopRowClick(e);
             updateStatus.mutate({ id: r.id, status: "Confirmed" });
           }}
-          className={`${btnAction} bg-emerald-600 text-white hover:bg-emerald-700`}
+          className={`${btnAction} ${btnPrimary} !min-h-9 !px-2.5 !py-1.5 !text-xs`}
         >
           تایید
         </button>
@@ -321,7 +321,7 @@ export function ReservationsPage() {
         <div
           className={`mb-4 rounded-lg p-3 text-sm ${
             feedback.type === "success"
-              ? "bg-emerald-50 text-emerald-700"
+              ? "bg-[#f0f4fa] text-[#3d5d8a]"
               : "bg-red-50 text-red-600"
           }`}
         >

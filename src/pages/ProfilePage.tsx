@@ -51,7 +51,7 @@ export function ProfilePage() {
         <div
           className={`mb-4 rounded-lg p-3 text-sm ${
             feedback.type === 'success'
-              ? 'bg-emerald-50 text-emerald-700'
+              ? 'bg-[#f0f4fa] text-[#3d5d8a]'
               : 'bg-red-50 text-red-600'
           }`}
         >

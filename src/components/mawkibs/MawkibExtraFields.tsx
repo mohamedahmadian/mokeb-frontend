@@ -197,7 +197,7 @@ export function MawkibExtraFields({ values, onChange }: MawkibExtraFieldsProps) 
                 type="checkbox"
                 checked={values[key]}
                 onChange={(e) => setField(key, e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                className="h-4 w-4 rounded border-slate-300 text-[#4a6fa5] focus:ring-[#4a6fa5]"
               />
               <span className="text-sm text-slate-700">{label}</span>
             </label>

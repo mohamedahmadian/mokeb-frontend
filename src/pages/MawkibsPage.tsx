@@ -25,7 +25,7 @@ import type { Mawkib } from '../types';
 
 const statusColors: Record<string, string> = {
   Pending: 'bg-amber-100 text-amber-700',
-  Approved: 'bg-emerald-100 text-emerald-700',
+  Approved: 'bg-[#e8eef6] text-[#3d5d8a]',
   Rejected: 'bg-red-100 text-red-700',
 };
 
@@ -255,7 +255,7 @@ export function MawkibsPage() {
                 : `/reservations/new?mawkibId=${mawkib.id}`,
             )
           }
-          className={`${btnAction} bg-emerald-50 text-emerald-700 hover:bg-emerald-100`}
+          className={`${btnAction} bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6]`}
         >
           رزرو
         </button>
@@ -320,7 +320,7 @@ export function MawkibsPage() {
         <div
           className={`mb-4 rounded-lg p-3 text-sm ${
             feedback.type === 'success'
-              ? 'bg-emerald-50 text-emerald-700'
+              ? 'bg-[#f0f4fa] text-[#3d5d8a]'
               : 'bg-red-50 text-red-600'
           }`}
         >

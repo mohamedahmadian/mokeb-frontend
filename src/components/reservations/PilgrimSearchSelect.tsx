@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usersApi, type PilgrimOption } from '../../lib/users';
+import { inputClass } from '../../lib/styles';
 
 interface PilgrimSearchSelectProps {
   value: PilgrimOption | null;
@@ -34,9 +35,6 @@ export function PilgrimSearchSelect({ value, onChange }: PilgrimSearchSelectProp
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const inputClass =
-    'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none';
-
   return (
     <div ref={containerRef} className="relative">
       <input
@@ -69,7 +67,7 @@ export function PilgrimSearchSelect({ value, onChange }: PilgrimSearchSelectProp
                   setOpen(false);
                 }}
                 className={`block w-full px-3 py-2 text-right text-sm hover:bg-slate-50 ${
-                  value?.id === p.id ? 'bg-emerald-50 text-emerald-800' : 'text-slate-700'
+                  value?.id === p.id ? 'bg-[#f0f4fa] text-[#3d5d8a]' : 'text-slate-700'
                 }`}
               >
                 <span className="font-medium">{p.fullName}</span>

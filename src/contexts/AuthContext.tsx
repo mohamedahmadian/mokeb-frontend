@@ -42,7 +42,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const setSession = (data: AuthResponse) => {
     const canAccessPanel = data.user.roles.some(
-      (role) => role === 'Admin' || role === 'MawkibOwner' || role === 'Pilgrim',
+      (role) =>
+        role === 'Admin' ||
+        role === 'MawkibOwner' ||
+        role === 'Pilgrim' ||
+        role === 'HonoraryServant',
     );
 
     if (!canAccessPanel) {

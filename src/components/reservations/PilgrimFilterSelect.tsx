@@ -85,7 +85,7 @@ export function PilgrimFilterSelect({
             type="button"
             onClick={handleClear}
             className={`block w-full border-b border-slate-100 px-3 py-2 text-right text-sm hover:bg-slate-50 ${
-              !value ? 'bg-emerald-50 font-medium text-emerald-700' : 'text-slate-500'
+              !value ? 'bg-[#f0f4fa] font-medium text-[#4a6fa5]' : 'text-slate-500'
             }`}
           >
             همه زائرین
@@ -105,7 +105,7 @@ export function PilgrimFilterSelect({
                   setOpen(false);
                 }}
                 className={`block w-full px-3 py-2 text-right text-sm hover:bg-slate-50 ${
-                  value === String(p.id) ? 'bg-emerald-50 text-emerald-800' : 'text-slate-700'
+                  value === String(p.id) ? 'bg-[#f0f4fa] text-[#3d5d8a]' : 'text-slate-700'
                 }`}
               >
                 <span className="font-medium">{p.fullName}</span>

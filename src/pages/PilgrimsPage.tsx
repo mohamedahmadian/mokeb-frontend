@@ -96,7 +96,7 @@ export function PilgrimsPage() {
       </Link>
       <Link
         to={`/reservations/new?pilgrimUserId=${pilgrim.id}`}
-        className={`${btnAction} bg-emerald-50 text-emerald-700 hover:bg-emerald-100`}
+        className={`${btnAction} bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6]`}
       >
         رزرو موکب
       </Link>
@@ -143,7 +143,7 @@ export function PilgrimsPage() {
         <div
           className={`mb-4 rounded-lg p-3 text-sm ${
             feedback.type === 'success'
-              ? 'bg-emerald-50 text-emerald-700'
+              ? 'bg-[#f0f4fa] text-[#3d5d8a]'
               : 'bg-red-50 text-red-600'
           }`}
         >
@@ -214,7 +214,7 @@ export function PilgrimsPage() {
                 <span
                   className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
                     pilgrim.isActive
-                      ? 'bg-emerald-100 text-emerald-700'
+                      ? 'bg-[#e8eef6] text-[#3d5d8a]'
                       : 'bg-red-100 text-red-700'
                   }`}
                 >
@@ -261,7 +261,7 @@ export function PilgrimsPage() {
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs ${
                         pilgrim.isActive
-                          ? 'bg-emerald-100 text-emerald-700'
+                          ? 'bg-[#e8eef6] text-[#3d5d8a]'
                           : 'bg-red-100 text-red-700'
                       }`}
                     >

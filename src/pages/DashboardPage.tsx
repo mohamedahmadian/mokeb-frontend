@@ -4,7 +4,7 @@ import { dashboardApi, type CapacityStats } from '../lib/dashboard';
 
 function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="rounded-xl bg-white p-4 shadow-sm sm:p-6">
+    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-6">
       <div className={`mb-2 h-1 w-10 rounded sm:mb-3 sm:w-12 ${color}`} />
       <p className="text-2xl font-bold text-slate-800 sm:text-3xl">{value}</p>
       <p className="mt-1 text-xs text-slate-500 sm:text-sm">{label}</p>
@@ -28,7 +28,7 @@ function CapacityCards({ stats }: { stats: CapacityStats }) {
     {
       label: 'ظرفیت خالی آقایان',
       value: stats.emptyMaleCapacity,
-      color: 'bg-emerald-500',
+      color: 'bg-[#4a6fa5]',
     },
     {
       label: 'ظرفیت خالی خانم‌ها',
@@ -85,7 +85,7 @@ export function DashboardPage() {
         {
           label: 'تایید شده',
           value: stats.pilgrimStats.confirmedReservations,
-          color: 'bg-emerald-500',
+          color: 'bg-[#4a6fa5]',
         },
       ]
     : [];

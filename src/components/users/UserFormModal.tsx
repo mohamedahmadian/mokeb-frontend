@@ -11,6 +11,7 @@ import {
 } from './UserSocialFields';
 import type { AdminUser, RoleName } from '../../types';
 import type { CreateUserPayload, UpdateUserPayload } from '../../lib/users';
+import { btnPrimary, inputClass } from '../../lib/styles';
 
 interface UserFormModalProps {
   open: boolean;
@@ -176,7 +177,7 @@ export function UserFormModal({
             required
             value={form.fullName}
             onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+            className={inputClass}
           />
         </label>
 
@@ -188,7 +189,7 @@ export function UserFormModal({
             disabled={isEdit}
             value={form.mobileNumber}
             onChange={(e) => setForm({ ...form, mobileNumber: e.target.value })}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500"
+            className={`${inputClass} disabled:bg-slate-100 disabled:text-slate-500`}
             placeholder="09121234567"
           />
         </label>
@@ -202,7 +203,7 @@ export function UserFormModal({
             required={!isEdit}
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+            className={inputClass}
             minLength={isEdit ? undefined : 6}
           />
         </label>
@@ -220,7 +221,7 @@ export function UserFormModal({
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             rows={2}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+            className={inputClass}
           />
         </label>
 
@@ -238,7 +239,7 @@ export function UserFormModal({
                   key={role.value}
                   className={`cursor-pointer rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                     form.roles.includes(role.value)
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                      ? 'border-[#4a6fa5] bg-[#f0f4fa] text-[#4a6fa5]'
                       : 'border-slate-300 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
@@ -261,7 +262,7 @@ export function UserFormModal({
               type="checkbox"
               checked={form.isActive}
               onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-              className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+              className="h-4 w-4 rounded border-slate-300 text-[#4a6fa5] focus:ring-[#4a6fa5]"
             />
             <span className="text-sm text-slate-600">کاربر فعال است</span>
           </label>
@@ -279,7 +280,7 @@ export function UserFormModal({
           <button
             type="submit"
             disabled={loading}
-            className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm text-white hover:bg-emerald-700 disabled:opacity-50 sm:w-auto w-full"
+            className={`${btnPrimary} w-full sm:w-auto`}
           >
             {loading ? 'در حال ذخیره...' : isEdit ? 'ذخیره تغییرات' : 'افزودن کاربر'}
           </button>
