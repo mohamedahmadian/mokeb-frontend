@@ -1,18 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { guestTheme } from '../../lib/guest-theme';
-import { DropdownLinkContent, NavIcon, NavLinkContent } from '../ui/NavIcons';
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import { guestTheme } from "../../lib/guest-theme";
+import { DropdownLinkContent, NavIcon, NavLinkContent } from "../ui/NavIcons";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition ${
     isActive
-      ? 'bg-[#e8eef6] text-[#4a6fa5]'
-      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+      ? "bg-[#e8eef6] text-[#4a6fa5]"
+      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
   }`;
 
 const dropdownLinkClass =
-  'flex items-center px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50';
+  "flex items-center px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50";
 
 function VolunteersMenu() {
   const [open, setOpen] = useState(false);
@@ -25,8 +25,8 @@ function VolunteersMenu() {
         setOpen(false);
       }
     };
-    document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
   return (
@@ -40,7 +40,7 @@ function VolunteersMenu() {
         <span>خادم یاری</span>
         <NavIcon
           name="chevron"
-          className={`h-4 w-4 transition ${open ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`}
           strokeWidth={2}
         />
       </button>
@@ -51,14 +51,20 @@ function VolunteersMenu() {
             onClick={() => setOpen(false)}
             className={dropdownLinkClass}
           >
-            <DropdownLinkContent icon="honoraryRegister" label="ثبت‌نام خادم یاری" />
+            <DropdownLinkContent
+              icon="honoraryRegister"
+              label="ثبت‌نام خادم یاری"
+            />
           </Link>
           <Link
             to="/guest/honorary-volunteer/needs"
             onClick={() => setOpen(false)}
             className={dropdownLinkClass}
           >
-            <DropdownLinkContent icon="honoraryNeeds" label="نیازمندی‌های موکب‌ها" />
+            <DropdownLinkContent
+              icon="honoraryNeeds"
+              label="نیازمندی‌های موکب‌ها"
+            />
           </Link>
           <Link
             to="/guest/honorary-volunteer/track"
@@ -84,8 +90,8 @@ function OwnersMenu() {
         setOpen(false);
       }
     };
-    document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
   return (
@@ -99,7 +105,7 @@ function OwnersMenu() {
         <span>سامانه موکب‌داران</span>
         <NavIcon
           name="chevron"
-          className={`h-4 w-4 transition ${open ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`}
           strokeWidth={2}
         />
       </button>
@@ -110,10 +116,20 @@ function OwnersMenu() {
             onClick={() => setOpen(false)}
             className={dropdownLinkClass}
           >
-            <DropdownLinkContent icon="mawkibOwnerRegister" label="ثبت‌نام موکب‌دار" />
+            <DropdownLinkContent
+              icon="mawkibOwnerRegister"
+              label="ثبت‌نام موکب‌دار"
+            />
           </Link>
-          <Link to="/login" onClick={() => setOpen(false)} className={dropdownLinkClass}>
-            <DropdownLinkContent icon="mawkibOwnerPanel" label="سامانه موکب‌داران" />
+          <Link
+            to="/login"
+            onClick={() => setOpen(false)}
+            className={dropdownLinkClass}
+          >
+            <DropdownLinkContent
+              icon="mawkibOwnerPanel"
+              label="سامانه موکب‌داران"
+            />
           </Link>
         </div>
       )}
@@ -145,17 +161,26 @@ export function PublicNavbar() {
   );
 
   const authLinks = user ? (
-    <Link to="/dashboard" className={`${guestTheme.btnPrimary} inline-flex items-center gap-1.5`}>
+    <Link
+      to="/dashboard"
+      className={`${guestTheme.btnPrimary} inline-flex items-center gap-1.5`}
+    >
       <NavIcon name="panel" className="h-4 w-4" />
       <span>پنل کاربری</span>
     </Link>
   ) : (
     <>
-      <Link to="/login" className={`${guestTheme.btnGhost} inline-flex items-center gap-1.5`}>
+      <Link
+        to="/login"
+        className={`${guestTheme.btnGhost} inline-flex items-center gap-1.5`}
+      >
         <NavIcon name="login" />
         <span>ورود</span>
       </Link>
-      <Link to="/register" className={`${guestTheme.btnPrimary} inline-flex items-center gap-1.5`}>
+      <Link
+        to="/register"
+        className={`${guestTheme.btnPrimary} inline-flex items-center gap-1.5`}
+      >
         <NavIcon name="register" className="h-4 w-4" />
         <span>ثبت‌نام زائر</span>
       </Link>
@@ -189,9 +214,17 @@ export function PublicNavbar() {
             strokeWidth={2}
           >
             {mobileOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
             ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4 6h16M4 12h16M4 18h16"
+              />
             )}
           </svg>
         </button>
