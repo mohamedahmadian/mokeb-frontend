@@ -1,0 +1,239 @@
+import { inputClass } from '../../lib/styles';
+import { MAWKIB_CITIES, MAWKIB_COUNTRIES } from '../../lib/mawkib-locations';
+import type { MawkibCity, MawkibCountry } from '../../lib/mawkib-locations';
+import type { MawkibExtraFields as MawkibExtraFieldsType } from '../../types';
+import { SearchableSelect } from '../ui/SearchableSelect';
+
+export type MawkibExtraFormValues = {
+  distanceToShrine: string;
+  lunchReception: boolean;
+  breakfastReception: boolean;
+  dinnerReception: boolean;
+  bathroom: boolean;
+  laundry: boolean;
+  parking: boolean;
+  internet: boolean;
+  familyFriendly: boolean;
+  maxReservationDays: string;
+  country: MawkibCountry;
+  mawkibCity: MawkibCity | '';
+  rules: string;
+  telegramChannel: string;
+  whatsapp: string;
+  bale: string;
+  eitaa: string;
+  websiteUrl: string;
+};
+
+export const MAWKIB_AMENITY_FIELDS = [
+  { key: 'breakfastReception' as const, label: 'پذیرایی صبحانه' },
+  { key: 'lunchReception' as const, label: 'پذیرایی ناهار' },
+  { key: 'dinnerReception' as const, label: 'پذیرایی شام' },
+  { key: 'bathroom' as const, label: 'حمام' },
+  { key: 'laundry' as const, label: 'لباسشویی' },
+  { key: 'parking' as const, label: 'پارکینگ' },
+  { key: 'internet' as const, label: 'اینترنت' },
+  { key: 'familyFriendly' as const, label: 'خانوادگی' },
+];
+
+export const MAWKIB_NOTIFY_FIELDS = [
+  { key: 'telegramChannel' as const, label: 'کانال تلگرام', placeholder: 'آیدی یا لینک کانال' },
+  { key: 'whatsapp' as const, label: 'واتس‌اپ', placeholder: 'شماره یا لینک' },
+  { key: 'bale' as const, label: 'بله', placeholder: 'شماره یا آیدی' },
+  { key: 'eitaa' as const, label: 'ایتا', placeholder: 'شماره یا آیدی' },
+  { key: 'websiteUrl' as const, label: 'آدرس وب‌سایت', placeholder: 'https://...', type: 'url' as const },
+];
+
+export function emptyMawkibExtraFields(): MawkibExtraFormValues {
+  return {
+    distanceToShrine: '',
+    lunchReception: false,
+    breakfastReception: false,
+    dinnerReception: false,
+    bathroom: false,
+    laundry: false,
+    parking: false,
+    internet: false,
+    familyFriendly: false,
+    maxReservationDays: '',
+    country: 'Iran',
+    mawkibCity: '',
+    rules: '',
+    telegramChannel: '',
+    whatsapp: '',
+    bale: '',
+    eitaa: '',
+    websiteUrl: '',
+  };
+}
+
+export function mawkibExtraFieldsFromMawkib(
+  mawkib?: Partial<MawkibExtraFieldsType> | null,
+): MawkibExtraFormValues {
+  return {
+    distanceToShrine: mawkib?.distanceToShrine ?? '',
+    lunchReception: mawkib?.lunchReception ?? false,
+    breakfastReception: mawkib?.breakfastReception ?? false,
+    dinnerReception: mawkib?.dinnerReception ?? false,
+    bathroom: mawkib?.bathroom ?? false,
+    laundry: mawkib?.laundry ?? false,
+    parking: mawkib?.parking ?? false,
+    internet: mawkib?.internet ?? false,
+    familyFriendly: mawkib?.familyFriendly ?? false,
+    maxReservationDays: mawkib?.maxReservationDays?.toString() ?? '',
+    country: mawkib?.country ?? 'Iran',
+    mawkibCity: mawkib?.mawkibCity ?? '',
+    rules: mawkib?.rules ?? '',
+    telegramChannel: mawkib?.telegramChannel ?? '',
+    whatsapp: mawkib?.whatsapp ?? '',
+    bale: mawkib?.bale ?? '',
+    eitaa: mawkib?.eitaa ?? '',
+    websiteUrl: mawkib?.websiteUrl ?? '',
+  };
+}
+
+export function mawkibExtraFieldsToPayload(
+  fields: MawkibExtraFormValues,
+): MawkibExtraFieldsType {
+  const maxDays = fields.maxReservationDays.trim()
+    ? parseInt(fields.maxReservationDays, 10)
+    : undefined;
+
+  return {
+    distanceToShrine: fields.distanceToShrine.trim() || undefined,
+    lunchReception: fields.lunchReception,
+    breakfastReception: fields.breakfastReception,
+    dinnerReception: fields.dinnerReception,
+    bathroom: fields.bathroom,
+    laundry: fields.laundry,
+    parking: fields.parking,
+    internet: fields.internet,
+    familyFriendly: fields.familyFriendly,
+    maxReservationDays: maxDays && maxDays >= 1 ? maxDays : undefined,
+    country: fields.country,
+    mawkibCity: fields.mawkibCity || undefined,
+    rules: fields.rules.trim() || undefined,
+    telegramChannel: fields.telegramChannel.trim() || undefined,
+    whatsapp: fields.whatsapp.trim() || undefined,
+    bale: fields.bale.trim() || undefined,
+    eitaa: fields.eitaa.trim() || undefined,
+    websiteUrl: fields.websiteUrl.trim() || undefined,
+  };
+}
+
+interface MawkibExtraFieldsProps {
+  values: MawkibExtraFormValues;
+  onChange: (values: MawkibExtraFormValues) => void;
+}
+
+export function MawkibExtraFields({ values, onChange }: MawkibExtraFieldsProps) {
+  const setField = <K extends keyof MawkibExtraFormValues>(
+    key: K,
+    value: MawkibExtraFormValues[K],
+  ) => {
+    onChange({ ...values, [key]: value });
+  };
+
+  return (
+    <div className="space-y-4">
+      <fieldset className="rounded-lg border border-slate-200 p-4">
+        <legend className="px-1 text-sm font-medium text-slate-700">اطلاعات تکمیلی</legend>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1 block text-sm text-slate-600">فاصله تا حرم</span>
+            <input
+              type="text"
+              value={values.distanceToShrine}
+              onChange={(e) => setField('distanceToShrine', e.target.value)}
+              className={inputClass}
+              placeholder="مثلاً ۵۰۰ متر"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-sm text-slate-600">کشور</span>
+            <SearchableSelect
+              value={values.country}
+              onChange={(value) => setField('country', value as MawkibCountry)}
+              options={MAWKIB_COUNTRIES.map((c) => ({ value: c.value, label: c.label }))}
+              placeholder="انتخاب کشور"
+              searchPlaceholder="جستجوی کشور..."
+              className={inputClass}
+              clearable={false}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-sm text-slate-600">شهر</span>
+            <SearchableSelect
+              value={values.mawkibCity}
+              onChange={(value) => setField('mawkibCity', value as MawkibCity | '')}
+              options={MAWKIB_CITIES.map((c) => ({ value: c.value, label: c.label }))}
+              placeholder="انتخاب شهر"
+              searchPlaceholder="جستجوی شهر..."
+              className={inputClass}
+            />
+          </label>
+          <label className="block sm:col-span-2">
+            <span className="mb-1 block text-sm text-slate-600">
+              حداکثر بازه زمانی رزرو (روز)
+            </span>
+            <input
+              type="number"
+              min={1}
+              value={values.maxReservationDays}
+              onChange={(e) => setField('maxReservationDays', e.target.value)}
+              className={inputClass}
+              placeholder="بدون محدودیت"
+            />
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset className="rounded-lg border border-slate-200 p-4">
+        <legend className="px-1 text-sm font-medium text-slate-700">امکانات</legend>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {MAWKIB_AMENITY_FIELDS.map(({ key, label }) => (
+            <label key={key} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2">
+              <input
+                type="checkbox"
+                checked={values[key]}
+                onChange={(e) => setField(key, e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              <span className="text-sm text-slate-700">{label}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <label className="block">
+        <span className="mb-1 block text-sm text-slate-600">قوانین</span>
+        <textarea
+          value={values.rules}
+          onChange={(e) => setField('rules', e.target.value)}
+          rows={3}
+          className={inputClass}
+          placeholder="قوانین و مقررات موکب..."
+        />
+      </label>
+
+      <fieldset className="rounded-lg border border-slate-200 p-4">
+        <legend className="px-1 text-sm font-medium text-slate-700">اطلاع‌رسانی</legend>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {MAWKIB_NOTIFY_FIELDS.map(({ key, label, placeholder, type }) => (
+            <label key={key} className="block">
+              <span className="mb-1 block text-sm text-slate-600">{label}</span>
+              <input
+                type={type ?? 'text'}
+                value={values[key]}
+                onChange={(e) => setField(key, e.target.value)}
+                className={inputClass}
+                placeholder={placeholder}
+                dir={type === 'url' ? 'ltr' : undefined}
+              />
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    </div>
+  );
+}
