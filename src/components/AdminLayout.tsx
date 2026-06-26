@@ -25,8 +25,8 @@ interface NavItem {
 function buildNavItems(user: { roles: RoleName[] } | null): NavItem[] {
   const isAdmin = user?.roles.includes("Admin") ?? false;
   const isMawkibOwner = user?.roles.includes("MawkibOwner") ?? false;
-  const isPilgrimOnly =
-    (user?.roles.includes("Pilgrim") ?? false) && !isAdmin && !isMawkibOwner;
+  // const isPilgrimOnly =
+  //   (user?.roles.includes("Pilgrim") ?? false) && !isAdmin && !isMawkibOwner;
 
   const items: NavItem[] = [
     {
