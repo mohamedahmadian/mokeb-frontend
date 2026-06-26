@@ -7,6 +7,7 @@ import { FilterPanel } from '../components/ui/FilterPanel';
 import { PageHeader } from '../components/ui/PageHeader';
 import { ProvinceCitySelect } from '../components/ui/ProvinceCitySelect';
 import { ROLE_LABELS, ROLE_OPTIONS, getApiErrorMessage } from '../lib/constants';
+import { toast, toastApiError } from '../lib/toast';
 import { btnPrimary, btnAction, filterInputClass } from '../lib/styles';
 import { usersApi, type UserListFilters } from '../lib/users';
 import type { AdminUser, RoleName } from '../types';
@@ -37,7 +38,6 @@ export function UsersPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users', appliedFilters],
@@ -48,7 +48,7 @@ export function UsersPage() {
     mutationFn: (payload: CreateUserPayload) => usersApi.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      setFeedback({ type: 'success', text: 'کاربر با موفقیت ایجاد شد' });
+      toast.success('کاربر با موفقیت ایجاد شد');
     },
   });
 
@@ -57,7 +57,7 @@ export function UsersPage() {
       usersApi.update(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      setFeedback({ type: 'success', text: 'کاربر با موفقیت ویرایش شد' });
+      toast.success('کاربر با موفقیت ویرایش شد');
     },
   });
 
@@ -66,13 +66,10 @@ export function UsersPage() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setDeletingUser(null);
-      setFeedback({ type: 'success', text: result.message });
+      toast.success(result.message);
     },
     onError: (error) => {
-      setFeedback({
-        type: 'error',
-        text: getApiErrorMessage(error, 'خطا در حذف کاربر'),
-      });
+      toastApiError(error, 'خطا در حذف کاربر');
     },
   });
 
@@ -132,21 +129,6 @@ export function UsersPage() {
           </button>
         }
       />
-
-      {feedback && (
-        <div
-          className={`mb-4 rounded-lg p-3 text-sm ${
-            feedback.type === 'success'
-              ? 'bg-[#f0f4fa] text-[#3d5d8a]'
-              : 'bg-red-50 text-red-600'
-          }`}
-        >
-          {feedback.text}
-          <button onClick={() => setFeedback(null)} className="mr-3 text-xs underline">
-            بستن
-          </button>
-        </div>
-      )}
 
       <FilterPanel
         onApply={() => setAppliedFilters(toApiFilters(filters))}

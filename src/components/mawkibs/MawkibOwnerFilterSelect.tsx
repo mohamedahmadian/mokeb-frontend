@@ -8,6 +8,7 @@ interface MawkibOwnerFilterSelectProps {
   onChange: (ownerUserId: string) => void;
   className?: string;
   placeholder?: string;
+  allowClear?: boolean;
 }
 
 export function MawkibOwnerFilterSelect({
@@ -15,6 +16,7 @@ export function MawkibOwnerFilterSelect({
   onChange,
   className = filterInputClass,
   placeholder = 'همه موکب‌داران — جستجو با نام یا موبایل',
+  allowClear = true,
 }: MawkibOwnerFilterSelectProps) {
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -81,15 +83,17 @@ export function MawkibOwnerFilterSelect({
 
       {open && (
         <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-          <button
-            type="button"
-            onClick={handleClear}
-            className={`block w-full border-b border-slate-100 px-3 py-2 text-right text-sm hover:bg-slate-50 ${
-              !value ? 'bg-[#f0f4fa] font-medium text-[#4a6fa5]' : 'text-slate-500'
-            }`}
-          >
-            همه موکب‌داران
-          </button>
+          {allowClear && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className={`block w-full border-b border-slate-100 px-3 py-2 text-right text-sm hover:bg-slate-50 ${
+                !value ? 'bg-[#f0f4fa] font-medium text-[#4a6fa5]' : 'text-slate-500'
+              }`}
+            >
+              همه موکب‌داران
+            </button>
+          )}
           {isLoading ? (
             <p className="px-3 py-2 text-sm text-slate-400">در حال جستجو...</p>
           ) : owners.length === 0 ? (

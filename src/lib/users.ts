@@ -45,7 +45,10 @@ export interface UserListFilters {
   city?: string;
   isActive?: boolean;
   search?: string;
+  scope?: 'mine' | 'all';
 }
+
+export const MIN_PILGRIM_SEARCH_LENGTH = 2;
 
 export interface PilgrimOption {
   id: number;
@@ -62,11 +65,18 @@ export const usersApi = {
 
   getMe: () => api.get<AdminUser>('/users/me').then((r) => r.data),
 
-  getPilgrims: (filters?: Omit<UserListFilters, 'role'>) =>
-    api.get<AdminUser[]>('/users/pilgrims', { params: filters }).then((r) => r.data),
+  getPilgrims: (filters?: Omit<UserListFilters, 'role' | 'scope'>) =>
+    api
+      .get<AdminUser[]>('/users/pilgrims', {
+        params: { scope: 'mine', ...filters },
+      })
+      .then((r) => r.data),
 
   getMawkibOwners: (filters?: UserListFilters) =>
     usersApi.getAll({ ...filters, role: 'MawkibOwner' }),
+
+  getHonoraryServants: (filters?: UserListFilters) =>
+    usersApi.getAll({ ...filters, role: 'HonoraryServant' }),
 
   searchMawkibOwners: (search?: string) =>
     usersApi.getAll({
@@ -74,10 +84,10 @@ export const usersApi = {
       ...(search ? { search } : {}),
     }),
 
-  searchPilgrims: (search?: string) =>
+  searchPilgrims: (search: string) =>
     api
       .get<PilgrimOption[]>('/users/pilgrims', {
-        params: search ? { search } : undefined,
+        params: { scope: 'all', search },
       })
       .then((r) => r.data),
 

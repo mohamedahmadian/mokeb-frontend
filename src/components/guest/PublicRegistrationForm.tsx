@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ProvinceCitySelect } from '../ui/ProvinceCitySelect';
-import { CollapsibleSection } from '../ui/CollapsibleSection';
+import { NavIcon } from '../ui/NavIcons';
 import {
-  UserSocialFields,
   emptyUserSocialFields,
   userSocialFieldsToPayload,
 } from '../users/UserSocialFields';
+import { RoleHero } from '../users/user-form-ui';
+import {
+  UserFormSections,
+  type UserFormFieldValues,
+} from '../users/UserFormSections';
 import { guestTheme } from '../../lib/guest-theme';
+import { toast } from '../../lib/toast';
 
 export interface PilgrimRegistrationPayload {
   firstName: string;
@@ -54,167 +58,104 @@ type PublicRegistrationFormProps =
       onSubmit: (payload: MawkibOwnerRegistrationPayload) => Promise<void>;
     };
 
+const emptyForm = (): UserFormFieldValues => ({
+  fullName: '',
+  firstName: '',
+  lastName: '',
+  mobileNumber: '',
+  password: '',
+  province: '',
+  city: '',
+  description: '',
+  social: emptyUserSocialFields(),
+});
+
 export function PublicRegistrationForm(props: PublicRegistrationFormProps) {
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [mobileNumber, setMobileNumber] = useState('');
-  const [password, setPassword] = useState('');
-  const [province, setProvince] = useState('');
-  const [city, setCity] = useState('');
-  const [description, setDescription] = useState('');
-  const [social, setSocial] = useState(emptyUserSocialFields());
-  const [error, setError] = useState('');
+  const [form, setForm] = useState<UserFormFieldValues>(emptyForm);
   const [loading, setLoading] = useState(false);
 
+  const isPilgrim = props.variant === 'pilgrim';
+  const role = isPilgrim ? 'Pilgrim' : 'MawkibOwner';
+  const minPasswordLength = isPilgrim ? 4 : 6;
+
   const optionalPayload = {
-    province: province.trim() || undefined,
-    city: city.trim() || undefined,
-    description: description.trim() || undefined,
-    ...userSocialFieldsToPayload(social),
+    province: form.province.trim() || undefined,
+    city: form.city.trim() || undefined,
+    description: form.description.trim() || undefined,
+    ...userSocialFieldsToPayload(form.social),
+  };
+
+  const patchForm = (patch: Partial<UserFormFieldValues>) => {
+    setForm((prev) => ({ ...prev, ...patch }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+
+    if (form.password.length < minPasswordLength) {
+      toast.error(
+        `رمز عبور باید حداقل ${minPasswordLength.toLocaleString('fa-IR')} کاراکتر باشد`,
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
-      if (props.variant === 'pilgrim') {
+      if (isPilgrim) {
         await props.onSubmit({
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          mobileNumber: mobileNumber.trim(),
-          password,
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          mobileNumber: form.mobileNumber.trim(),
+          password: form.password,
           ...optionalPayload,
         });
       } else {
         await props.onSubmit({
-          fullName: fullName.trim(),
-          mobileNumber: mobileNumber.trim(),
-          password,
+          fullName: form.fullName.trim(),
+          mobileNumber: form.mobileNumber.trim(),
+          password: form.password,
           ...optionalPayload,
         });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'خطا در ثبت‌نام');
+      toast.error(err instanceof Error ? err.message : 'خطا در ثبت‌نام');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className={`${guestTheme.cardLg} w-full max-w-lg space-y-5`}>
-      <div>
-        <h1 className="text-xl font-bold text-slate-800">{props.title}</h1>
-        <p className="mt-1 text-sm text-slate-500">ایجاد حساب کاربری در سامانه</p>
-      </div>
+    <form onSubmit={handleSubmit} className={`${guestTheme.cardLg} w-full max-w-xl space-y-5`}>
+      <RoleHero
+        role={role}
+        title={props.title}
+        subtitle="ایجاد حساب کاربری در سامانه موکب"
+      />
 
-      {error && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</div>
-      )}
-
-      <section className="space-y-4">
-        <h2 className="text-sm font-semibold text-slate-800">اطلاعات ضروری</h2>
-
-        {props.variant === 'pilgrim' ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-sm text-slate-600">نام *</span>
-              <input
-                type="text"
-                required
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className={guestTheme.input}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-sm text-slate-600">نام خانوادگی *</span>
-              <input
-                type="text"
-                required
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className={guestTheme.input}
-              />
-            </label>
-          </div>
-        ) : (
-          <label className="block">
-            <span className="mb-1 block text-sm text-slate-600">نام کامل *</span>
-            <input
-              type="text"
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className={guestTheme.input}
-            />
-          </label>
-        )}
-
-        <label className="block">
-          <span className="mb-1 block text-sm text-slate-600">شماره موبایل *</span>
-          <input
-            type="tel"
-            required
-            value={mobileNumber}
-            onChange={(e) => setMobileNumber(e.target.value)}
-            className={guestTheme.input}
-            placeholder="09121234567"
-            dir="ltr"
-          />
-        </label>
-
-        <label className="block">
-          <span className="mb-1 block text-sm text-slate-600">رمز عبور *</span>
-          <input
-            type="password"
-            required
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={guestTheme.input}
-          />
-          <p className="mt-1 text-xs text-slate-400">حداقل ۶ کاراکتر</p>
-        </label>
-      </section>
-
-      <CollapsibleSection summary="جهت وارد کردن اطلاعات بیشتر کلیک نمایید">
-        <p className="text-xs leading-6 text-slate-500">
-          پر کردن موارد زیر الزامی نیست و پس از ورود به پنل قابل تغییر است.
-        </p>
-
-        <ProvinceCitySelect
-          province={province}
-          city={city}
-          onProvinceChange={(p) => {
-            setProvince(p);
-            setCity('');
-          }}
-          onCityChange={setCity}
-        />
-
-        <label className="block">
-          <span className="mb-1 block text-sm text-slate-600">توضیحات</span>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
-            className={`${guestTheme.input} resize-none`}
-          />
-        </label>
-
-        <UserSocialFields values={social} onChange={setSocial} compact inputClassName={guestTheme.input} />
-      </CollapsibleSection>
+      <UserFormSections
+        values={form}
+        onChange={patchForm}
+        nameMode={isPilgrim ? 'splitName' : 'fullName'}
+        passwordRequired
+        passwordMinLength={minPasswordLength}
+        passwordHint={
+          isPilgrim
+            ? 'حداقل ۴ کاراکتر (مثلاً ۴ رقم آخر موبایل)'
+            : 'حداقل ۶ کاراکتر'
+        }
+        extraFields="collapsible"
+      />
 
       <button type="submit" disabled={loading} className={`${guestTheme.btnPrimaryLg} w-full`}>
+        <NavIcon name="register" className="h-4 w-4" />
         {loading ? 'در حال ثبت‌نام...' : (props.submitLabel ?? 'ثبت‌نام')}
       </button>
 
       <p className="text-center text-sm text-slate-500">
         {props.loginHint ?? 'حساب دارید؟'}{' '}
-        <Link to="/login" className="font-medium text-[#4a6fa5] hover:underline">
+        <Link to="/login" className="inline-flex items-center gap-1 font-medium text-[#4a6fa5] hover:underline">
+          <NavIcon name="login" className="h-4 w-4" />
           ورود
         </Link>
       </p>

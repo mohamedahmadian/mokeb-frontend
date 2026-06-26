@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { RoleGate } from './components/RoleGate';
 import { RoleRoute } from './components/RoleRoute';
 import { AdminLayout } from './components/AdminLayout';
 import { LoginPage } from './pages/LoginPage';
@@ -10,7 +11,9 @@ import { DashboardPage } from './pages/DashboardPage';
 import { UsersPage } from './pages/UsersPage';
 import { PilgrimsPage } from './pages/PilgrimsPage';
 import { MawkibOwnersPage } from './pages/MawkibOwnersPage';
+import { HonoraryServantsPage } from './pages/HonoraryServantsPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { MawkibsPage } from './pages/MawkibsPage';
 import { ReservationsPage } from './pages/ReservationsPage';
 import { ReservationDetailPage } from './pages/ReservationDetailPage';
@@ -28,7 +31,21 @@ import { HonoraryVolunteerTrackPage } from './pages/HonoraryVolunteerTrackPage';
 import { HonoraryVolunteerApplicationsPage } from './pages/HonoraryVolunteerApplicationsPage';
 import { MyHonoraryVolunteerApplicationsPage } from './pages/MyHonoraryVolunteerApplicationsPage';
 import { MawkibNeedRegisterPage } from './pages/MawkibNeedRegisterPage';
+import { OwnerFeedbackInboxPage } from './pages/OwnerFeedbackInboxPage';
+import { AdminFeedbackPage } from './pages/AdminFeedbackPage';
+import { FeedbackListPage } from './pages/FeedbackListPage';
+import { NewFeedbackPage } from './pages/NewFeedbackPage';
+import { EditFeedbackPage } from './pages/EditFeedbackPage';
+import { AboutPage } from './pages/AboutPage';
+import { ContactPage } from './pages/ContactPage';
+import { FaqPage } from './pages/FaqPage';
+import { MawkibRegistrationGuidePage } from './pages/MawkibRegistrationGuidePage';
+import { PilgrimReservationGuidePage } from './pages/PilgrimReservationGuidePage';
+import { PilgrimPortalPage } from './pages/PilgrimPortalPage';
+import { MawkibOwnerPortalPage } from './pages/MawkibOwnerPortalPage';
+import { HonoraryPortalPage } from './pages/HonoraryPortalPage';
 import { PublicLayout } from './components/guest/PublicLayout';
+import { AppToaster } from './components/ui/AppToaster';
 
 const queryClient = new QueryClient();
 
@@ -36,6 +53,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <AppToaster />
         <BrowserRouter>
           <Routes>
             <Route element={<PublicLayout />}>
@@ -43,21 +61,38 @@ export default function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/guest/reserve" element={<GuestReservationPage />} />
+              <Route path="/guest/reserve/guide" element={<PilgrimReservationGuidePage />} />
               <Route path="/guest/track" element={<TrackReservationPage />} />
               <Route path="/guest/mawkibs" element={<GuestMawkibsPage />} />
               <Route path="/guest/mawkibs/:id" element={<GuestMawkibDetailPage />} />
               <Route path="/guest/mawkib-owner/register" element={<MawkibOwnerRegisterPage />} />
+              <Route path="/guest/mawkib-owner/guide" element={<MawkibRegistrationGuidePage />} />
               <Route path="/guest/honorary-volunteer" element={<Navigate to="/guest/honorary-volunteer/register" replace />} />
               <Route path="/guest/honorary-volunteer/register" element={<HonoraryVolunteerRegisterPage />} />
               <Route path="/guest/honorary-volunteer/success" element={<HonoraryVolunteerSuccessPage />} />
               <Route path="/guest/honorary-volunteer/needs" element={<HonoraryVolunteerNeedsPage />} />
               <Route path="/guest/honorary-volunteer/track" element={<HonoraryVolunteerTrackPage />} />
+              <Route path="/guest/pilgrims" element={<PilgrimPortalPage />} />
+              <Route path="/guest/mawkib-owners" element={<MawkibOwnerPortalPage />} />
+              <Route path="/guest/honorary" element={<HonoraryPortalPage />} />
+              <Route path="/guest/about" element={<AboutPage />} />
+              <Route path="/guest/contact" element={<ContactPage />} />
+              <Route path="/guest/faq" element={<FaqPage />} />
             </Route>
             <Route element={<ProtectedRoute />}>
               <Route element={<AdminLayout />}>
+                <Route
+                  path="/feedback/admin"
+                  element={
+                    <RoleGate allowedRoles={['Admin']}>
+                      <AdminFeedbackPage />
+                    </RoleGate>
+                  }
+                />
                 <Route element={<RoleRoute allowedRoles={['Admin', 'MawkibOwner', 'Pilgrim', 'HonoraryServant']} />}>
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/settings/password" element={<ChangePasswordPage />} />
                   <Route
                     path="/honorary-volunteers/my"
                     element={<MyHonoraryVolunteerApplicationsPage />}
@@ -69,6 +104,19 @@ export default function App() {
                   <Route path="/mawkibs" element={<MawkibsPage />} />
                   <Route path="/reservations/new" element={<NewReservationPage />} />
                 </Route>
+                <Route element={<RoleRoute allowedRoles={['Pilgrim']} />}>
+                  <Route path="/feedback/new" element={<NewFeedbackPage />} />
+                  <Route path="/feedback/:id/edit" element={<EditFeedbackPage />} />
+                  <Route path="/feedback" element={<FeedbackListPage />} />
+                </Route>
+                <Route element={<RoleRoute allowedRoles={['MawkibOwner']} />}>
+                  <Route path="/feedback/inbox" element={<OwnerFeedbackInboxPage />} />
+                </Route>
+                <Route element={<RoleRoute allowedRoles={['Admin']} />}>
+                  <Route path="/users" element={<UsersPage />} />
+                  <Route path="/users/mawkib-owners" element={<MawkibOwnersPage />} />
+                  <Route path="/users/honorary-servants" element={<HonoraryServantsPage />} />
+                </Route>
                 <Route element={<RoleRoute allowedRoles={['Admin', 'MawkibOwner']} />}>
                   <Route path="/users/pilgrims" element={<PilgrimsPage />} />
                   <Route
@@ -76,10 +124,6 @@ export default function App() {
                     element={<HonoraryVolunteerApplicationsPage />}
                   />
                   <Route path="/honorary-volunteers/new" element={<MawkibNeedRegisterPage />} />
-                </Route>
-                <Route element={<RoleRoute allowedRoles={['Admin']} />}>
-                  <Route path="/users" element={<UsersPage />} />
-                  <Route path="/users/mawkib-owners" element={<MawkibOwnersPage />} />
                 </Route>
               </Route>
             </Route>

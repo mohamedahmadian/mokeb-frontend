@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Modal } from '../Modal';
 import { inputClass } from '../../lib/styles';
+import { toast } from '../../lib/toast';
 
 interface CancelReservationModalProps {
   open: boolean;
@@ -23,23 +24,20 @@ export function CancelReservationModal({
 }: CancelReservationModalProps) {
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!open) return;
     setNote('');
-    setError('');
   }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
     try {
       await onSubmit(note.trim());
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'خطا در لغو رزرو');
+      toast.error(err instanceof Error ? err.message : 'خطا در لغو رزرو');
     } finally {
       setLoading(false);
     }
@@ -49,9 +47,6 @@ export function CancelReservationModal({
     <Modal open={open} onClose={onClose} title={title}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {description && <p className="text-sm text-slate-600">{description}</p>}
-        {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</div>
-        )}
         <label className="block">
           <span className="mb-1 block text-sm text-slate-600">{noteLabel}</span>
           <textarea

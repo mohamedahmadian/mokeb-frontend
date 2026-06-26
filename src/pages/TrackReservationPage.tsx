@@ -2,13 +2,15 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { useSearchParams } from 'react-router-dom';
 import { GuestPageHeader, GuestShell } from '../components/guest/GuestShell';
 import { TrackModeSwitch, type TrackMode } from '../components/guest/TrackModeSwitch';
+import { ReservationCheckInOut } from '../components/reservations/ReservationCheckInOut';
 import { ReservationDetailInfo } from '../components/reservations/ReservationDetailInfo';
 import { ReservationTrackingHeader } from '../components/reservations/ReservationTrackingHeader';
 import { formatPersianDateRange } from '../components/ui/PersianDateRangePicker';
-import { RESERVATION_STATUS_LABELS, getApiErrorMessage } from '../lib/constants';
+import { RESERVATION_STATUS_LABELS } from '../lib/constants';
 import { guestApi } from '../lib/guest';
 import { guestTheme } from '../lib/guest-theme';
 import { getTrackingCodeFromSearchParams } from '../lib/reservation-track';
+import { toast, toastApiError } from '../lib/toast';
 import type { Reservation } from '../types';
 
 const statusBadgeClass: Record<Reservation['status'], string> = {
@@ -75,9 +77,11 @@ function ReservationListCard({
 function ReservationDetails({
   reservation,
   detailRef,
+  onReservationUpdate,
 }: {
   reservation: Reservation;
   detailRef?: RefObject<HTMLDivElement | null>;
+  onReservationUpdate: (reservation: Reservation) => void;
 }) {
   const mawkibHref = `/guest/mawkibs/${reservation.mawkib.id}?trackingCode=${encodeURIComponent(reservation.trackingCode)}`;
 
@@ -87,6 +91,11 @@ function ReservationDetails({
         reservation={reservation}
         variant="guest"
         mawkibDetailsHref={mawkibHref}
+      />
+      <ReservationCheckInOut
+        reservation={reservation}
+        variant="guest"
+        onUpdate={onReservationUpdate}
       />
       <ReservationTrackingHeader
         trackingCode={reservation.trackingCode}
@@ -105,7 +114,6 @@ export function TrackReservationPage() {
   const [mobileNumber, setMobileNumber] = useState('');
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [mobileResults, setMobileResults] = useState<Reservation[]>([]);
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const mobileDetailRef = useRef<HTMLDivElement>(null);
   const shouldScrollToMobileDetailRef = useRef(false);
@@ -113,17 +121,15 @@ export function TrackReservationPage() {
   const resetResults = useCallback(() => {
     setReservation(null);
     setMobileResults([]);
-    setError('');
   }, []);
 
   const lookupByCode = useCallback(async (code: string) => {
     const trimmed = code.trim();
     if (!trimmed) {
-      setError('لطفاً کد رزرو را وارد کنید');
+      toast.error('لطفاً کد رزرو را وارد کنید');
       return;
     }
 
-    setError('');
     setReservation(null);
     setMobileResults([]);
     setLoading(true);
@@ -132,7 +138,7 @@ export function TrackReservationPage() {
       setReservation(result);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
-      setError(getApiErrorMessage(err, 'رزروی با این کد یافت نشد'));
+      toastApiError(err, 'رزروی با این کد یافت نشد');
     } finally {
       setLoading(false);
     }
@@ -141,11 +147,10 @@ export function TrackReservationPage() {
   const lookupByMobile = useCallback(async (mobile: string) => {
     const trimmed = mobile.trim();
     if (!trimmed) {
-      setError('لطفاً شماره موبایل را وارد کنید');
+      toast.error('لطفاً شماره موبایل را وارد کنید');
       return;
     }
 
-    setError('');
     setReservation(null);
     setMobileResults([]);
     setLoading(true);
@@ -157,7 +162,7 @@ export function TrackReservationPage() {
         setReservation(results[0]);
       }
     } catch (err) {
-      setError(getApiErrorMessage(err, 'رزروی با این شماره موبایل یافت نشد'));
+      toastApiError(err, 'رزروی با این شماره موبایل یافت نشد');
     } finally {
       setLoading(false);
     }
@@ -168,7 +173,6 @@ export function TrackReservationPage() {
 
     let active = true;
     (async () => {
-      setError('');
       setReservation(null);
       setMobileResults([]);
       setLoading(true);
@@ -180,7 +184,7 @@ export function TrackReservationPage() {
         }
       } catch (err) {
         if (active) {
-          setError(getApiErrorMessage(err, 'رزروی با این کد یافت نشد'));
+          toastApiError(err, 'رزروی با این کد یافت نشد');
         }
       } finally {
         if (active) setLoading(false);
@@ -214,6 +218,13 @@ export function TrackReservationPage() {
     }
   };
 
+  const handleReservationUpdate = useCallback((updated: Reservation) => {
+    setReservation(updated);
+    setMobileResults((prev) =>
+      prev.map((item) => (item.id === updated.id ? updated : item)),
+    );
+  }, []);
+
   const subtitle =
     mode === 'code'
       ? 'کد رزرو خود را وارد کنید تا جزئیات نمایش داده شود'
@@ -226,10 +237,6 @@ export function TrackReservationPage() {
       <div className="space-y-6">
         <form onSubmit={handleSubmit} className={guestTheme.cardLg}>
           <TrackModeSwitch value={mode} onChange={handleModeChange} />
-
-          {error && (
-            <div className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-600">{error}</div>
-          )}
 
           {mode === 'code' ? (
             <label className="mt-5 block">
@@ -269,7 +276,12 @@ export function TrackReservationPage() {
           </button>
         </form>
 
-        {mode === 'code' && reservation && <ReservationDetails reservation={reservation} />}
+        {mode === 'code' && reservation && (
+          <ReservationDetails
+            reservation={reservation}
+            onReservationUpdate={handleReservationUpdate}
+          />
+        )}
 
         {mode === 'mobile' && mobileResults.length > 0 && (
           <div className="space-y-4">
@@ -293,7 +305,11 @@ export function TrackReservationPage() {
         )}
 
         {mode === 'mobile' && reservation && (
-          <ReservationDetails reservation={reservation} detailRef={mobileDetailRef} />
+          <ReservationDetails
+            reservation={reservation}
+            detailRef={mobileDetailRef}
+            onReservationUpdate={handleReservationUpdate}
+          />
         )}
       </div>
     </GuestShell>

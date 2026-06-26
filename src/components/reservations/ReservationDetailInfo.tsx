@@ -1,8 +1,10 @@
+import { CompanionsDisplay } from "./CompanionsDisplay";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { formatPersianDate } from "../ui/PersianDateInput";
+import { formatPersianDateFromIso } from "../ui/PersianDateInput";
 import { formatPersianDateRange } from "../ui/PersianDateRangePicker";
 import { formatGuestCount } from "../../lib/capacity";
+import { formatDateTimeFa, formatTimeFa } from "../../lib/format-time";
 import { RESERVATION_STATUS_LABELS } from "../../lib/constants";
 import type { Reservation } from "../../types";
 
@@ -108,6 +110,24 @@ const icons = {
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </Icon>
+  ),
+  checkIn: (
+    <Icon>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"
+      />
+    </Icon>
+  ),
+  checkOut: (
+    <Icon>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M9 9l3 3m0 0l3-3m-3 3V3"
       />
     </Icon>
   ),
@@ -360,11 +380,49 @@ export function ReservationDetailInfo({
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <InfoTile
+            icon={icons.checkIn}
+            label="ساعت ورود (برنامه‌ای)"
+            value={formatTimeFa(
+              reservation.plannedCheckInTime ??
+                reservation.mawkib.defaultCheckInTime,
+            )}
+          />
+          <InfoTile
+            icon={icons.checkOut}
+            label="ساعت خروج (برنامه‌ای)"
+            value={formatTimeFa(
+              reservation.plannedCheckOutTime ??
+                reservation.mawkib.defaultCheckOutTime,
+            )}
+          />
+        </div>
+
+        {(reservation.actualCheckInAt || reservation.actualCheckOutAt) && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {reservation.actualCheckInAt && (
+              <InfoTile
+                icon={icons.checkIn}
+                label="ورود واقعی"
+                value={formatDateTimeFa(reservation.actualCheckInAt)}
+              />
+            )}
+            {reservation.actualCheckOutAt && (
+              <InfoTile
+                icon={icons.checkOut}
+                label="خروج واقعی"
+                value={formatDateTimeFa(reservation.actualCheckOutAt)}
+              />
+            )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {reservation.createdAt && (
             <InfoTile
               icon={icons.registered}
               label="تاریخ ثبت"
-              value={formatPersianDate(reservation.createdAt.slice(0, 10))}
+              value={formatPersianDateFromIso(reservation.createdAt)}
             />
           )}
           <InfoTile
@@ -381,11 +439,7 @@ export function ReservationDetailInfo({
             label="همراهان"
             stacked
             iconClassName={isGuest ? guestIconClass : undefined}
-            value={
-              <p className="whitespace-pre-wrap font-normal leading-relaxed text-slate-700">
-                {reservation.companions}
-              </p>
-            }
+            value={<CompanionsDisplay companions={reservation.companions} />}
             valueClassName="font-normal"
           />
         )}
@@ -424,7 +478,7 @@ export function ReservationDetailInfo({
       </div>
 
       {actions && (
-        <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-slate-50/50 px-4 py-4 sm:px-5">
+        <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-4 sm:px-5">
           {actions}
         </div>
       )}

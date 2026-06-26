@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
+import { PilgrimDashboard } from '../components/dashboard/PilgrimDashboard';
 import { dashboardApi, type CapacityStats } from '../lib/dashboard';
 
 function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
@@ -64,6 +65,10 @@ export function DashboardPage() {
     queryFn: dashboardApi.getStats,
   });
 
+  if (isPilgrim) {
+    return <PilgrimDashboard fullName={user?.fullName ?? ''} />;
+  }
+
   if (isLoading) return <p className="text-slate-500">در حال بارگذاری...</p>;
 
   const adminStats = isAdmin
@@ -74,28 +79,9 @@ export function DashboardPage() {
       ]
     : [];
 
-  const pilgrimReservationCards = stats?.pilgrimStats
-    ? [
-        { label: 'کل رزروها', value: stats.pilgrimStats.totalReservations, color: 'bg-slate-500' },
-        {
-          label: 'در انتظار تایید',
-          value: stats.pilgrimStats.pendingReservations,
-          color: 'bg-amber-500',
-        },
-        {
-          label: 'تایید شده',
-          value: stats.pilgrimStats.confirmedReservations,
-          color: 'bg-[#4a6fa5]',
-        },
-      ]
-    : [];
-
   return (
     <div>
       <h1 className="mb-4 text-xl font-bold text-slate-800 sm:mb-6 sm:text-2xl">داشبورد</h1>
-      {isPilgrim && (
-        <p className="mb-4 text-sm text-slate-500">خوش آمدید، {user?.fullName}</p>
-      )}
 
       {isMawkibOwner && stats?.myMawkibsStats && (
         <section className="mb-6 sm:mb-8">
@@ -106,25 +92,12 @@ export function DashboardPage() {
         </section>
       )}
 
-      {(isAdmin || isPilgrim) && stats?.capacityStats && (
+      {(isAdmin) && stats?.capacityStats && (
         <section className="mb-6 sm:mb-8">
           <h2 className="mb-3 text-base font-semibold text-slate-700 sm:mb-4 sm:text-lg">
             رزرواسیون
           </h2>
           <CapacityCards stats={stats.capacityStats} />
-        </section>
-      )}
-
-      {isPilgrim && pilgrimReservationCards.length > 0 && (
-        <section className="mb-6 sm:mb-8">
-          <h2 className="mb-3 text-base font-semibold text-slate-700 sm:mb-4 sm:text-lg">
-            رزروهای من
-          </h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {pilgrimReservationCards.map((stat) => (
-              <StatCard key={stat.label} {...stat} />
-            ))}
-          </div>
         </section>
       )}
 

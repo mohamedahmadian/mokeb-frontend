@@ -14,7 +14,7 @@ export function RegisterPage() {
   }
 
   return (
-    <div className={`${guestTheme.page} flex justify-center p-4 py-8`}>
+    <div className={`${guestTheme.page} flex justify-center p-4 py-8 sm:py-10`}>
       <PublicRegistrationForm
         variant="pilgrim"
         title="ثبت‌نام زائر"

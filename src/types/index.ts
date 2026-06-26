@@ -56,6 +56,8 @@ export interface Mawkib extends MawkibExtraFields {
   capacity?: number;
   imageUrl?: string | null;
   status: MawkibStatus;
+  defaultCheckInTime?: string;
+  defaultCheckOutTime?: string;
   ownerUserId?: number;
   availableCapacity?: number;
   owner?: {
@@ -77,14 +79,37 @@ export interface Reservation {
   pilgrimMobile: string;
   reservationDate: string;
   reservationEndDate?: string;
+  plannedCheckInTime?: string | null;
+  plannedCheckOutTime?: string | null;
+  actualCheckInAt?: string | null;
+  actualCheckOutAt?: string | null;
   description?: string | null;
   companions?: string | null;
   cancellationNote?: string | null;
   status: 'Pending' | 'Confirmed' | 'Cancelled' | 'Completed';
   createdAt?: string;
-  mawkib: { id: number; name: string; address?: string };
+  mawkib: {
+    id: number;
+    name: string;
+    address?: string;
+    defaultCheckInTime?: string;
+    defaultCheckOutTime?: string;
+  };
   pilgrim: { id: number; fullName: string; mobileNumber: string };
   reservedBy: { id: number; fullName: string; mobileNumber?: string };
+  review?: ReservationReview | null;
+}
+
+export interface ReservationReview {
+  id: number;
+  reservationId: number;
+  content: string;
+  adminReply?: string | null;
+  repliedAt?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+  author: { id: number; fullName: string };
+  repliedBy?: { id: number; fullName: string } | null;
 }
 
 export interface RegistrationRequest {
@@ -136,6 +161,27 @@ export interface HonoraryVolunteerApplication {
   } | null;
 }
 
+export interface MawkibFeedback {
+  id: number;
+  mawkibId: number;
+  authorUserId: number;
+  content: string;
+  ownerReply?: string | null;
+  repliedAt?: string | null;
+  repliedByUserId?: number | null;
+  createdAt: string;
+  updatedAt: string;
+  author: { id: number; fullName: string; mobileNumber: string };
+  repliedBy?: { id: number; fullName: string; mobileNumber: string } | null;
+  mawkib: {
+    id: number;
+    name: string;
+    mawkibCity?: string | null;
+    phoneNumber: string;
+    owner?: { id: number; fullName: string; mobileNumber: string };
+  };
+}
+
 export interface UserSocialFields {
   whatsapp?: string;
   telegram?: string;
@@ -151,6 +197,7 @@ export interface AdminUser extends UserSocialFields {
   province?: string;
   city?: string;
   description?: string;
+  imageUrl?: string | null;
   isActive: boolean;
   roles: { role: { name: RoleName } }[];
   ownedMawkibs?: { id: number; name: string; status: MawkibStatus }[];

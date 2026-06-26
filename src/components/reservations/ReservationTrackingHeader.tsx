@@ -14,14 +14,15 @@ export function ReservationTrackingHeader({
   trackingCode,
   compact = false,
   variant = "default",
-  copyable = false,
+  copyable,
 }: ReservationTrackingHeaderProps) {
   const trackUrl = buildReservationTrackUrl(trackingCode);
   const isGuest = variant === "guest";
+  const isCopyable = copyable ?? isGuest;
   const [copied, setCopied] = useState(false);
 
   const handleCopyCode = async () => {
-    if (!copyable) return;
+    if (!isCopyable) return;
 
     try {
       await navigator.clipboard.writeText(trackingCode);
@@ -34,7 +35,7 @@ export function ReservationTrackingHeader({
 
   const codeClassName = `mt-1 font-mono text-xl font-bold tracking-[0.2em] sm:text-2xl ${
     isGuest ? "text-[#4a6fa5]" : "text-slate-800"
-  }`;
+  } ${isCopyable ? "cursor-pointer transition hover:opacity-80" : ""}`;
 
   return (
     <div
@@ -81,13 +82,13 @@ export function ReservationTrackingHeader({
         </div>
 
         <p className="text-sm font-medium text-slate-500">شناسه رزرو</p>
-        {copyable ? (
+        {isCopyable ? (
           <button
             type="button"
             onClick={handleCopyCode}
-            className={`${codeClassName} cursor-pointer transition hover:opacity-80`}
+            className={codeClassName}
             dir="ltr"
-            title="کپی کد رزرو"
+            title="کپی شناسه رزرو"
           >
             {trackingCode}
           </button>
@@ -96,9 +97,11 @@ export function ReservationTrackingHeader({
             {trackingCode}
           </p>
         )}
-        {copied && (
-          <p className="mt-1.5 text-xs font-medium text-emerald-600">کد کپی شد</p>
-        )}
+        {copied ? (
+          <p className="mt-1.5 text-xs font-medium text-emerald-600">شناسه کپی شد</p>
+        ) : isCopyable ? (
+          <p className="mt-1.5 text-xs text-slate-400">برای کپی، روی شناسه کلیک کنید</p>
+        ) : null}
 
         <div className="mx-auto mt-4 inline-flex rounded-2xl bg-white p-4 shadow-md ring-1 ring-slate-100">
           <QRCodeSVG value={trackUrl} size={compact ? 140 : 180} level="M" />

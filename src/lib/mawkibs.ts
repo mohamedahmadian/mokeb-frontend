@@ -42,6 +42,8 @@ export interface CreateMawkibPayload extends MawkibExtraFields {
   imageUrl?: string;
   ownerUserId: number;
   status?: MawkibStatus;
+  defaultCheckInTime?: string;
+  defaultCheckOutTime?: string;
 }
 
 export interface UpdateMawkibPayload extends MawkibExtraFields {
@@ -60,6 +62,8 @@ export interface UpdateMawkibPayload extends MawkibExtraFields {
   imageUrl?: string;
   ownerUserId?: number;
   status?: MawkibStatus;
+  defaultCheckInTime?: string;
+  defaultCheckOutTime?: string;
 }
 
 export interface DeleteMawkibResponse {

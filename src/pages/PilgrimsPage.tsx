@@ -2,16 +2,15 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { PilgrimFormModal } from '../components/users/PilgrimFormModal';
 import { UserFormModal } from '../components/users/UserFormModal';
 import { DataCard } from '../components/ui/DataCard';
 import { FilterPanel } from '../components/ui/FilterPanel';
 import { PageHeader } from '../components/ui/PageHeader';
 import { ProvinceCitySelect } from '../components/ui/ProvinceCitySelect';
-import { getApiErrorMessage } from '../lib/constants';
+import { toast, toastApiError } from '../lib/toast';
 import { useRoleAccess } from '../hooks/useRoleAccess';
 import { btnAction, btnPrimary, filterInputClass } from '../lib/styles';
-import { usersApi, type UpdateUserPayload, type UserListFilters } from '../lib/users';
+import { usersApi, type CreateQuickPilgrimPayload, type UpdateUserPayload, type UserListFilters } from '../lib/users';
 import type { AdminUser } from '../types';
 
 const emptyFilters = {
@@ -41,9 +40,6 @@ export function PilgrimsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(
-    null,
-  );
 
   const { data: pilgrims = [], isLoading } = useQuery({
     queryKey: ['pilgrims-list', appliedFilters],
@@ -56,7 +52,7 @@ export function PilgrimsPage() {
       queryClient.invalidateQueries({ queryKey: ['pilgrims-list'] });
       queryClient.invalidateQueries({ queryKey: ['pilgrims'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      setFeedback({ type: 'success', text: 'زائر با موفقیت ثبت شد' });
+      toast.success('زائر با موفقیت ثبت شد');
     },
   });
 
@@ -66,7 +62,7 @@ export function PilgrimsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pilgrims-list'] });
       queryClient.invalidateQueries({ queryKey: ['pilgrims'] });
-      setFeedback({ type: 'success', text: 'زائر با موفقیت ویرایش شد' });
+      toast.success('زائر با موفقیت ویرایش شد');
     },
   });
 
@@ -76,13 +72,10 @@ export function PilgrimsPage() {
       queryClient.invalidateQueries({ queryKey: ['pilgrims-list'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setDeletingUser(null);
-      setFeedback({ type: 'success', text: result.message });
+      toast.success(result.message);
     },
     onError: (error) => {
-      setFeedback({
-        type: 'error',
-        text: getApiErrorMessage(error, 'خطا در حذف زائر'),
-      });
+      toastApiError(error, 'خطا در حذف زائر');
     },
   });
 
@@ -138,21 +131,6 @@ export function PilgrimsPage() {
           </button>
         }
       />
-
-      {feedback && (
-        <div
-          className={`mb-4 rounded-lg p-3 text-sm ${
-            feedback.type === 'success'
-              ? 'bg-[#f0f4fa] text-[#3d5d8a]'
-              : 'bg-red-50 text-red-600'
-          }`}
-        >
-          {feedback.text}
-          <button onClick={() => setFeedback(null)} className="mr-3 text-xs underline">
-            بستن
-          </button>
-        </div>
-      )}
 
       <FilterPanel
         onApply={() => setAppliedFilters(toApiFilters(filters))}
@@ -278,31 +256,26 @@ export function PilgrimsPage() {
         </table>
       </div>
 
-      {editingUser ? (
-        <UserFormModal
-          open={formOpen}
-          onClose={() => {
-            setFormOpen(false);
-            setEditingUser(null);
-          }}
-          onSubmit={async (payload) => {
+      <UserFormModal
+        open={formOpen}
+        onClose={() => {
+          setFormOpen(false);
+          setEditingUser(null);
+        }}
+        onSubmit={async (payload) => {
+          if (editingUser) {
             await updateMutation.mutateAsync({
               id: editingUser.id,
               payload: payload as UpdateUserPayload,
             });
-          }}
-          user={editingUser}
-          fixedRole="Pilgrim"
-        />
-      ) : (
-        <PilgrimFormModal
-          open={formOpen}
-          onClose={() => setFormOpen(false)}
-          onSubmit={async (payload) => {
-            await createMutation.mutateAsync(payload);
-          }}
-        />
-      )}
+          } else {
+            await createMutation.mutateAsync(payload as CreateQuickPilgrimPayload);
+          }
+        }}
+        user={editingUser}
+        fixedRole="Pilgrim"
+        quickPilgrim={!editingUser}
+      />
 
       <ConfirmDialog
         open={!!deletingUser && isAdmin}

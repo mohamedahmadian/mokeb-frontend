@@ -5,6 +5,7 @@ export interface CreateGuestReservationPayload {
   firstName: string;
   lastName: string;
   mobileNumber: string;
+  password?: string;
   province?: string;
   city?: string;
   mawkibId: number;
@@ -14,6 +15,8 @@ export interface CreateGuestReservationPayload {
   femaleGuestCount: number;
   description?: string;
   companions?: string;
+  plannedCheckInTime?: string;
+  plannedCheckOutTime?: string;
 }
 
 export interface GuestReservationResponse {
@@ -45,6 +48,20 @@ export const guestApi = {
     api
       .get<Reservation[]>('/reservations/guest/track-by-mobile', {
         params: { mobileNumber: mobileNumber.trim() },
+      })
+      .then((r) => r.data),
+
+  checkIn: (trackingCode: string) =>
+    api
+      .post<Reservation>('/reservations/guest/check-in', {
+        trackingCode: trackingCode.trim(),
+      })
+      .then((r) => r.data),
+
+  checkOut: (trackingCode: string) =>
+    api
+      .post<Reservation>('/reservations/guest/check-out', {
+        trackingCode: trackingCode.trim(),
       })
       .then((r) => r.data),
 };

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { guestTheme } from '../../lib/guest-theme';
-import { getApiErrorMessage } from '../../lib/constants';
+import { toast, toastApiError } from '../../lib/toast';
 
 interface HonoraryVolunteerLoginStepProps {
   onBack: () => void;
@@ -10,15 +10,13 @@ interface HonoraryVolunteerLoginStepProps {
 export function HonoraryVolunteerLoginStep({ onBack, onLogin }: HonoraryVolunteerLoginStepProps) {
   const [mobileNumber, setMobileNumber] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError('');
 
     if (!mobileNumber.trim() || !password.trim()) {
-      setError('شماره موبایل و رمز عبور الزامی است');
+      toast.error('شماره موبایل و رمز عبور الزامی است');
       return;
     }
 
@@ -26,7 +24,7 @@ export function HonoraryVolunteerLoginStep({ onBack, onLogin }: HonoraryVoluntee
     try {
       await onLogin(mobileNumber.trim(), password);
     } catch (err) {
-      setError(getApiErrorMessage(err, 'ورود ناموفق بود. اطلاعات را بررسی کنید.'));
+      toastApiError(err, 'ورود ناموفق بود. اطلاعات را بررسی کنید.');
     } finally {
       setSubmitting(false);
     }
@@ -38,8 +36,6 @@ export function HonoraryVolunteerLoginStep({ onBack, onLogin }: HonoraryVoluntee
         برای ادامه، با حساب کاربری موجود خود وارد شوید. اطلاعات هویتی شما به‌صورت خودکار در فرم
         اعلام آمادگی استفاده می‌شود.
       </p>
-
-      {error && <div className="rounded-xl bg-red-50 p-4 text-sm text-red-600">{error}</div>}
 
       <label className="block">
         <span className="mb-1.5 block text-sm text-slate-600">شماره موبایل *</span>

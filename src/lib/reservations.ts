@@ -11,6 +11,7 @@ export interface ReservationFilters {
   reservationDateTo?: string;
   pilgrimName?: string;
   pilgrimMobile?: string;
+  trackingCode?: string;
   pilgrimUserId?: number;
   guestCountMin?: number;
   guestCountMax?: number;
@@ -26,6 +27,8 @@ export interface CreateReservationPayload {
   description?: string;
   companions?: string;
   pilgrimUserId?: number;
+  plannedCheckInTime?: string;
+  plannedCheckOutTime?: string;
 }
 
 function buildParams(filters?: ReservationFilters) {
@@ -74,5 +77,22 @@ export const reservationsApi = {
   getCapacity: (mawkibId: number, date: string) =>
     api
       .get<MawkibCapacitySnapshot>(`/mawkibs/${mawkibId}/capacity`, { params: { date } })
+      .then((r) => r.data),
+
+  checkIn: (id: number) =>
+    api.post<Reservation>(`/reservations/${id}/check-in`).then((r) => r.data),
+
+  checkOut: (id: number) =>
+    api.post<Reservation>(`/reservations/${id}/check-out`).then((r) => r.data),
+
+  createReview: (id: number, content: string) =>
+    api.post<Reservation>(`/reservations/${id}/review`, { content }).then((r) => r.data),
+
+  updateReview: (id: number, content: string) =>
+    api.patch<Reservation>(`/reservations/${id}/review`, { content }).then((r) => r.data),
+
+  replyToReview: (id: number, adminReply: string) =>
+    api
+      .patch<Reservation>(`/reservations/${id}/review/reply`, { adminReply })
       .then((r) => r.data),
 };

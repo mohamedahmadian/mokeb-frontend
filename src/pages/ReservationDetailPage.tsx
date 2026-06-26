@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { CancelReservationModal } from '../components/reservations/CancelReservationModal';
+import { ReservationCheckInOut } from '../components/reservations/ReservationCheckInOut';
 import { ReservationDetailInfo, ReservationStatusBanner } from '../components/reservations/ReservationDetailInfo';
+import { ReservationReviewSection } from '../components/reservations/ReservationReviewSection';
 import { ReservationTrackingHeader } from '../components/reservations/ReservationTrackingHeader';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useAuth } from '../contexts/AuthContext';
 import { getApiErrorMessage } from '../lib/constants';
+import { toast, toastApiError } from '../lib/toast';
 import { reservationsApi } from '../lib/reservations';
 import { btnAction, btnDanger, btnPrimary, btnSecondary } from '../lib/styles';
 
@@ -34,6 +37,10 @@ export function ReservationDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['reservation', reservationId] });
       queryClient.invalidateQueries({ queryKey: ['reservations-admin'] });
       queryClient.invalidateQueries({ queryKey: ['reservations-my'] });
+      toast.success('رزرو با موفقیت تایید شد');
+    },
+    onError: (error) => {
+      toastApiError(error, 'خطا در تایید رزرو');
     },
   });
 
@@ -44,6 +51,10 @@ export function ReservationDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['reservations-admin'] });
       queryClient.invalidateQueries({ queryKey: ['reservations-my'] });
       setCancelOpen(false);
+      toast.success('رزرو با موفقیت لغو شد');
+    },
+    onError: (error) => {
+      toastApiError(error, 'خطا در لغو رزرو');
     },
   });
 
@@ -73,9 +84,15 @@ export function ReservationDetailPage() {
       isMawkibOwner ||
       (isPilgrim && reservation.pilgrim.id === user?.id));
 
+  const showConfirm = reservation.status === 'Pending' && canConfirm;
+
   const actions = (
-    <>
-      {reservation.status === 'Pending' && canConfirm && (
+    <div
+      className={`flex w-full items-center gap-2 ${
+        showConfirm ? 'justify-between' : 'justify-end'
+      }`}
+    >
+      {showConfirm && (
         <button
           type="button"
           onClick={() => updateStatus.mutate()}
@@ -89,16 +106,29 @@ export function ReservationDetailPage() {
         <button
           type="button"
           onClick={() => setCancelOpen(true)}
-          className={`${btnDanger} !min-h-9 !px-2.5 !py-1.5 !text-xs`}
+          className={`${btnDanger} inline-flex items-center gap-1.5 !min-h-9 !px-2.5 !py-1.5 !text-xs`}
         >
+          <svg
+            className="h-4 w-4 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            aria-hidden
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
           لغو رزرو
         </button>
       )}
-    </>
+    </div>
   );
 
-  const hasActions =
-    (reservation.status === 'Pending' && canConfirm) || canCancel;
+  const hasActions = showConfirm || canCancel;
 
   return (
     <div className="mx-auto w-full max-w-xl">
@@ -119,6 +149,23 @@ export function ReservationDetailPage() {
           reservation={reservation}
           showStatusBanner={false}
           actions={hasActions ? actions : undefined}
+        />
+
+        {(isAdmin || isMawkibOwner) && (
+          <ReservationCheckInOut
+            reservation={reservation}
+            variant="panel"
+            onUpdate={(updated) => {
+              queryClient.setQueryData(['reservation', reservationId], updated);
+              queryClient.invalidateQueries({ queryKey: ['reservations-admin'] });
+              queryClient.invalidateQueries({ queryKey: ['reservations-my'] });
+            }}
+          />
+        )}
+
+        <ReservationReviewSection
+          reservation={reservation}
+          reservationId={reservationId}
         />
 
         <ReservationTrackingHeader trackingCode={reservation.trackingCode} copyable />

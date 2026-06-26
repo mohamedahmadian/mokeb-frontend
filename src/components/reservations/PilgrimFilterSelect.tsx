@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { usersApi } from '../../lib/users';
+import { usersApi, MIN_PILGRIM_SEARCH_LENGTH } from '../../lib/users';
 import { filterInputClass } from '../../lib/styles';
 
 interface PilgrimFilterSelectProps {
@@ -14,7 +14,7 @@ export function PilgrimFilterSelect({
   value,
   onChange,
   className = filterInputClass,
-  placeholder = 'همه زائرین — جستجو با نام یا موبایل',
+  placeholder = 'جستجو در همه زائران — حداقل ۲ کاراکتر',
 }: PilgrimFilterSelectProps) {
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -28,10 +28,13 @@ export function PilgrimFilterSelect({
     enabled: pilgrimId > 0,
   });
 
+  const trimmedSearch = search.trim();
+  const canSearch = trimmedSearch.length >= MIN_PILGRIM_SEARCH_LENGTH;
+
   const { data: pilgrims = [], isLoading } = useQuery({
-    queryKey: ['pilgrims-search-filter', search],
-    queryFn: () => usersApi.searchPilgrims(search),
-    enabled: open,
+    queryKey: ['pilgrims-search-filter', 'all', trimmedSearch],
+    queryFn: () => usersApi.searchPilgrims(trimmedSearch),
+    enabled: open && canSearch,
   });
 
   useEffect(() => {
@@ -90,7 +93,11 @@ export function PilgrimFilterSelect({
           >
             همه زائرین
           </button>
-          {isLoading ? (
+          {!canSearch ? (
+            <p className="px-3 py-2 text-sm text-slate-400">
+              برای جستجو در همه زائران، حداقل {MIN_PILGRIM_SEARCH_LENGTH} کاراکتر وارد کنید
+            </p>
+          ) : isLoading ? (
             <p className="px-3 py-2 text-sm text-slate-400">در حال جستجو...</p>
           ) : pilgrims.length === 0 ? (
             <p className="px-3 py-2 text-sm text-slate-400">زائری یافت نشد</p>

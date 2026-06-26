@@ -4,6 +4,7 @@ import { formatPersianDateRange } from '../ui/PersianDateRangePicker';
 import { formatPersianDate } from '../ui/PersianDateInput';
 import { getServiceTypeLabel } from '../../lib/honorary-volunteer';
 import { btnDanger, btnPrimary, inputClass } from '../../lib/styles';
+import { toast } from '../../lib/toast';
 import type { HonoraryVolunteerApplication } from '../../types';
 
 const statusLabels: Record<string, string> = {
@@ -47,12 +48,10 @@ export function HonoraryVolunteerReviewModal({
 }: HonoraryVolunteerReviewModalProps) {
   const [reviewNote, setReviewNote] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!open) return;
     setReviewNote(application?.reviewNote ?? '');
-    setError('');
   }, [open, application]);
 
   if (!application) return null;
@@ -61,13 +60,13 @@ export function HonoraryVolunteerReviewModal({
   const isPending = application.status === 'Pending';
 
   const handleReview = async (status: 'Approved' | 'Rejected') => {
-    setError('');
     setLoading(true);
     try {
       await onReview(application.id, status, reviewNote.trim());
+      toast.success(status === 'Approved' ? 'درخواست تایید شد' : 'درخواست رد شد');
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'خطا در ثبت بررسی');
+      toast.error(err instanceof Error ? err.message : 'خطا در ثبت بررسی');
     } finally {
       setLoading(false);
     }
@@ -141,10 +140,6 @@ export function HonoraryVolunteerReviewModal({
             placeholder="توضیحات خود را درباره تایید یا رد درخواست بنویسید..."
           />
         </label>
-
-        {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</div>
-        )}
 
         <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
           <button

@@ -1,105 +1,131 @@
-import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { GuestPageHeader, GuestShell } from '../components/guest/GuestShell';
-import { HonoraryVolunteerApplicationDetails } from '../components/honorary-volunteers/HonoraryVolunteerApplicationDetails';
-import { HonoraryVolunteerTrackingHeader } from '../components/honorary-volunteers/HonoraryVolunteerTrackingHeader';
-import { honoraryVolunteersApi } from '../lib/honorary-volunteers';
-import { guestTheme } from '../lib/guest-theme';
-import type { HonoraryVolunteerApplication } from '../types';
+import { useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { GuestPageHeader, GuestShell } from "../components/guest/GuestShell";
+import { HonoraryVolunteerApplicationDetails } from "../components/honorary-volunteers/HonoraryVolunteerApplicationDetails";
+import { HonoraryVolunteerTrackingHeader } from "../components/honorary-volunteers/HonoraryVolunteerTrackingHeader";
+import { honoraryVolunteersApi } from "../lib/honorary-volunteers";
+import { guestTheme } from "../lib/guest-theme";
+import type { HonoraryVolunteerApplication } from "../types";
 
-function ApplicationResult({ application }: { application: HonoraryVolunteerApplication }) {
+function ApplicationResult({
+  application,
+}: {
+  application: HonoraryVolunteerApplication;
+}) {
   return (
     <div className={guestTheme.cardLg}>
       <HonoraryVolunteerApplicationDetails
         application={application}
         showTrackingHeader={
-          <HonoraryVolunteerTrackingHeader trackingCode={application.trackingCode} compact />
+          <HonoraryVolunteerTrackingHeader
+            trackingCode={application.trackingCode}
+            compact
+          />
         }
       />
     </div>
   );
 }
 
-type TrackMode = 'code' | 'mobile';
+type TrackMode = "code" | "mobile";
 
 export function HonoraryVolunteerTrackPage() {
   const [searchParams] = useSearchParams();
-  const codeFromUrl = searchParams.get('trackingCode') ?? '';
-  const [mode, setMode] = useState<TrackMode>('code');
+  const codeFromUrl = searchParams.get("trackingCode") ?? "";
+  const [mode, setMode] = useState<TrackMode>("code");
   const [trackingCode, setTrackingCode] = useState(codeFromUrl);
-  const [mobileNumber, setMobileNumber] = useState('');
+  const [mobileNumber, setMobileNumber] = useState("");
   const [lookupCode, setLookupCode] = useState(codeFromUrl);
-  const [lookupMobile, setLookupMobile] = useState('');
+  const [lookupMobile, setLookupMobile] = useState("");
 
   const codeQuery = useQuery({
-    queryKey: ['honorary-volunteer-track', lookupCode],
+    queryKey: ["honorary-volunteer-track", lookupCode],
     queryFn: () => honoraryVolunteersApi.track(lookupCode),
-    enabled: Boolean(lookupCode) && mode === 'code',
+    enabled: Boolean(lookupCode) && mode === "code",
     retry: false,
   });
 
   const mobileQuery = useQuery({
-    queryKey: ['honorary-volunteer-track-mobile', lookupMobile],
+    queryKey: ["honorary-volunteer-track-mobile", lookupMobile],
     queryFn: () => honoraryVolunteersApi.trackByMobile(lookupMobile),
-    enabled: Boolean(lookupMobile) && mode === 'mobile',
+    enabled: Boolean(lookupMobile) && mode === "mobile",
     retry: false,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === 'code') {
+    if (mode === "code") {
       setLookupCode(trackingCode.trim());
-      setLookupMobile('');
+      setLookupMobile("");
     } else {
       setLookupMobile(mobileNumber.trim());
-      setLookupCode('');
+      setLookupCode("");
     }
   };
 
   const switchMode = (next: TrackMode) => {
     setMode(next);
-    setLookupCode('');
-    setLookupMobile('');
+    setLookupCode("");
+    setLookupMobile("");
   };
 
   return (
     <GuestShell maxWidth="lg">
       <GuestPageHeader
         icon={
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          <svg
+            className="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+            />
           </svg>
         }
-        title="پیگیری درخواست خادم یاری"
+        title="پیگیری درخواست همکاری به عنوان خادم"
         subtitle="با کد درخواست یا شماره تلفن، وضعیت و نتیجه بررسی را مشاهده کنید"
       />
 
-      <form onSubmit={handleSubmit} className={`${guestTheme.cardLg} mb-4 space-y-4`}>
+      <form
+        onSubmit={handleSubmit}
+        className={`${guestTheme.cardLg} mb-4 space-y-4`}
+      >
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => switchMode('code')}
+            onClick={() => switchMode("code")}
             className={`rounded-lg px-3 py-2 text-sm ${
-              mode === 'code' ? 'bg-[#4a6fa5] text-white' : 'bg-slate-100 text-slate-600'
+              mode === "code"
+                ? "bg-[#4a6fa5] text-white"
+                : "bg-slate-100 text-slate-600"
             }`}
           >
             کد درخواست
           </button>
           <button
             type="button"
-            onClick={() => switchMode('mobile')}
+            onClick={() => switchMode("mobile")}
             className={`rounded-lg px-3 py-2 text-sm ${
-              mode === 'mobile' ? 'bg-[#4a6fa5] text-white' : 'bg-slate-100 text-slate-600'
+              mode === "mobile"
+                ? "bg-[#4a6fa5] text-white"
+                : "bg-slate-100 text-slate-600"
             }`}
           >
             شماره تلفن
           </button>
         </div>
 
-        {mode === 'code' ? (
+        {mode === "code" ? (
           <label className="block">
-            <span className="mb-1.5 block text-sm text-slate-600">کد درخواست خادم یاری</span>
+            <span className="mb-1.5 block text-sm text-slate-600">
+              کد درخواست همکاری به عنوان خادم
+            </span>
             <input
               type="text"
               value={trackingCode}
@@ -112,7 +138,9 @@ export function HonoraryVolunteerTrackPage() {
           </label>
         ) : (
           <label className="block">
-            <span className="mb-1.5 block text-sm text-slate-600">شماره تلفن ثبت‌شده</span>
+            <span className="mb-1.5 block text-sm text-slate-600">
+              شماره تلفن ثبت‌شده
+            </span>
             <input
               type="tel"
               value={mobileNumber}
@@ -130,11 +158,15 @@ export function HonoraryVolunteerTrackPage() {
         </button>
       </form>
 
-      {mode === 'code' && lookupCode && (
+      {mode === "code" && lookupCode && (
         <>
-          {codeQuery.isLoading && <p className="text-slate-500">در حال جستجو...</p>}
+          {codeQuery.isLoading && (
+            <p className="text-slate-500">در حال جستجو...</p>
+          )}
           {codeQuery.isError && (
-            <div className={`${guestTheme.card} p-6 text-center text-sm text-red-600`}>
+            <div
+              className={`${guestTheme.card} p-6 text-center text-sm text-red-600`}
+            >
               درخواستی با این کد یافت نشد
             </div>
           )}
@@ -142,16 +174,22 @@ export function HonoraryVolunteerTrackPage() {
         </>
       )}
 
-      {mode === 'mobile' && lookupMobile && (
+      {mode === "mobile" && lookupMobile && (
         <>
-          {mobileQuery.isLoading && <p className="text-slate-500">در حال جستجو...</p>}
+          {mobileQuery.isLoading && (
+            <p className="text-slate-500">در حال جستجو...</p>
+          )}
           {mobileQuery.isError && (
-            <div className={`${guestTheme.card} p-6 text-center text-sm text-red-600`}>
+            <div
+              className={`${guestTheme.card} p-6 text-center text-sm text-red-600`}
+            >
               درخواستی با این شماره یافت نشد
             </div>
           )}
           {mobileQuery.data && mobileQuery.data.length === 0 && (
-            <div className={`${guestTheme.card} p-6 text-center text-slate-400`}>
+            <div
+              className={`${guestTheme.card} p-6 text-center text-slate-400`}
+            >
               درخواستی با این شماره یافت نشد
             </div>
           )}

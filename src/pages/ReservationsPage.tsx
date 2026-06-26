@@ -9,7 +9,9 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { CancelReservationModal } from "../components/reservations/CancelReservationModal";
 import { PilgrimFilterSelect } from "../components/reservations/PilgrimFilterSelect";
+import { ReservationReviewModal } from "../components/reservations/ReservationReviewModal";
 import { DataCard } from "../components/ui/DataCard";
+import { NavIcon } from "../components/ui/NavIcons";
 import { FilterPanel } from "../components/ui/FilterPanel";
 import { PageHeader } from "../components/ui/PageHeader";
 import {
@@ -17,12 +19,13 @@ import {
   formatPersianDate,
 } from "../components/ui/PersianDateInput";
 import { formatGuestCount } from "../lib/capacity";
-import { formatPersianDateRange } from "../components/ui/PersianDateRangePicker";
+import { formatTimeFromIso } from "../lib/format-time";
 import { useAuth } from "../contexts/AuthContext";
 import {
   RESERVATION_STATUS_LABELS,
   getApiErrorMessage,
 } from "../lib/constants";
+import { toast, toastApiError } from "../lib/toast";
 import {
   btnPrimary,
   btnAction,
@@ -35,6 +38,10 @@ import {
   type ReservationFilters,
   type ReservationStatus,
 } from "../lib/reservations";
+import {
+  canEditReservationReview,
+  canPilgrimReviewReservation,
+} from "../lib/reservation-reviews";
 import { usersApi } from "../lib/users";
 import type { Mawkib, Reservation } from "../types";
 
@@ -54,7 +61,7 @@ const emptyFilters: ReservationFilters & {
   status: undefined,
   reservationDateFrom: "",
   reservationDateTo: "",
-  pilgrimName: "",
+  trackingCode: "",
   pilgrimMobile: "",
 };
 
@@ -68,7 +75,7 @@ function parseFilters(form: typeof emptyFilters): ReservationFilters {
     filters.reservationDateFrom = form.reservationDateFrom;
   if (form.reservationDateTo)
     filters.reservationDateTo = form.reservationDateTo;
-  if (form.pilgrimName) filters.pilgrimName = form.pilgrimName;
+  if (form.trackingCode) filters.trackingCode = form.trackingCode.trim();
   if (form.pilgrimMobile) filters.pilgrimMobile = form.pilgrimMobile;
   return filters;
 }
@@ -83,11 +90,29 @@ function buildInitialAppliedFilters(
   return filters;
 }
 
-function formatReservationDates(r: Reservation): string {
-  const end = r.reservationEndDate ?? r.reservationDate;
-  return formatPersianDateRange(
-    r.reservationDate.slice(0, 10),
-    end.slice(0, 10),
+function ReservationDateCell({
+  date,
+  actualAt,
+  timeLabel,
+}: {
+  date: string;
+  actualAt?: string | null;
+  timeLabel: string;
+}) {
+  const time = formatTimeFromIso(actualAt);
+
+  return (
+    <div>
+      <div>{formatPersianDate(date.slice(0, 10))}</div>
+      {time && (
+        <p className="mt-0.5 text-xs text-emerald-700">
+          {timeLabel}:{" "}
+          <span dir="ltr" className="font-mono">
+            {time}
+          </span>
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -107,10 +132,8 @@ export function ReservationsPage() {
     useState<Reservation | null>(null);
   const [deletingReservation, setDeletingReservation] =
     useState<Reservation | null>(null);
-  const [feedback, setFeedback] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
+  const [reviewingReservation, setReviewingReservation] =
+    useState<Reservation | null>(null);
 
   const initialMawkibId = searchParams.get("mawkibId") ?? "";
   const initialPilgrimUserId = searchParams.get("pilgrimUserId") ?? "";
@@ -173,13 +196,10 @@ export function ReservationsPage() {
       queryClient.invalidateQueries({ queryKey: ["reservations-admin"] });
       queryClient.invalidateQueries({ queryKey: ["reservations-my"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      setFeedback({ type: "success", text: "وضعیت رزرو به‌روزرسانی شد" });
+      toast.success("وضعیت رزرو به‌روزرسانی شد");
     },
     onError: (error) => {
-      setFeedback({
-        type: "error",
-        text: getApiErrorMessage(error, "خطا در تغییر وضعیت"),
-      });
+      toastApiError(error, "خطا در تغییر وضعیت");
     },
   });
 
@@ -191,7 +211,10 @@ export function ReservationsPage() {
       queryClient.invalidateQueries({ queryKey: ["reservations-my"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setCancellingReservation(null);
-      setFeedback({ type: "success", text: "رزرو با موفقیت لغو شد" });
+      toast.success("رزرو با موفقیت لغو شد");
+    },
+    onError: (error) => {
+      toastApiError(error, "خطا در لغو رزرو");
     },
   });
 
@@ -202,13 +225,34 @@ export function ReservationsPage() {
       queryClient.invalidateQueries({ queryKey: ["reservations-my"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setDeletingReservation(null);
-      setFeedback({ type: "success", text: result.message });
+      toast.success(result.message);
     },
     onError: (error) => {
-      setFeedback({
-        type: "error",
-        text: getApiErrorMessage(error, "خطا در حذف رزرو"),
-      });
+      toastApiError(error, "خطا در حذف رزرو");
+    },
+  });
+
+  const submitReview = useMutation({
+    mutationFn: ({
+      id,
+      content,
+      isEdit,
+    }: {
+      id: number;
+      content: string;
+      isEdit: boolean;
+    }) =>
+      isEdit
+        ? reservationsApi.updateReview(id, content)
+        : reservationsApi.createReview(id, content),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reservations-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["reservations-my"] });
+      setReviewingReservation(null);
+      toast.success("نظر با موفقیت ذخیره شد");
+    },
+    onError: (error) => {
+      toastApiError(error, "خطا در ثبت نظر");
     },
   });
 
@@ -228,6 +272,8 @@ export function ReservationsPage() {
     const parts: string[] = [];
     if (selectedMawkib) parts.push(`موکب «${selectedMawkib.name}»`);
     if (selectedPilgrim) parts.push(`زائر «${selectedPilgrim.fullName}»`);
+    if (appliedFilters.trackingCode)
+      parts.push(`شناسه «${appliedFilters.trackingCode}»`);
     if (parts.length === 0) return undefined;
     return `فیلتر فعال: ${parts.join(" — ")}`;
   })();
@@ -243,58 +289,98 @@ export function ReservationsPage() {
     e.stopPropagation();
   };
 
-  const renderActions = (r: Reservation) => (
-    <div
-      className="flex flex-wrap gap-2"
-      onClick={stopRowClick}
-      onKeyDown={stopRowClick}
-      role="presentation"
-    >
-      <Link
-        to={`/reservations/${r.id}`}
-        className={`${btnAction} bg-slate-100 text-slate-700 hover:bg-slate-200`}
+  const actionIconClass = "h-3.5 w-3.5 shrink-0";
+
+  const renderActions = (r: Reservation) => {
+    const canReview =
+      isPilgrim && canPilgrimReviewReservation(r, user?.id);
+    const showRegisterReview = canReview && !r.review;
+    const showEditReview =
+      canReview && r.review && canEditReservationReview(r, user?.id);
+
+    return (
+      <div
+        className="flex flex-wrap items-center gap-2"
         onClick={stopRowClick}
+        onKeyDown={stopRowClick}
+        role="presentation"
       >
-        جزئیات
-      </Link>
-      {r.status === "Pending" && canConfirm && (
-        <button
-          type="button"
-          onClick={(e) => {
-            stopRowClick(e);
-            updateStatus.mutate({ id: r.id, status: "Confirmed" });
-          }}
-          className={`${btnAction} ${btnPrimary} !min-h-9 !px-2.5 !py-1.5 !text-xs`}
-        >
-          تایید
-        </button>
-      )}
-      {canCancel(r) && (
-        <button
-          type="button"
-          onClick={(e) => {
-            stopRowClick(e);
-            setCancellingReservation(r);
-          }}
-          className={`${btnDanger} !min-h-9 !px-2.5 !py-1.5 !text-xs`}
-        >
-          لغو
-        </button>
-      )}
-      {isAdmin && (
-        <button
-          type="button"
-          onClick={(e) => {
-            stopRowClick(e);
-            setDeletingReservation(r);
-          }}
-          className={`${btnAction} bg-slate-100 text-slate-700 hover:bg-slate-200`}
-        >
-          حذف
-        </button>
-      )}
-    </div>
-  );
+        <div className="flex items-center gap-2">
+          {showRegisterReview && (
+            <button
+              type="button"
+              onClick={(e) => {
+                stopRowClick(e);
+                setReviewingReservation(r);
+              }}
+              className={`${btnAction} inline-flex items-center gap-1.5 bg-[#f0f4fa] text-[#3d5d8a] hover:bg-[#e8eef6]`}
+            >
+              <NavIcon name="feedback" className={actionIconClass} />
+              ثبت نظر
+            </button>
+          )}
+          {showEditReview && (
+            <button
+              type="button"
+              onClick={(e) => {
+                stopRowClick(e);
+                setReviewingReservation(r);
+              }}
+              className={`${btnAction} inline-flex items-center gap-1.5 bg-[#f0f4fa] text-[#3d5d8a] hover:bg-[#e8eef6]`}
+            >
+              <NavIcon name="feedback" className={actionIconClass} />
+              ویرایش نظر
+            </button>
+          )}
+          <Link
+            to={`/reservations/${r.id}`}
+            className={`${btnAction} inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200`}
+            onClick={stopRowClick}
+          >
+            <NavIcon name="info" className={actionIconClass} />
+            جزئیات
+          </Link>
+        </div>
+        {r.status === "Pending" && canConfirm && (
+          <button
+            type="button"
+            onClick={(e) => {
+              stopRowClick(e);
+              updateStatus.mutate({ id: r.id, status: "Confirmed" });
+            }}
+            className={`${btnAction} ${btnPrimary} !min-h-9 !px-2.5 !py-1.5 !text-xs`}
+          >
+            تایید
+          </button>
+        )}
+        {canCancel(r) && (
+          <button
+            type="button"
+            onClick={(e) => {
+              stopRowClick(e);
+              setCancellingReservation(r);
+            }}
+            className={`${btnDanger} inline-flex items-center gap-1.5 !min-h-9 !px-2.5 !py-1.5 !text-xs`}
+          >
+            <NavIcon name="x" className={actionIconClass} strokeWidth={2} />
+            لغو
+          </button>
+        )}
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={(e) => {
+              stopRowClick(e);
+              setDeletingReservation(r);
+            }}
+            className={`${btnAction} bg-slate-100 text-slate-700 hover:bg-slate-200`}
+          >
+            حذف
+          </button>
+        )}
+      </div>
+    );
+  };
 
   if (isLoading) return <p className="text-slate-500">در حال بارگذاری...</p>;
 
@@ -316,24 +402,6 @@ export function ReservationsPage() {
           </Link>
         }
       />
-
-      {feedback && (
-        <div
-          className={`mb-4 rounded-lg p-3 text-sm ${
-            feedback.type === "success"
-              ? "bg-[#f0f4fa] text-[#3d5d8a]"
-              : "bg-red-50 text-red-600"
-          }`}
-        >
-          {feedback.text}
-          <button
-            onClick={() => setFeedback(null)}
-            className="mr-3 text-xs underline"
-          >
-            بستن
-          </button>
-        </div>
-      )}
 
       <FilterPanel onApply={applyFilters} onReset={resetFilters}>
         <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -388,17 +456,18 @@ export function ReservationsPage() {
               setFilters({ ...filters, reservationDateTo })
             }
           />
+          <input
+            type="text"
+            placeholder="شناسه رزرو"
+            value={filters.trackingCode}
+            onChange={(e) =>
+              setFilters({ ...filters, trackingCode: e.target.value })
+            }
+            className={filterInputClass}
+            dir="ltr"
+          />
           {canUsePilgrimSearch && (
             <>
-              <input
-                type="text"
-                placeholder="نام زائر"
-                value={filters.pilgrimName}
-                onChange={(e) =>
-                  setFilters({ ...filters, pilgrimName: e.target.value })
-                }
-                className={filterInputClass}
-              />
               <input
                 type="text"
                 placeholder="موبایل زائر"
@@ -407,6 +476,7 @@ export function ReservationsPage() {
                   setFilters({ ...filters, pilgrimMobile: e.target.value })
                 }
                 className={filterInputClass}
+                dir="ltr"
               />
               <PilgrimFilterSelect
                 value={filters.pilgrimUserIdStr}
@@ -441,18 +511,29 @@ export function ReservationsPage() {
               }
               rows={[
                 {
-                  label: "موبایل",
-                  value: <span className="font-mono">{r.pilgrimMobile}</span>,
-                },
-                {
                   label: "تعداد",
                   value: formatGuestCount(r.maleGuestCount, r.femaleGuestCount),
                 },
                 {
-                  label: "بازه تاریخ",
-                  value: formatReservationDates(r),
+                  label: "تاریخ شروع",
+                  value: (
+                    <ReservationDateCell
+                      date={r.reservationDate}
+                      actualAt={r.actualCheckInAt}
+                      timeLabel="ورود"
+                    />
+                  ),
                 },
-                { label: "ثبت‌کننده", value: r.reservedBy.fullName },
+                {
+                  label: "تاریخ پایان",
+                  value: (
+                    <ReservationDateCell
+                      date={r.reservationEndDate ?? r.reservationDate}
+                      actualAt={r.actualCheckOutAt}
+                      timeLabel="خروج"
+                    />
+                  ),
+                },
               ]}
               actions={renderActions(r)}
             />
@@ -466,11 +547,9 @@ export function ReservationsPage() {
             <tr>
               <th className="px-4 py-3 text-right">موکب</th>
               <th className="px-4 py-3 text-right">زائر</th>
-              <th className="px-4 py-3 text-right">موبایل</th>
               <th className="px-4 py-3 text-right">تعداد</th>
               <th className="px-4 py-3 text-right">تاریخ شروع</th>
               <th className="px-4 py-3 text-right">تاریخ پایان</th>
-              <th className="px-4 py-3 text-right">ثبت‌کننده</th>
               <th className="px-4 py-3 text-right">وضعیت</th>
               <th className="px-4 py-3 text-right">عملیات</th>
             </tr>
@@ -479,7 +558,7 @@ export function ReservationsPage() {
             {reservations.length === 0 ? (
               <tr>
                 <td
-                  colSpan={9}
+                  colSpan={7}
                   className="px-4 py-8 text-center text-slate-400"
                 >
                   رزروی یافت نشد
@@ -503,19 +582,23 @@ export function ReservationsPage() {
                 >
                   <td className="px-4 py-3">{r.mawkib.name}</td>
                   <td className="px-4 py-3">{r.pilgrim.fullName}</td>
-                  <td className="px-4 py-3 font-mono">{r.pilgrimMobile}</td>
                   <td className="px-4 py-3">
                     {formatGuestCount(r.maleGuestCount, r.femaleGuestCount)}
                   </td>
                   <td className="px-4 py-3">
-                    {formatPersianDate(r.reservationDate.slice(0, 10))}
+                    <ReservationDateCell
+                      date={r.reservationDate}
+                      actualAt={r.actualCheckInAt}
+                      timeLabel="ورود"
+                    />
                   </td>
                   <td className="px-4 py-3">
-                    {formatPersianDate(
-                      (r.reservationEndDate ?? r.reservationDate).slice(0, 10),
-                    )}
+                    <ReservationDateCell
+                      date={r.reservationEndDate ?? r.reservationDate}
+                      actualAt={r.actualCheckOutAt}
+                      timeLabel="خروج"
+                    />
                   </td>
-                  <td className="px-4 py-3">{r.reservedBy.fullName}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs ${statusColors[r.status]}`}
@@ -570,6 +653,23 @@ export function ReservationsPage() {
         variant="danger"
         loading={deleteReservation.isPending}
       />
+
+      {reviewingReservation && (
+        <ReservationReviewModal
+          open={!!reviewingReservation}
+          onClose={() => setReviewingReservation(null)}
+          reservation={reviewingReservation}
+          initialContent={reviewingReservation.review?.content ?? ""}
+          isEdit={!!reviewingReservation.review}
+          onSubmit={async (content) => {
+            await submitReview.mutateAsync({
+              id: reviewingReservation.id,
+              content,
+              isEdit: !!reviewingReservation.review,
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

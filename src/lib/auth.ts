@@ -31,6 +31,11 @@ export interface RegisterMawkibOwnerPayload {
 }
 
 export const authApi = {
+  changePassword: (payload: { currentPassword: string; newPassword: string }) =>
+    api
+      .patch<{ message: string }>('/auth/change-password', payload)
+      .then((r) => r.data),
+
   registerPilgrim: (payload: RegisterPilgrimPayload) =>
     api.post<AuthResponse>('/auth/register/pilgrim', payload).then((r) => r.data),
 

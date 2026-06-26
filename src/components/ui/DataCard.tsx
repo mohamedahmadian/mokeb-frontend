@@ -55,7 +55,9 @@ export function DataCard({
         {rows.map((row) => (
           <div key={row.label} className="flex items-start justify-between gap-3 text-sm">
             <dt className="shrink-0 text-slate-500">{row.label}</dt>
-            <dd className="text-left text-slate-800">{row.value}</dd>
+            <dd className="min-w-0 max-w-[65%] text-left text-slate-800 line-clamp-2">
+              {row.value}
+            </dd>
           </div>
         ))}
       </dl>

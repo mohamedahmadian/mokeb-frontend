@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getApiErrorMessage } from '../lib/constants';
 import { guestTheme } from '../lib/guest-theme';
+import { LOGIN_PORTAL_PARAM, getLoginPortalContent, parseLoginPortal } from '../lib/login-portal';
+import { toastApiError } from '../lib/toast';
 
 export function LoginPage() {
   const { user, login } = useAuth();
+  const [searchParams] = useSearchParams();
+  const portal = parseLoginPortal(searchParams.get(LOGIN_PORTAL_PARAM));
+  const { title, subtitle } = getLoginPortalContent(portal);
   const [mobileNumber, setMobileNumber] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   if (user) {
@@ -17,13 +20,12 @@ export function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
     try {
       await login(mobileNumber, password);
     } catch (err) {
-      setError(getApiErrorMessage(err, 'خطا در ورود. لطفاً دوباره تلاش کنید.'));
+      toastApiError(err, 'خطا در ورود. لطفاً دوباره تلاش کنید.');
     } finally {
       setLoading(false);
     }
@@ -36,13 +38,9 @@ export function LoginPage() {
         className={`${guestTheme.cardLg} h-fit w-full max-w-lg space-y-5`}
       >
         <div>
-          <h1 className="text-xl font-bold text-slate-800">ورود به سامانه</h1>
-          <p className="mt-1 text-sm text-slate-500">ورود به حساب کاربری در سامانه</p>
+          <h1 className="text-xl font-bold text-slate-800">{title}</h1>
+          <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
         </div>
-
-        {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</div>
-        )}
 
         <section className="space-y-4">
           <label className="block">
@@ -66,7 +64,11 @@ export function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               className={guestTheme.input}
               required
+              minLength={4}
             />
+            <p className="mt-1 text-xs text-slate-400">
+              برای زائران: ۴ رقم آخر شماره موبایل
+            </p>
           </label>
         </section>
 

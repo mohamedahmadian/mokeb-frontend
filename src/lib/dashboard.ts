@@ -18,6 +18,7 @@ export interface DashboardStats {
     totalReservations: number;
     pendingReservations: number;
     confirmedReservations: number;
+    cancelledReservations: number;
   };
   totalPilgrims?: number;
   totalMawkibOwners?: number;

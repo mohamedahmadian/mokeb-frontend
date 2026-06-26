@@ -9,7 +9,7 @@ import {
 } from '../ui/PersianDateRangePicker';
 import { GuestPageHeader, GuestShell } from '../guest/GuestShell';
 import { guestTheme } from '../../lib/guest-theme';
-import { getApiErrorMessage } from '../../lib/constants';
+import { toast, toastApiError } from '../../lib/toast';
 import {
   HONORARY_VOLUNTEER_SERVICE_OPTIONS,
   type HonoraryVolunteerServiceType,
@@ -181,7 +181,6 @@ export function HonoraryVolunteerForm({
   const [availabilityDescription, setAvailabilityDescription] = useState(
     initialValues?.availabilityDescription ?? '',
   );
-  const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const { data: publicMawkibs = [] } = useQuery({
@@ -205,32 +204,31 @@ export function HonoraryVolunteerForm({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError('');
 
     if (!hidePersonalFields) {
       if (!firstName.trim() || !lastName.trim() || !mobileNumber.trim()) {
-        setError('نام، نام خانوادگی و شماره موبایل الزامی است');
+        toast.error('نام، نام خانوادگی و شماره موبایل الزامی است');
         return;
       }
 
       if (showPassword && !embedded && password.trim().length < 6) {
-        setError('رمز عبور باید حداقل ۶ کاراکتر باشد');
+        toast.error('رمز عبور باید حداقل ۶ کاراکتر باشد');
         return;
       }
     }
 
     if (serviceTypes.length === 0) {
-      setError('حداقل یک حوزه خدمت را انتخاب کنید');
+      toast.error('حداقل یک حوزه خدمت را انتخاب کنید');
       return;
     }
 
     if (!availabilityStartDate || !availabilityEndDate) {
-      setError('بازه زمانی آمادگی همکاری را مشخص کنید');
+      toast.error('بازه زمانی آمادگی همکاری را مشخص کنید');
       return;
     }
 
     if (availabilityEndDate < availabilityStartDate) {
-      setError('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد');
+      toast.error('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد');
       return;
     }
 
@@ -252,7 +250,7 @@ export function HonoraryVolunteerForm({
         availabilityDescription: availabilityDescription.trim(),
       });
     } catch (err) {
-      setError(getApiErrorMessage(err, 'خطا در ثبت درخواست. لطفاً دوباره تلاش کنید'));
+      toastApiError(err, 'خطا در ثبت درخواست. لطفاً دوباره تلاش کنید');
     } finally {
       setSubmitting(false);
     }
@@ -279,10 +277,6 @@ export function HonoraryVolunteerForm({
             <p>{prefillNotice}</p>
           </div>
         )}
-        {error && (
-          <div className="rounded-xl bg-red-50 p-4 text-sm text-red-600">{error}</div>
-        )}
-
         <section>
           <SectionHeader icon={<IconUser />} title="اطلاعات شما" />
           {hidePersonalFields ? (

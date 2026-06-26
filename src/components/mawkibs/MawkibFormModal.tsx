@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Modal } from '../Modal';
 import { MAWKIB_STATUS_OPTIONS } from '../../lib/constants';
-import { usersApi } from '../../lib/users';
 import { PersianDateInput } from '../ui/PersianDateInput';
+import { MawkibOwnerFilterSelect } from './MawkibOwnerFilterSelect';
 import {
   MawkibExtraFields,
   emptyMawkibExtraFields,
@@ -13,7 +12,9 @@ import {
 } from './MawkibExtraFields';
 import type { Mawkib, MawkibStatus } from '../../types';
 import type { CreateMawkibPayload, UpdateMawkibPayload } from '../../lib/mawkibs';
+import { DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME } from '../../lib/format-time';
 import { btnPrimary, inputClass as formInputClass } from '../../lib/styles';
+import { toast } from '../../lib/toast';
 
 interface MawkibFormModalProps {
   open: boolean;
@@ -40,6 +41,8 @@ interface FormState {
   imageUrl: string;
   ownerUserId: string;
   status: MawkibStatus;
+  defaultCheckInTime: string;
+  defaultCheckOutTime: string;
   extra: MawkibExtraFormValues;
 }
 
@@ -59,6 +62,8 @@ const emptyForm: FormState = {
   imageUrl: '',
   ownerUserId: '',
   status: 'Approved',
+  defaultCheckInTime: DEFAULT_CHECK_IN_TIME,
+  defaultCheckOutTime: DEFAULT_CHECK_OUT_TIME,
   extra: emptyMawkibExtraFields(),
 };
 
@@ -77,14 +82,7 @@ export function MawkibFormModal({
 }: MawkibFormModalProps) {
   const isEdit = !!mawkib;
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const { data: ownerOptions = [] } = useQuery({
-    queryKey: ['mawkib-owners'],
-    queryFn: () => usersApi.getMawkibOwners(),
-    enabled: open && isAdmin,
-  });
 
   useEffect(() => {
     if (!open) return;
@@ -106,6 +104,8 @@ export function MawkibFormModal({
         imageUrl: mawkib.imageUrl ?? '',
         ownerUserId: (mawkib.ownerUserId ?? mawkib.owner?.id ?? '').toString(),
         status: mawkib.status,
+        defaultCheckInTime: mawkib.defaultCheckInTime ?? DEFAULT_CHECK_IN_TIME,
+        defaultCheckOutTime: mawkib.defaultCheckOutTime ?? DEFAULT_CHECK_OUT_TIME,
         extra: mawkibExtraFieldsFromMawkib(mawkib),
       });
     } else {
@@ -114,29 +114,27 @@ export function MawkibFormModal({
         ownerUserId: !isAdmin && currentUserId ? currentUserId.toString() : '',
       });
     }
-    setError('');
   }, [open, mawkib, isAdmin, currentUserId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
     try {
       const maleCapacity = parseInt(form.maleCapacity, 10);
       const femaleCapacity = parseInt(form.femaleCapacity, 10);
       if (Number.isNaN(maleCapacity) || maleCapacity < 0) {
-        setError('ظرفیت آقایان باید عدد معتبر باشد');
+        toast.error('ظرفیت آقایان باید عدد معتبر باشد');
         setLoading(false);
         return;
       }
       if (Number.isNaN(femaleCapacity) || femaleCapacity < 0) {
-        setError('ظرفیت خانم‌ها باید عدد معتبر باشد');
+        toast.error('ظرفیت خانم‌ها باید عدد معتبر باشد');
         setLoading(false);
         return;
       }
       if (maleCapacity + femaleCapacity < 1) {
-        setError('مجموع ظرفیت آقایان و خانم‌ها باید حداقل ۱ باشد');
+        toast.error('مجموع ظرفیت آقایان و خانم‌ها باید حداقل ۱ باشد');
         setLoading(false);
         return;
       }
@@ -145,7 +143,7 @@ export function MawkibFormModal({
         ? parseInt(form.extra.maxReservationDays, 10)
         : undefined;
       if (form.extra.maxReservationDays.trim() && (!maxDays || maxDays < 1)) {
-        setError('حداکثر بازه رزرو باید عددی بزرگ‌تر از صفر باشد');
+        toast.error('حداکثر بازه رزرو باید عددی بزرگ‌تر از صفر باشد');
         setLoading(false);
         return;
       }
@@ -164,6 +162,8 @@ export function MawkibFormModal({
         maleCapacity,
         femaleCapacity,
         imageUrl: form.imageUrl || undefined,
+        defaultCheckInTime: form.defaultCheckInTime || DEFAULT_CHECK_IN_TIME,
+        defaultCheckOutTime: form.defaultCheckOutTime || DEFAULT_CHECK_OUT_TIME,
         ...mawkibExtraFieldsToPayload(form.extra),
       };
 
@@ -176,7 +176,7 @@ export function MawkibFormModal({
         await onSubmit(payload);
       } else {
         if (!form.ownerUserId) {
-          setError('مسئول موکب را انتخاب کنید');
+          toast.error('مسئول موکب را انتخاب کنید');
           setLoading(false);
           return;
         }
@@ -188,7 +188,7 @@ export function MawkibFormModal({
       }
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'خطا در ذخیره موکب');
+      toast.error(err instanceof Error ? err.message : 'خطا در ذخیره موکب');
     } finally {
       setLoading(false);
     }
@@ -204,10 +204,6 @@ export function MawkibFormModal({
       size="lg"
     >
       <form onSubmit={handleSubmit} className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
-        {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</div>
-        )}
-
         <label className="block">
           <span className="mb-1 block text-sm text-slate-600">نام موکب *</span>
           <input
@@ -222,20 +218,13 @@ export function MawkibFormModal({
         {isAdmin && (
           <label className="block">
             <span className="mb-1 block text-sm text-slate-600">مسئول موکب *</span>
-            <select
-              required
+            <MawkibOwnerFilterSelect
               value={form.ownerUserId}
-              onChange={(e) => setForm({ ...form, ownerUserId: e.target.value })}
+              onChange={(ownerUserId) => setForm({ ...form, ownerUserId })}
               className={inputClass}
-              disabled={isEdit && !isAdmin}
-            >
-              <option value="">انتخاب کنید</option>
-              {ownerOptions.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.fullName} — {u.mobileNumber}
-                </option>
-              ))}
-            </select>
+              allowClear={false}
+              placeholder="جستجو با نام یا موبایل موکب‌دار..."
+            />
           </label>
         )}
 
@@ -331,6 +320,29 @@ export function MawkibFormModal({
             value={form.serviceEndDate}
             onChange={(serviceEndDate) => setForm({ ...form, serviceEndDate })}
           />
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1 block text-sm text-slate-600">ساعت ورود پیش‌فرض</span>
+            <input
+              type="time"
+              value={form.defaultCheckInTime}
+              onChange={(e) => setForm({ ...form, defaultCheckInTime: e.target.value })}
+              className={inputClass}
+            />
+            <p className="mt-1 text-xs text-slate-400">معمولاً ساعت تحویل اسکان (مثلاً ۱۴:۰۰)</p>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-sm text-slate-600">ساعت خروج پیش‌فرض</span>
+            <input
+              type="time"
+              value={form.defaultCheckOutTime}
+              onChange={(e) => setForm({ ...form, defaultCheckOutTime: e.target.value })}
+              className={inputClass}
+            />
+            <p className="mt-1 text-xs text-slate-400">معمولاً ساعت تخلیه (مثلاً ۱۱:۰۰)</p>
+          </label>
         </div>
 
         <label className="block">
