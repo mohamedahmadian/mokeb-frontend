@@ -34,6 +34,7 @@ export interface UserFormSectionsProps {
   mobileDisabled?: boolean;
   passwordRequired?: boolean;
   passwordMinLength?: number;
+  passwordPinMode?: boolean;
   passwordPlaceholder?: string;
   passwordHint?: string;
   /** inline: همه بخش‌ها باز | collapsible: موقعیت و بعد اختیاری در آکاردئون */
@@ -49,6 +50,7 @@ function PrimaryFieldsSection({
   mobileDisabled,
   passwordRequired,
   passwordMinLength,
+  passwordPinMode,
   passwordPlaceholder,
   passwordHint,
 }: Pick<
@@ -59,6 +61,7 @@ function PrimaryFieldsSection({
   | 'mobileDisabled'
   | 'passwordRequired'
   | 'passwordMinLength'
+  | 'passwordPinMode'
   | 'passwordPlaceholder'
   | 'passwordHint'
 >) {
@@ -121,6 +124,7 @@ function PrimaryFieldsSection({
         placeholder={passwordPlaceholder}
         hint={passwordHint}
         minLength={passwordMinLength}
+        pinMode={passwordPinMode}
       />
     </FormSection>
   );
@@ -186,6 +190,7 @@ export function UserFormSections({
   mobileDisabled,
   passwordRequired = true,
   passwordMinLength = 4,
+  passwordPinMode,
   passwordPlaceholder,
   passwordHint,
   extraFields = 'inline',
@@ -200,6 +205,7 @@ export function UserFormSections({
       mobileDisabled={mobileDisabled}
       passwordRequired={passwordRequired}
       passwordMinLength={passwordMinLength}
+      passwordPinMode={passwordPinMode}
       passwordPlaceholder={passwordPlaceholder}
       passwordHint={passwordHint}
     />

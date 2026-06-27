@@ -47,7 +47,7 @@ export function CompanionsTable({
   if (value.members.length === 0) {
     return (
       <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-        ابتدا تعداد آقایان یا خانم‌ها را مشخص کنید.
+        ابتدا تعداد آقایان یا بانوان را مشخص کنید.
       </p>
     );
   }
@@ -108,7 +108,7 @@ export function CompanionsTable({
         </table>
       </div>
       <p className="border-t border-slate-100 px-4 py-2.5 text-xs leading-relaxed text-slate-400">
-        تعداد سطرها بر اساس مجموع آقایان و خانم‌ها تنظیم شده است. سطر آخر برای
+        تعداد سطرها بر اساس مجموع آقایان و بانوان تنظیم شده است. سطر آخر برای
         توضیحات تکمیلی (مثل نوزاد) اختیاری است.
       </p>
     </div>

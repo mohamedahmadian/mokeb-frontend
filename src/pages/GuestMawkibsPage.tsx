@@ -268,7 +268,7 @@ function MawkibResultCard({
               />
               <CapacityBadge
                 icon={cardIcons.female}
-                label="ظرفیت خانوم ها"
+                label="ظرفیت بانوان"
                 available={availableFemale}
                 total={mawkib.femaleCapacity}
               />

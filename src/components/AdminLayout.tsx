@@ -144,9 +144,42 @@ function MenuIcon({ open }: { open: boolean }) {
   );
 }
 
-const sidebarLinkClass = (isActive: boolean, indent?: boolean) =>
-  `mb-1 flex items-center gap-2.5 rounded-xl py-2.5 text-sm font-medium transition ${
-    indent ? "mr-3 px-3" : "px-3"
+function SidebarToggleIcon({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg
+      className="h-5 w-5"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      {collapsed ? (
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M15 19l-7-7 7-7"
+        />
+      ) : (
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M9 5l7 7-7 7"
+        />
+      )}
+    </svg>
+  );
+}
+
+const SIDEBAR_COLLAPSED_KEY = "admin-sidebar-collapsed";
+
+const sidebarLinkClass = (
+  isActive: boolean,
+  collapsed: boolean,
+  indent?: boolean,
+) =>
+  `mb-1 flex items-center rounded-xl py-2.5 text-sm font-medium transition ${
+    collapsed ? "justify-center px-2" : `gap-2.5 ${indent ? "mr-3 px-3" : "px-3"}`
   } ${
     isActive
       ? "bg-[#e8eef6] text-[#4a6fa5]"
@@ -159,6 +192,13 @@ export function AdminLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id, "sidebar"],
@@ -184,7 +224,23 @@ export function AdminLayout() {
   const showHonoraryServantsList = user?.roles.includes("Admin") ?? false;
   const portalSectionsInsertIndex = getPortalSectionsInsertIndex(visibleNav);
 
-  const renderNavItem = (item: NavItem, onClose?: () => void) => (
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+
+  const renderNavItem = (
+    item: NavItem,
+    collapsed: boolean,
+    onClose?: () => void,
+  ) => (
     <NavLink
       key={item.to}
       to={item.to}
@@ -195,23 +251,28 @@ export function AdminLayout() {
       }
       onClick={onClose}
       className={() =>
-        sidebarLinkClass(isNavItemActive(item, location.pathname), item.indent)
+        sidebarLinkClass(
+          isNavItemActive(item, location.pathname),
+          collapsed,
+          item.indent,
+        )
       }
       title={item.label}
     >
       <NavIcon name={item.icon} />
-      <span className="truncate">{item.label}</span>
+      <span className={collapsed ? "sr-only" : "truncate"}>{item.label}</span>
     </NavLink>
   );
 
-  const sidebarNav = (onNavigate?: () => void) => (
-    <nav className="flex-1 overflow-y-auto p-3">
+  const sidebarNav = (collapsed: boolean, onNavigate?: () => void) => (
+    <nav className={`flex-1 overflow-y-auto ${collapsed ? "p-2" : "p-3"}`}>
       {visibleNav.map((item, index) => (
         <Fragment key={item.to}>
           {index === portalSectionsInsertIndex && (
             <>
               {showMawkibOwnerNav && (
                 <MawkibOwnerSidebarSection
+                  collapsed={collapsed}
                   showOwnersList={showMawkibOwnersList}
                   showFeedbackInbox={showMawkibOwnerFeedbackInbox}
                   onNavigate={onNavigate}
@@ -219,6 +280,7 @@ export function AdminLayout() {
               )}
               {showCooperationNav && (
                 <CooperationRequestSidebarSection
+                  collapsed={collapsed}
                   showNewRequest={showNewCooperationRequest}
                   showServantsList={showHonoraryServantsList}
                   onNavigate={onNavigate}
@@ -226,7 +288,7 @@ export function AdminLayout() {
               )}
             </>
           )}
-          {renderNavItem(item, onNavigate)}
+          {renderNavItem(item, collapsed, onNavigate)}
         </Fragment>
       ))}
       {portalSectionsInsertIndex >= visibleNav.length &&
@@ -234,6 +296,7 @@ export function AdminLayout() {
           <>
             {showMawkibOwnerNav && (
               <MawkibOwnerSidebarSection
+                collapsed={collapsed}
                 showOwnersList={showMawkibOwnersList}
                 showFeedbackInbox={showMawkibOwnerFeedbackInbox}
                 onNavigate={onNavigate}
@@ -241,6 +304,7 @@ export function AdminLayout() {
             )}
             {showCooperationNav && (
               <CooperationRequestSidebarSection
+                collapsed={collapsed}
                 showNewRequest={showNewCooperationRequest}
                 showServantsList={showHonoraryServantsList}
                 onNavigate={onNavigate}
@@ -251,24 +315,53 @@ export function AdminLayout() {
     </nav>
   );
 
-  const sidebarHeader = () => (
-    <div className="border-b border-slate-100 p-5 pb-0">
-      <div className="flex items-center gap-2">
-        <img src="/images/logo.png" alt="لوگو سامانه" className="h-18 w-18" />
-        <h2 className="text-base font-bold text-slate-800">
-          مدیریت اسکان و خدمات
-        </h2>
+  const sidebarHeader = (collapsed: boolean, showToggle?: boolean) => (
+    <div
+      className={`border-b border-slate-100 ${collapsed ? "p-3 pb-0" : "p-5 pb-0"}`}
+    >
+      <div
+        className={`flex items-center ${collapsed ? "flex-col gap-2" : "gap-2"}`}
+      >
+        <img
+          src="/images/logo.png"
+          alt="لوگو سامانه"
+          className={collapsed ? "h-10 w-10 object-contain" : "h-18 w-18"}
+        />
+        {!collapsed && (
+          <h2 className="min-w-0 flex-1 text-base font-bold text-slate-800">
+            مدیریت اسکان و خدمات
+          </h2>
+        )}
+        {showToggle && (
+          <button
+            type="button"
+            onClick={toggleSidebarCollapsed}
+            className={`shrink-0 rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 ${
+              collapsed ? "" : "self-start"
+            }`}
+            aria-label={collapsed ? "باز کردن منو" : "جمع کردن منو"}
+            title={collapsed ? "باز کردن منو" : "جمع کردن منو"}
+          >
+            <SidebarToggleIcon collapsed={collapsed} />
+          </button>
+        )}
       </div>
-      <hr className="my-2 border-t-1 border-[#4a6fa5] rounded-full" />
+      {!collapsed && (
+        <hr className="my-2 rounded-full border-t-1 border-[#4a6fa5]" />
+      )}
 
-      <div className="mt-3 flex items-center gap-3">
+      <div
+        className={`mt-3 flex items-center ${collapsed ? "justify-center pb-3" : "gap-3"}`}
+      >
         <UserAvatar
           fullName={user?.fullName ?? "کاربر"}
           imageUrl={profile?.imageUrl}
         />
-        <p className="min-w-0 truncate text-sm font-medium text-[#4a6fa5]">
-          {user?.fullName}
-        </p>
+        {!collapsed && (
+          <p className="min-w-0 truncate text-sm font-medium text-[#4a6fa5]">
+            {user?.fullName}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -289,9 +382,13 @@ export function AdminLayout() {
   return (
     <div className="flex min-h-screen min-h-dvh bg-[#f4f6f9] text-slate-700">
       {/* Desktop sidebar — right side in RTL */}
-      <aside className="sticky top-0 hidden h-screen w-72 shrink-0 flex-col border-l border-slate-200/80 bg-white lg:flex">
-        {sidebarHeader()}
-        {sidebarNav()}
+      <aside
+        className={`sticky top-0 hidden h-screen shrink-0 flex-col border-l border-slate-200/80 bg-white transition-[width] duration-300 ease-in-out lg:flex ${
+          sidebarCollapsed ? "w-[4.5rem]" : "w-72"
+        }`}
+      >
+        {sidebarHeader(sidebarCollapsed, true)}
+        {sidebarNav(sidebarCollapsed)}
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -364,8 +461,8 @@ export function AdminLayout() {
           menuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        {sidebarHeader()}
-        {sidebarNav(() => setMenuOpen(false))}
+        {sidebarHeader(false)}
+        {sidebarNav(false, () => setMenuOpen(false))}
         <div className="border-t border-slate-100 p-4">
           <Link
             to="/"

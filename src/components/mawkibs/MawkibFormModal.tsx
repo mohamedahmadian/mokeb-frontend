@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Modal } from '../Modal';
 import { MAWKIB_STATUS_OPTIONS } from '../../lib/constants';
 import { PersianDateInput } from '../ui/PersianDateInput';
+import { NavIcon } from '../ui/NavIcons';
 import { MawkibOwnerFilterSelect } from './MawkibOwnerFilterSelect';
 import {
   MawkibExtraFields,
@@ -10,10 +11,12 @@ import {
   mawkibExtraFieldsToPayload,
   type MawkibExtraFormValues,
 } from './MawkibExtraFields';
+import { IconClock, IconPhone, IconPhoto, MawkibFormHero } from './mawkib-form-ui';
+import { FieldLabel, FormSection, MapPinIcon } from '../users/user-form-ui';
 import type { Mawkib, MawkibStatus } from '../../types';
 import type { CreateMawkibPayload, UpdateMawkibPayload } from '../../lib/mawkibs';
 import { DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME } from '../../lib/format-time';
-import { btnPrimary, inputClass as formInputClass } from '../../lib/styles';
+import { btnPrimary, btnSecondary, inputClass as formInputClass } from '../../lib/styles';
 import { toast } from '../../lib/toast';
 
 interface MawkibFormModalProps {
@@ -57,8 +60,8 @@ const emptyForm: FormState = {
   services: '',
   serviceStartDate: '',
   serviceEndDate: '',
-  maleCapacity: '',
-  femaleCapacity: '',
+  maleCapacity: '0',
+  femaleCapacity: '0',
   imageUrl: '',
   ownerUserId: '',
   status: 'Approved',
@@ -129,12 +132,12 @@ export function MawkibFormModal({
         return;
       }
       if (Number.isNaN(femaleCapacity) || femaleCapacity < 0) {
-        toast.error('ظرفیت خانم‌ها باید عدد معتبر باشد');
+        toast.error('ظرفیت بانوان باید عدد معتبر باشد');
         setLoading(false);
         return;
       }
       if (maleCapacity + femaleCapacity < 1) {
-        toast.error('مجموع ظرفیت آقایان و خانم‌ها باید حداقل ۱ باشد');
+        toast.error('مجموع ظرفیت آقایان و بانوان باید حداقل ۱ باشد');
         setLoading(false);
         return;
       }
@@ -204,178 +207,217 @@ export function MawkibFormModal({
       size="lg"
     >
       <form onSubmit={handleSubmit} className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
-        <label className="block">
-          <span className="mb-1 block text-sm text-slate-600">نام موکب *</span>
-          <input
-            type="text"
-            required
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className={inputClass}
-          />
-        </label>
+        <MawkibFormHero isEdit={isEdit} />
 
-        {isAdmin && (
+        <FormSection title="اطلاعات اصلی" icon={<NavIcon name="mawkibs" className="h-4 w-4" />}>
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-600">مسئول موکب *</span>
-            <MawkibOwnerFilterSelect
-              value={form.ownerUserId}
-              onChange={(ownerUserId) => setForm({ ...form, ownerUserId })}
-              className={inputClass}
-              allowClear={false}
-              placeholder="جستجو با نام یا موبایل موکب‌دار..."
-            />
-          </label>
-        )}
-
-        <label className="block">
-          <span className="mb-1 block text-sm text-slate-600">شماره تماس *</span>
-          <input
-            type="text"
-            required
-            value={form.phoneNumber}
-            onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
-            className={inputClass}
-          />
-        </label>
-
-        <label className="block">
-          <span className="mb-1 block text-sm text-slate-600">آدرس *</span>
-          <textarea
-            required
-            value={form.address}
-            onChange={(e) => setForm({ ...form, address: e.target.value })}
-            rows={2}
-            className={inputClass}
-          />
-        </label>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1 block text-sm text-slate-600">عرض جغرافیایی</span>
+            <FieldLabel label="نام موکب" required />
             <input
-              type="number"
-              step="any"
-              value={form.latitude}
-              onChange={(e) => setForm({ ...form, latitude: e.target.value })}
-              className={inputClass}
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-sm text-slate-600">طول جغرافیایی</span>
-            <input
-              type="number"
-              step="any"
-              value={form.longitude}
-              onChange={(e) => setForm({ ...form, longitude: e.target.value })}
-              className={inputClass}
-            />
-          </label>
-        </div>
-
-        <label className="block">
-          <span className="mb-1 block text-sm text-slate-600">لینک تصویر</span>
-          <input
-            type="url"
-            value={form.imageUrl}
-            onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-            className={inputClass}
-            placeholder="https://..."
-          />
-        </label>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1 block text-sm text-slate-600">ظرفیت آقایان *</span>
-            <input
-              type="number"
+              type="text"
               required
-              min={0}
-              value={form.maleCapacity}
-              onChange={(e) => setForm({ ...form, maleCapacity: e.target.value })}
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
               className={inputClass}
             />
           </label>
+
+          {isAdmin && (
+            <label className="block">
+              <FieldLabel label="مسئول موکب" required />
+              <MawkibOwnerFilterSelect
+                value={form.ownerUserId}
+                onChange={(ownerUserId) => setForm({ ...form, ownerUserId })}
+                className={inputClass}
+                allowClear={false}
+                placeholder="جستجو با نام یا موبایل موکب‌دار..."
+              />
+            </label>
+          )}
+
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-600">ظرفیت خانم‌ها *</span>
-            <input
-              type="number"
+            <FieldLabel label="شماره تماس" required />
+            <div className="relative">
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#4a6fa5]">
+                <IconPhone />
+              </span>
+              <input
+                type="text"
+                required
+                value={form.phoneNumber}
+                onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
+                className={`${inputClass} pr-11`}
+              />
+            </div>
+          </label>
+
+          <label className="block">
+            <FieldLabel label="لینک تصویر" hint="اختیاری" />
+            <div className="relative">
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#4a6fa5]">
+                <IconPhoto />
+              </span>
+              <input
+                type="url"
+                value={form.imageUrl}
+                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                className={`${inputClass} pr-11`}
+                placeholder="https://..."
+                dir="ltr"
+              />
+            </div>
+          </label>
+        </FormSection>
+
+        <FormSection title="موقعیت" icon={<MapPinIcon />}>
+          <label className="block">
+            <FieldLabel label="آدرس" required />
+            <textarea
               required
-              min={0}
-              value={form.femaleCapacity}
-              onChange={(e) => setForm({ ...form, femaleCapacity: e.target.value })}
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              rows={2}
               className={inputClass}
             />
           </label>
-        </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <PersianDateInput
-            label="شروع خدمات"
-            value={form.serviceStartDate}
-            onChange={(serviceStartDate) => setForm({ ...form, serviceStartDate })}
-          />
-          <PersianDateInput
-            label="پایان خدمات"
-            value={form.serviceEndDate}
-            onChange={(serviceEndDate) => setForm({ ...form, serviceEndDate })}
-          />
-        </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block">
+              <FieldLabel label="عرض جغرافیایی" hint="اختیاری" />
+              <input
+                type="number"
+                step="any"
+                value={form.latitude}
+                onChange={(e) => setForm({ ...form, latitude: e.target.value })}
+                className={inputClass}
+                dir="ltr"
+              />
+            </label>
+            <label className="block">
+              <FieldLabel label="طول جغرافیایی" hint="اختیاری" />
+              <input
+                type="number"
+                step="any"
+                value={form.longitude}
+                onChange={(e) => setForm({ ...form, longitude: e.target.value })}
+                className={inputClass}
+                dir="ltr"
+              />
+            </label>
+          </div>
+        </FormSection>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <FormSection title="ظرفیت" icon={<NavIcon name="users" className="h-4 w-4" />}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block">
+              <FieldLabel label="ظرفیت آقایان" required />
+              <input
+                type="number"
+                required
+                min={0}
+                value={form.maleCapacity}
+                onChange={(e) => setForm({ ...form, maleCapacity: e.target.value })}
+                className={inputClass}
+              />
+            </label>
+            <label className="block">
+              <FieldLabel label="ظرفیت بانوان" required />
+              <input
+                type="number"
+                required
+                min={0}
+                value={form.femaleCapacity}
+                onChange={(e) => setForm({ ...form, femaleCapacity: e.target.value })}
+                className={inputClass}
+              />
+            </label>
+          </div>
+        </FormSection>
+
+        <FormSection title="زمان‌بندی خدمات" icon={<NavIcon name="reserve" className="h-4 w-4" />}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <PersianDateInput
+              label="شروع خدمات"
+              value={form.serviceStartDate}
+              onChange={(serviceStartDate) => setForm({ ...form, serviceStartDate })}
+            />
+            <PersianDateInput
+              label="پایان خدمات"
+              value={form.serviceEndDate}
+              onChange={(serviceEndDate) => setForm({ ...form, serviceEndDate })}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block">
+              <FieldLabel
+                label="ساعت ورود پیش‌فرض"
+                hint="معمولاً ساعت تحویل اسکان (مثلاً ۱۴:۰۰)"
+              />
+              <div className="relative">
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#4a6fa5]">
+                  <IconClock />
+                </span>
+                <input
+                  type="time"
+                  value={form.defaultCheckInTime}
+                  onChange={(e) => setForm({ ...form, defaultCheckInTime: e.target.value })}
+                  className={`${inputClass} pr-11`}
+                />
+              </div>
+            </label>
+            <label className="block">
+              <FieldLabel
+                label="ساعت خروج پیش‌فرض"
+                hint="معمولاً ساعت تخلیه (مثلاً ۱۱:۰۰)"
+              />
+              <div className="relative">
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#4a6fa5]">
+                  <IconClock />
+                </span>
+                <input
+                  type="time"
+                  value={form.defaultCheckOutTime}
+                  onChange={(e) => setForm({ ...form, defaultCheckOutTime: e.target.value })}
+                  className={`${inputClass} pr-11`}
+                />
+              </div>
+            </label>
+          </div>
+        </FormSection>
+
+        <FormSection title="توضیحات و خدمات" icon={<NavIcon name="book" className="h-4 w-4" />}>
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-600">ساعت ورود پیش‌فرض</span>
-            <input
-              type="time"
-              value={form.defaultCheckInTime}
-              onChange={(e) => setForm({ ...form, defaultCheckInTime: e.target.value })}
+            <FieldLabel label="توضیحات" hint="اختیاری" />
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={2}
               className={inputClass}
             />
-            <p className="mt-1 text-xs text-slate-400">معمولاً ساعت تحویل اسکان (مثلاً ۱۴:۰۰)</p>
           </label>
+
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-600">ساعت خروج پیش‌فرض</span>
-            <input
-              type="time"
-              value={form.defaultCheckOutTime}
-              onChange={(e) => setForm({ ...form, defaultCheckOutTime: e.target.value })}
+            <FieldLabel label="امکانات" hint="اختیاری — اسکان، پارکینگ، حمام..." />
+            <textarea
+              value={form.facilities}
+              onChange={(e) => setForm({ ...form, facilities: e.target.value })}
+              rows={2}
               className={inputClass}
+              placeholder="اسکان، پارکینگ، حمام..."
             />
-            <p className="mt-1 text-xs text-slate-400">معمولاً ساعت تخلیه (مثلاً ۱۱:۰۰)</p>
           </label>
-        </div>
 
-        <label className="block">
-          <span className="mb-1 block text-sm text-slate-600">توضیحات</span>
-          <textarea
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            rows={2}
-            className={inputClass}
-          />
-        </label>
-
-        <label className="block">
-          <span className="mb-1 block text-sm text-slate-600">امکانات</span>
-          <textarea
-            value={form.facilities}
-            onChange={(e) => setForm({ ...form, facilities: e.target.value })}
-            rows={2}
-            className={inputClass}
-            placeholder="اسکان، پارکینگ، حمام..."
-          />
-        </label>
-
-        <label className="block">
-          <span className="mb-1 block text-sm text-slate-600">خدمات</span>
-          <textarea
-            value={form.services}
-            onChange={(e) => setForm({ ...form, services: e.target.value })}
-            rows={2}
-            className={inputClass}
-            placeholder="غذا، درمانگاه..."
-          />
-        </label>
+          <label className="block">
+            <FieldLabel label="خدمات" hint="اختیاری — غذا، درمانگاه..." />
+            <textarea
+              value={form.services}
+              onChange={(e) => setForm({ ...form, services: e.target.value })}
+              rows={2}
+              className={inputClass}
+              placeholder="غذا، درمانگاه..."
+            />
+          </label>
+        </FormSection>
 
         <MawkibExtraFields
           values={form.extra}
@@ -383,37 +425,39 @@ export function MawkibFormModal({
         />
 
         {isAdmin && (
-          <label className="block">
-            <span className="mb-1 block text-sm text-slate-600">وضعیت</span>
-            <select
-              value={form.status}
-              onChange={(e) =>
-                setForm({ ...form, status: e.target.value as MawkibStatus })
-              }
-              className={inputClass}
-            >
-              {MAWKIB_STATUS_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <FormSection title="وضعیت" icon={<NavIcon name="check" className="h-4 w-4" />}>
+            <label className="block">
+              <FieldLabel label="وضعیت تأیید موکب" />
+              <select
+                value={form.status}
+                onChange={(e) =>
+                  setForm({ ...form, status: e.target.value as MawkibStatus })
+                }
+                className={inputClass}
+              >
+                {MAWKIB_STATUS_OPTIONS.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </FormSection>
         )}
 
-        <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
+        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            className={btnSecondary}
           >
             انصراف
           </button>
           <button
             type="submit"
             disabled={loading}
-            className={`${btnPrimary} disabled:opacity-50`}
+            className={`${btnPrimary} w-full sm:w-auto`}
           >
             {loading ? 'در حال ذخیره...' : isEdit ? 'ذخیره تغییرات' : 'افزودن موکب'}
           </button>

@@ -3,6 +3,8 @@ import { MAWKIB_CITIES, MAWKIB_COUNTRIES } from '../../lib/mawkib-locations';
 import type { MawkibCity, MawkibCountry } from '../../lib/mawkib-locations';
 import type { MawkibExtraFields as MawkibExtraFieldsType } from '../../types';
 import { SearchableSelect } from '../ui/SearchableSelect';
+import { NavIcon } from '../ui/NavIcons';
+import { FieldLabel, FormSection } from '../users/user-form-ui';
 
 export type MawkibExtraFormValues = {
   distanceToShrine: string;
@@ -136,21 +138,10 @@ export function MawkibExtraFields({ values, onChange }: MawkibExtraFieldsProps) 
 
   return (
     <div className="space-y-4">
-      <fieldset className="rounded-lg border border-slate-200 p-4">
-        <legend className="px-1 text-sm font-medium text-slate-700">اطلاعات تکمیلی</legend>
+      <FormSection title="اطلاعات تکمیلی" icon={<NavIcon name="info" className="h-4 w-4" />}>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-600">فاصله تا حرم</span>
-            <input
-              type="text"
-              value={values.distanceToShrine}
-              onChange={(e) => setField('distanceToShrine', e.target.value)}
-              className={inputClass}
-              placeholder="مثلاً ۵۰۰ متر"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-sm text-slate-600">کشور</span>
+            <FieldLabel label="کشور" />
             <SearchableSelect
               value={values.country}
               onChange={(value) => setField('country', value as MawkibCountry)}
@@ -162,7 +153,7 @@ export function MawkibExtraFields({ values, onChange }: MawkibExtraFieldsProps) 
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-600">شهر</span>
+            <FieldLabel label="شهر" />
             <SearchableSelect
               value={values.mawkibCity}
               onChange={(value) => setField('mawkibCity', value as MawkibCity | '')}
@@ -172,10 +163,8 @@ export function MawkibExtraFields({ values, onChange }: MawkibExtraFieldsProps) 
               className={inputClass}
             />
           </label>
-          <label className="block sm:col-span-2">
-            <span className="mb-1 block text-sm text-slate-600">
-              حداکثر بازه زمانی رزرو (روز)
-            </span>
+          <label className="block">
+            <FieldLabel label="حداکثر بازه زمانی رزرو (روز)" />
             <input
               type="number"
               min={1}
@@ -185,11 +174,20 @@ export function MawkibExtraFields({ values, onChange }: MawkibExtraFieldsProps) 
               placeholder="بدون محدودیت"
             />
           </label>
+          <label className="block">
+            <FieldLabel label="فاصله تا حرم" />
+            <input
+              type="text"
+              value={values.distanceToShrine}
+              onChange={(e) => setField('distanceToShrine', e.target.value)}
+              className={inputClass}
+              placeholder="مثلاً ۵۰۰ متر"
+            />
+          </label>
         </div>
-      </fieldset>
+      </FormSection>
 
-      <fieldset className="rounded-lg border border-slate-200 p-4">
-        <legend className="px-1 text-sm font-medium text-slate-700">امکانات</legend>
+      <FormSection title="امکانات" icon={<NavIcon name="mawkibs" className="h-4 w-4" />}>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {MAWKIB_AMENITY_FIELDS.map(({ key, label }) => (
             <label key={key} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2">
@@ -203,10 +201,11 @@ export function MawkibExtraFields({ values, onChange }: MawkibExtraFieldsProps) 
             </label>
           ))}
         </div>
-      </fieldset>
+      </FormSection>
 
-      <label className="block">
-        <span className="mb-1 block text-sm text-slate-600">قوانین</span>
+      <FormSection title="قوانین" icon={<NavIcon name="book" className="h-4 w-4" />}>
+        <label className="block">
+          <FieldLabel label="قوانین و مقررات" hint="اختیاری" />
         <textarea
           value={values.rules}
           onChange={(e) => setField('rules', e.target.value)}
@@ -214,14 +213,14 @@ export function MawkibExtraFields({ values, onChange }: MawkibExtraFieldsProps) 
           className={inputClass}
           placeholder="قوانین و مقررات موکب..."
         />
-      </label>
+        </label>
+      </FormSection>
 
-      <fieldset className="rounded-lg border border-slate-200 p-4">
-        <legend className="px-1 text-sm font-medium text-slate-700">اطلاع‌رسانی</legend>
+      <FormSection title="اطلاع‌رسانی" icon={<NavIcon name="feedback" className="h-4 w-4" />}>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {MAWKIB_NOTIFY_FIELDS.map(({ key, label, placeholder, type }) => (
             <label key={key} className="block">
-              <span className="mb-1 block text-sm text-slate-600">{label}</span>
+              <FieldLabel label={label} />
               <input
                 type={type ?? 'text'}
                 value={values[key]}
@@ -233,7 +232,7 @@ export function MawkibExtraFields({ values, onChange }: MawkibExtraFieldsProps) 
             </label>
           ))}
         </div>
-      </fieldset>
+      </FormSection>
     </div>
   );
 }

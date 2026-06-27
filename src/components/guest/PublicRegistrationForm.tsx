@@ -10,6 +10,12 @@ import {
   UserFormSections,
   type UserFormFieldValues,
 } from '../users/UserFormSections';
+import {
+  isValidPinPassword,
+  PIN_PASSWORD_ERROR,
+  PIN_PASSWORD_HINT,
+  PIN_PASSWORD_LENGTH,
+} from '../../lib/pin-password';
 import { guestTheme } from '../../lib/guest-theme';
 import { toast } from '../../lib/toast';
 
@@ -76,7 +82,6 @@ export function PublicRegistrationForm(props: PublicRegistrationFormProps) {
 
   const isPilgrim = props.variant === 'pilgrim';
   const role = isPilgrim ? 'Pilgrim' : 'MawkibOwner';
-  const minPasswordLength = isPilgrim ? 4 : 6;
 
   const optionalPayload = {
     province: form.province.trim() || undefined,
@@ -92,10 +97,8 @@ export function PublicRegistrationForm(props: PublicRegistrationFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (form.password.length < minPasswordLength) {
-      toast.error(
-        `رمز عبور باید حداقل ${minPasswordLength.toLocaleString('fa-IR')} کاراکتر باشد`,
-      );
+    if (!isValidPinPassword(form.password)) {
+      toast.error(PIN_PASSWORD_ERROR);
       return;
     }
 
@@ -138,12 +141,9 @@ export function PublicRegistrationForm(props: PublicRegistrationFormProps) {
         onChange={patchForm}
         nameMode={isPilgrim ? 'splitName' : 'fullName'}
         passwordRequired
-        passwordMinLength={minPasswordLength}
-        passwordHint={
-          isPilgrim
-            ? 'حداقل ۴ کاراکتر (مثلاً ۴ رقم آخر موبایل)'
-            : 'حداقل ۶ کاراکتر'
-        }
+        passwordPinMode
+        passwordMinLength={PIN_PASSWORD_LENGTH}
+        passwordHint={PIN_PASSWORD_HINT}
         extraFields="collapsible"
       />
 

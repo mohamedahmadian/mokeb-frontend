@@ -15,7 +15,7 @@ export interface CompanionsFormState {
 }
 
 export function genderLabel(gender: CompanionGender): string {
-  return gender === 'male' ? 'آقا' : 'خانم';
+  return gender === 'male' ? 'آقا' : 'بانو';
 }
 
 export function buildCompanionMembers(

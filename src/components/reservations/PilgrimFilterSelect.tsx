@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { usersApi, MIN_PILGRIM_SEARCH_LENGTH } from '../../lib/users';
+import { usersApi, MIN_PILGRIM_SEARCH_LENGTH, type PilgrimOption } from '../../lib/users';
 import { filterInputClass } from '../../lib/styles';
 
 interface PilgrimFilterSelectProps {
   value: string;
-  onChange: (pilgrimUserId: string) => void;
+  onChange: (
+    pilgrimUserId: string,
+    pilgrim?: Pick<PilgrimOption, 'fullName' | 'mobileNumber'>,
+  ) => void;
   className?: string;
   placeholder?: string;
 }
@@ -38,13 +41,18 @@ export function PilgrimFilterSelect({
   });
 
   useEffect(() => {
-    if (!open && selectedPilgrim && pilgrimId > 0) {
+    if (pilgrimId > 0 && selectedPilgrim) {
       setSearch(`${selectedPilgrim.fullName} — ${selectedPilgrim.mobileNumber}`);
+      return;
     }
-    if (!pilgrimId) {
-      setSearch('');
+
+    if (pilgrimId > 0) {
+      setSearch("در حال بارگذاری زائر...");
+      return;
     }
-  }, [selectedPilgrim, pilgrimId, open]);
+
+    setSearch("");
+  }, [selectedPilgrim, pilgrimId]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -107,7 +115,10 @@ export function PilgrimFilterSelect({
                 key={p.id}
                 type="button"
                 onClick={() => {
-                  onChange(String(p.id));
+                  onChange(String(p.id), {
+                    fullName: p.fullName,
+                    mobileNumber: p.mobileNumber,
+                  });
                   setSearch(`${p.fullName} — ${p.mobileNumber}`);
                   setOpen(false);
                 }}

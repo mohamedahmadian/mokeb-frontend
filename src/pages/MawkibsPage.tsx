@@ -198,7 +198,7 @@ export function MawkibsPage() {
       value: formatCapacityFraction(mawkib.availableMaleCapacity, mawkib.maleCapacity),
     },
     {
-      label: 'ظرفیت خانم‌ها',
+      label: 'ظرفیت بانوان',
       value: formatCapacityFraction(mawkib.availableFemaleCapacity, mawkib.femaleCapacity),
     },
     { label: 'شروع خدمات', value: formatDate(mawkib.serviceStartDate) },
@@ -425,7 +425,7 @@ export function MawkibsPage() {
               {isAdmin && <th className="px-4 py-3 text-right">مسئول</th>}
               <th className="px-4 py-3 text-right">تماس</th>
               <th className="px-4 py-3 text-right">ظرفیت آقایان</th>
-              <th className="px-4 py-3 text-right">ظرفیت خانم‌ها</th>
+              <th className="px-4 py-3 text-right">ظرفیت بانوان</th>
               <th className="px-4 py-3 text-right">شروع خدمات</th>
               <th className="px-4 py-3 text-right">پایان خدمات</th>
               <th className="px-4 py-3 text-right">عملیات</th>

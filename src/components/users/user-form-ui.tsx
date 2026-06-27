@@ -1,6 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import { NavIcon, type NavIconName } from '../ui/NavIcons';
 import { guestTheme } from '../../lib/guest-theme';
+import {
+  PIN_PASSWORD_LENGTH,
+  sanitizePinPasswordInput,
+} from '../../lib/pin-password';
 
 export function MapPinIcon({ className = 'h-4 w-4' }: { className?: string }) {
   return (
@@ -18,6 +22,7 @@ export function PasswordInput({
   placeholder,
   hint,
   minLength = 4,
+  pinMode = false,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -25,8 +30,13 @@ export function PasswordInput({
   placeholder?: string;
   hint?: string;
   minLength?: number;
+  pinMode?: boolean;
 }) {
   const [visible, setVisible] = useState(false);
+
+  const handleChange = (raw: string) => {
+    onChange(pinMode ? sanitizePinPasswordInput(raw) : raw);
+  };
 
   return (
     <label className="block">
@@ -36,10 +46,15 @@ export function PasswordInput({
           type={visible ? 'text' : 'password'}
           required={required}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => handleChange(e.target.value)}
           className={`${guestTheme.input} pl-11`}
-          placeholder={placeholder}
+          placeholder={placeholder ?? (pinMode ? 'مثلاً 1234' : undefined)}
           minLength={required ? minLength : undefined}
+          maxLength={pinMode ? PIN_PASSWORD_LENGTH : undefined}
+          inputMode={pinMode ? 'numeric' : undefined}
+          pattern={pinMode ? '\\d{4}' : undefined}
+          autoComplete={pinMode ? 'new-password' : undefined}
+          dir={pinMode ? 'ltr' : undefined}
         />
         <button
           type="button"

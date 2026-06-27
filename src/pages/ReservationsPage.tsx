@@ -55,6 +55,7 @@ const statusColors: Record<string, string> = {
 const emptyFilters: ReservationFilters & {
   mawkibIdStr: string;
   pilgrimUserIdStr: string;
+  status: ReservationStatus | undefined;
 } = {
   mawkibIdStr: "",
   pilgrimUserIdStr: "",
@@ -83,10 +84,12 @@ function parseFilters(form: typeof emptyFilters): ReservationFilters {
 function buildInitialAppliedFilters(
   mawkibId: string,
   pilgrimUserId: string,
+  status?: ReservationStatus,
 ): ReservationFilters {
   const filters: ReservationFilters = {};
   if (mawkibId) filters.mawkibId = parseInt(mawkibId, 10);
   if (pilgrimUserId) filters.pilgrimUserId = parseInt(pilgrimUserId, 10);
+  if (status) filters.status = status;
   return filters;
 }
 
@@ -137,26 +140,43 @@ export function ReservationsPage() {
 
   const initialMawkibId = searchParams.get("mawkibId") ?? "";
   const initialPilgrimUserId = searchParams.get("pilgrimUserId") ?? "";
+  const initialStatus = searchParams.get("status") as ReservationStatus | null;
+  const validInitialStatus =
+    initialStatus &&
+    ["Pending", "Confirmed", "Cancelled", "Completed"].includes(initialStatus)
+      ? initialStatus
+      : undefined;
 
   const [filters, setFilters] = useState({
     ...emptyFilters,
     mawkibIdStr: initialMawkibId,
     pilgrimUserIdStr: initialPilgrimUserId,
+    status: validInitialStatus,
   });
   const [appliedFilters, setAppliedFilters] = useState<ReservationFilters>(() =>
-    buildInitialAppliedFilters(initialMawkibId, initialPilgrimUserId),
+    buildInitialAppliedFilters(
+      initialMawkibId,
+      initialPilgrimUserId,
+      validInitialStatus,
+    ),
   );
 
   useEffect(() => {
+    const status =
+      initialStatus &&
+      ["Pending", "Confirmed", "Cancelled", "Completed"].includes(initialStatus)
+        ? initialStatus
+        : undefined;
     setFilters((prev) => ({
       ...prev,
       mawkibIdStr: initialMawkibId,
       pilgrimUserIdStr: initialPilgrimUserId,
+      status,
     }));
     setAppliedFilters(
-      buildInitialAppliedFilters(initialMawkibId, initialPilgrimUserId),
+      buildInitialAppliedFilters(initialMawkibId, initialPilgrimUserId, status),
     );
-  }, [initialMawkibId, initialPilgrimUserId]);
+  }, [initialMawkibId, initialPilgrimUserId, initialStatus]);
 
   const queryKey = isAdmin
     ? ["reservations-admin", appliedFilters]
@@ -186,8 +206,22 @@ export function ReservationsPage() {
   const { data: appliedPilgrim } = useQuery({
     queryKey: ["pilgrim-filter-applied", appliedFilters.pilgrimUserId],
     queryFn: () => usersApi.getOne(appliedFilters.pilgrimUserId!),
-    enabled: !!appliedFilters.pilgrimUserId,
+    enabled: !!appliedFilters.pilgrimUserId && canUsePilgrimSearch,
   });
+
+  useEffect(() => {
+    if (!appliedPilgrim?.mobileNumber || !appliedFilters.pilgrimUserId) return;
+
+    setFilters((prev) => ({
+      ...prev,
+      pilgrimUserIdStr: String(appliedFilters.pilgrimUserId),
+      pilgrimMobile: appliedPilgrim.mobileNumber,
+    }));
+  }, [
+    appliedPilgrim?.id,
+    appliedPilgrim?.mobileNumber,
+    appliedFilters.pilgrimUserId,
+  ]);
 
   const updateStatus = useMutation({
     mutationFn: ({ id, status }: { id: number; status: ReservationStatus }) =>
@@ -298,6 +332,17 @@ export function ReservationsPage() {
     const showEditReview =
       canReview && r.review && canEditReservationReview(r, user?.id);
 
+    const detailsButton = (
+      <Link
+        to={`/reservations/${r.id}`}
+        className={`${btnAction} inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200`}
+        onClick={stopRowClick}
+      >
+        <NavIcon name="info" className={actionIconClass} />
+        {isPilgrim ? "مشاهده جزئیات" : "جزئیات"}
+      </Link>
+    );
+
     return (
       <div
         className="flex flex-wrap items-center gap-2"
@@ -305,89 +350,136 @@ export function ReservationsPage() {
         onKeyDown={stopRowClick}
         role="presentation"
       >
-        <div className="flex items-center gap-2">
-          {showRegisterReview && (
-            <button
-              type="button"
-              onClick={(e) => {
-                stopRowClick(e);
-                setReviewingReservation(r);
-              }}
-              className={`${btnAction} inline-flex items-center gap-1.5 bg-[#f0f4fa] text-[#3d5d8a] hover:bg-[#e8eef6]`}
-            >
-              <NavIcon name="feedback" className={actionIconClass} />
-              ثبت نظر
-            </button>
-          )}
-          {showEditReview && (
-            <button
-              type="button"
-              onClick={(e) => {
-                stopRowClick(e);
-                setReviewingReservation(r);
-              }}
-              className={`${btnAction} inline-flex items-center gap-1.5 bg-[#f0f4fa] text-[#3d5d8a] hover:bg-[#e8eef6]`}
-            >
-              <NavIcon name="feedback" className={actionIconClass} />
-              ویرایش نظر
-            </button>
-          )}
-          <Link
-            to={`/reservations/${r.id}`}
-            className={`${btnAction} inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200`}
-            onClick={stopRowClick}
-          >
-            <NavIcon name="info" className={actionIconClass} />
-            جزئیات
-          </Link>
-        </div>
-        {r.status === "Pending" && canConfirm && (
-          <button
-            type="button"
-            onClick={(e) => {
-              stopRowClick(e);
-              updateStatus.mutate({ id: r.id, status: "Confirmed" });
-            }}
-            className={`${btnAction} ${btnPrimary} !min-h-9 !px-2.5 !py-1.5 !text-xs`}
-          >
-            تایید
-          </button>
-        )}
-        {canCancel(r) && (
-          <button
-            type="button"
-            onClick={(e) => {
-              stopRowClick(e);
-              setCancellingReservation(r);
-            }}
-            className={`${btnDanger} inline-flex items-center gap-1.5 !min-h-9 !px-2.5 !py-1.5 !text-xs`}
-          >
-            <NavIcon name="x" className={actionIconClass} strokeWidth={2} />
-            لغو
-          </button>
-        )}
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={(e) => {
-              stopRowClick(e);
-              setDeletingReservation(r);
-            }}
-            className={`${btnAction} bg-slate-100 text-slate-700 hover:bg-slate-200`}
-          >
-            حذف
-          </button>
+        {isPilgrim ? (
+          <>
+            {detailsButton}
+            {showRegisterReview && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  stopRowClick(e);
+                  setReviewingReservation(r);
+                }}
+                className={`${btnAction} inline-flex items-center gap-1.5 bg-[#f0f4fa] text-[#3d5d8a] hover:bg-[#e8eef6]`}
+              >
+                <NavIcon name="feedback" className={actionIconClass} />
+                ثبت نظر
+              </button>
+            )}
+            {showEditReview && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  stopRowClick(e);
+                  setReviewingReservation(r);
+                }}
+                className={`${btnAction} inline-flex items-center gap-1.5 bg-[#f0f4fa] text-[#3d5d8a] hover:bg-[#e8eef6]`}
+              >
+                <NavIcon name="feedback" className={actionIconClass} />
+                ویرایش نظر
+              </button>
+            )}
+            {canCancel(r) && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  stopRowClick(e);
+                  setCancellingReservation(r);
+                }}
+                className={`${btnDanger} inline-flex items-center gap-1.5 !min-h-9 !px-2.5 !py-1.5 !text-xs`}
+              >
+                <NavIcon name="x" className={actionIconClass} strokeWidth={2} />
+                لغو
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              {showRegisterReview && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stopRowClick(e);
+                    setReviewingReservation(r);
+                  }}
+                  className={`${btnAction} inline-flex items-center gap-1.5 bg-[#f0f4fa] text-[#3d5d8a] hover:bg-[#e8eef6]`}
+                >
+                  <NavIcon name="feedback" className={actionIconClass} />
+                  ثبت نظر
+                </button>
+              )}
+              {showEditReview && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stopRowClick(e);
+                    setReviewingReservation(r);
+                  }}
+                  className={`${btnAction} inline-flex items-center gap-1.5 bg-[#f0f4fa] text-[#3d5d8a] hover:bg-[#e8eef6]`}
+                >
+                  <NavIcon name="feedback" className={actionIconClass} />
+                  ویرایش نظر
+                </button>
+              )}
+              {detailsButton}
+            </div>
+            {r.status === "Pending" && canConfirm && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  stopRowClick(e);
+                  updateStatus.mutate({ id: r.id, status: "Confirmed" });
+                }}
+                className={`${btnAction} ${btnPrimary} !min-h-9 !px-2.5 !py-1.5 !text-xs`}
+              >
+                تایید
+              </button>
+            )}
+            {canCancel(r) && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  stopRowClick(e);
+                  setCancellingReservation(r);
+                }}
+                className={`${btnDanger} inline-flex items-center gap-1.5 !min-h-9 !px-2.5 !py-1.5 !text-xs`}
+              >
+                <NavIcon name="x" className={actionIconClass} strokeWidth={2} />
+                لغو
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  stopRowClick(e);
+                  setDeletingReservation(r);
+                }}
+                className={`${btnAction} bg-slate-100 text-slate-700 hover:bg-slate-200`}
+              >
+                حذف
+              </button>
+            )}
+          </>
         )}
       </div>
     );
   };
+
+  const openReservationDetail = (id: number) => {
+    navigate(`/reservations/${id}`);
+  };
+
+  const rowInteractiveClass =
+    "cursor-pointer border-t border-slate-100 transition hover:bg-slate-50/80";
 
   if (isLoading) return <p className="text-slate-500">در حال بارگذاری...</p>;
 
   return (
     <div>
       <PageHeader
-        title="تاریخچه رزروها"
+        title={isPilgrim ? "رزروهای من" : "تاریخچه رزروها"}
         subtitle={pageSubtitle}
         action={
           <Link
@@ -480,8 +572,12 @@ export function ReservationsPage() {
               />
               <PilgrimFilterSelect
                 value={filters.pilgrimUserIdStr}
-                onChange={(pilgrimUserIdStr) =>
-                  setFilters({ ...filters, pilgrimUserIdStr })
+                onChange={(pilgrimUserIdStr, pilgrim) =>
+                  setFilters({
+                    ...filters,
+                    pilgrimUserIdStr,
+                    pilgrimMobile: pilgrim?.mobileNumber ?? "",
+                  })
                 }
               />
             </>
@@ -498,10 +594,14 @@ export function ReservationsPage() {
           reservations.map((r) => (
             <DataCard
               key={r.id}
-              title={r.pilgrim.fullName}
-              subtitle={r.mawkib.name}
-              className="cursor-pointer transition hover:border-slate-200 hover:bg-slate-50/50"
-              onClick={() => navigate(`/reservations/${r.id}`)}
+              title={isPilgrim ? r.mawkib.name : r.pilgrim.fullName}
+              subtitle={
+                isPilgrim
+                  ? formatPersianDate(r.reservationDate.slice(0, 10))
+                  : r.mawkib.name
+              }
+              className="cursor-pointer transition hover:border-slate-200 hover:bg-slate-50/80"
+              onClick={() => openReservationDetail(r.id)}
               badge={
                 <span
                   className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${statusColors[r.status]}`}
@@ -546,7 +646,9 @@ export function ReservationsPage() {
           <thead className="bg-slate-50 text-slate-600">
             <tr>
               <th className="px-4 py-3 text-right">موکب</th>
-              <th className="px-4 py-3 text-right">زائر</th>
+              {!isPilgrim && (
+                <th className="px-4 py-3 text-right">زائر</th>
+              )}
               <th className="px-4 py-3 text-right">تعداد</th>
               <th className="px-4 py-3 text-right">تاریخ شروع</th>
               <th className="px-4 py-3 text-right">تاریخ پایان</th>
@@ -558,7 +660,7 @@ export function ReservationsPage() {
             {reservations.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={isPilgrim ? 6 : 7}
                   className="px-4 py-8 text-center text-slate-400"
                 >
                   رزروی یافت نشد
@@ -568,20 +670,22 @@ export function ReservationsPage() {
               reservations.map((r) => (
                 <tr
                   key={r.id}
-                  className="cursor-pointer border-t border-slate-100 transition hover:bg-slate-50"
-                  onClick={() => navigate(`/reservations/${r.id}`)}
+                  className={rowInteractiveClass}
+                  onClick={() => openReservationDetail(r.id)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      navigate(`/reservations/${r.id}`);
+                      openReservationDetail(r.id);
                     }
                   }}
                   tabIndex={0}
                   role="link"
-                  aria-label={`مشاهده جزئیات رزرو ${r.pilgrim.fullName}`}
+                  aria-label={`مشاهده جزئیات رزرو ${isPilgrim ? r.mawkib.name : r.pilgrim.fullName}`}
                 >
                   <td className="px-4 py-3">{r.mawkib.name}</td>
-                  <td className="px-4 py-3">{r.pilgrim.fullName}</td>
+                  {!isPilgrim && (
+                    <td className="px-4 py-3">{r.pilgrim.fullName}</td>
+                  )}
                   <td className="px-4 py-3">
                     {formatGuestCount(r.maleGuestCount, r.femaleGuestCount)}
                   </td>

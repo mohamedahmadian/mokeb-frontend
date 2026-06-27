@@ -9,6 +9,13 @@ import {
 } from '../ui/PersianDateRangePicker';
 import { GuestPageHeader, GuestShell } from '../guest/GuestShell';
 import { guestTheme } from '../../lib/guest-theme';
+import {
+  isValidPinPassword,
+  PIN_PASSWORD_ERROR,
+  PIN_PASSWORD_HINT,
+  PIN_PASSWORD_LENGTH,
+  sanitizePinPasswordInput,
+} from '../../lib/pin-password';
 import { toast, toastApiError } from '../../lib/toast';
 import {
   HONORARY_VOLUNTEER_SERVICE_OPTIONS,
@@ -211,8 +218,8 @@ export function HonoraryVolunteerForm({
         return;
       }
 
-      if (showPassword && !embedded && password.trim().length < 6) {
-        toast.error('رمز عبور باید حداقل ۶ کاراکتر باشد');
+      if (showPassword && !embedded && !isValidPinPassword(password.trim())) {
+        toast.error(PIN_PASSWORD_ERROR);
         return;
       }
     }
@@ -354,14 +361,19 @@ export function HonoraryVolunteerForm({
                 <input
                   type="password"
                   required
-                  minLength={6}
+                  minLength={PIN_PASSWORD_LENGTH}
+                  maxLength={PIN_PASSWORD_LENGTH}
+                  inputMode="numeric"
+                  pattern="\d{4}"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(sanitizePinPasswordInput(e.target.value))}
                   className={inputClass}
-                  placeholder="حداقل ۶ کاراکتر"
+                  placeholder="مثلاً 1234"
+                  dir="ltr"
+                  autoComplete="new-password"
                 />
                 <p className="mt-1 text-xs text-slate-400">
-                  با این رمز عبور می‌توانید وارد پنل و پیگیری درخواست‌ها شوید
+                  {PIN_PASSWORD_HINT}. با این رمز عبور می‌توانید وارد پنل و پیگیری درخواست‌ها شوید.
                 </p>
               </label>
             )}

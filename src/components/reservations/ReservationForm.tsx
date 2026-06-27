@@ -334,7 +334,7 @@ export function ReservationForm({
     }
 
     if (maleGuestCount + femaleGuestCount < 1) {
-      toast.error("حداقل یک نفر (آقا یا خانم) باید وارد شود");
+      toast.error("حداقل یک نفر (آقا یا بانو) باید وارد شود");
       return;
     }
 
@@ -591,7 +591,7 @@ export function ReservationForm({
         <SectionHeader
           icon={<IconCalendar />}
           title="تاریخ اقامت"
-          subtitle="تاریخ شروع و پایان اقامت و تعداد آقایان و خانم‌ها را مشخص کنید"
+          subtitle="تاریخ شروع و پایان اقامت و تعداد آقایان و بانوان را مشخص کنید"
         />
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -648,7 +648,7 @@ export function ReservationForm({
               }}
             />
             <GuestCountStepper
-              label="تعداد خانم‌ها *"
+              label="تعداد بانوان *"
               value={femaleGuestCount}
               onChange={(n) => {
                 setFemaleGuestCount(n);
@@ -670,7 +670,7 @@ export function ReservationForm({
         <SectionHeader
           icon={<IconUsers />}
           title="مشخصات همراهان"
-          subtitle="نام هر نفر را در جدول زیر وارد کنید؛ جنسیت بر اساس تعداد آقایان و خانم‌ها تنظیم شده است"
+          subtitle="نام هر نفر را در جدول زیر وارد کنید؛ جنسیت بر اساس تعداد آقایان و بانوان تنظیم شده است"
         />
         <CompanionsTable value={companionsForm} onChange={setCompanionsForm} />
       </section>

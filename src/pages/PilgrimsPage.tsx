@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { MawkibFilterSelect } from '../components/mawkibs/MawkibFilterSelect';
 import { UserFormModal } from '../components/users/UserFormModal';
 import { DataCard } from '../components/ui/DataCard';
 import { FilterPanel } from '../components/ui/FilterPanel';
@@ -18,7 +19,7 @@ const emptyFilters = {
   mobileNumber: '',
   province: '',
   city: '',
-  isActiveStr: '',
+  mawkibIdStr: '',
 };
 
 function toApiFilters(form: typeof emptyFilters): UserListFilters {
@@ -27,19 +28,36 @@ function toApiFilters(form: typeof emptyFilters): UserListFilters {
   if (form.mobileNumber) filters.mobileNumber = form.mobileNumber;
   if (form.province) filters.province = form.province;
   if (form.city) filters.city = form.city;
-  if (form.isActiveStr === 'true') filters.isActive = true;
-  if (form.isActiveStr === 'false') filters.isActive = false;
+  if (form.mawkibIdStr) filters.mawkibId = parseInt(form.mawkibIdStr, 10);
+  return filters;
+}
+
+function buildInitialAppliedFilters(mawkibId: string): UserListFilters {
+  const filters: UserListFilters = {};
+  if (mawkibId) filters.mawkibId = parseInt(mawkibId, 10);
   return filters;
 }
 
 export function PilgrimsPage() {
-  const { isAdmin } = useRoleAccess();
+  const { isAdmin, isMawkibOwner } = useRoleAccess();
+  const [searchParams] = useSearchParams();
+  const initialMawkibId = searchParams.get('mawkibId') ?? '';
   const queryClient = useQueryClient();
-  const [filters, setFilters] = useState(emptyFilters);
-  const [appliedFilters, setAppliedFilters] = useState<UserListFilters>({});
+  const [filters, setFilters] = useState({
+    ...emptyFilters,
+    mawkibIdStr: initialMawkibId,
+  });
+  const [appliedFilters, setAppliedFilters] = useState<UserListFilters>(() =>
+    buildInitialAppliedFilters(initialMawkibId),
+  );
   const [formOpen, setFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
+
+  useEffect(() => {
+    setFilters((prev) => ({ ...prev, mawkibIdStr: initialMawkibId }));
+    setAppliedFilters(buildInitialAppliedFilters(initialMawkibId));
+  }, [initialMawkibId]);
 
   const { data: pilgrims = [], isLoading } = useQuery({
     queryKey: ['pilgrims-list', appliedFilters],
@@ -140,6 +158,14 @@ export function PilgrimsPage() {
         }}
       >
         <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {isMawkibOwner && !isAdmin && (
+            <MawkibFilterSelect
+              value={filters.mawkibIdStr}
+              onChange={(mawkibIdStr) =>
+                setFilters((prev) => ({ ...prev, mawkibIdStr }))
+              }
+            />
+          )}
           <input
             type="text"
             placeholder="نام"
@@ -165,15 +191,6 @@ export function PilgrimsPage() {
               onCityChange={(city) => setFilters((prev) => ({ ...prev, city }))}
             />
           </div>
-          <select
-            value={filters.isActiveStr}
-            onChange={(e) => setFilters({ ...filters, isActiveStr: e.target.value })}
-            className={filterInputClass}
-          >
-            <option value="">همه وضعیت‌ها</option>
-            <option value="true">فعال</option>
-            <option value="false">غیرفعال</option>
-          </select>
         </div>
       </FilterPanel>
 

@@ -46,6 +46,7 @@ export interface UserListFilters {
   isActive?: boolean;
   search?: string;
   scope?: 'mine' | 'all';
+  mawkibId?: number;
 }
 
 export const MIN_PILGRIM_SEARCH_LENGTH = 2;

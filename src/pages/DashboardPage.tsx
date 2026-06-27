@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
+import { MawkibOwnerDashboard } from '../components/dashboard/MawkibOwnerDashboard';
 import { PilgrimDashboard } from '../components/dashboard/PilgrimDashboard';
 import { dashboardApi, type CapacityStats } from '../lib/dashboard';
 
@@ -22,7 +23,7 @@ function CapacityCards({ stats }: { stats: CapacityStats }) {
       color: 'bg-slate-500',
     },
     {
-      label: 'ظرفیت کل خانم‌ها',
+      label: 'ظرفیت کل بانوان',
       value: stats.totalFemaleCapacity,
       color: 'bg-slate-400',
     },
@@ -32,7 +33,7 @@ function CapacityCards({ stats }: { stats: CapacityStats }) {
       color: 'bg-[#4a6fa5]',
     },
     {
-      label: 'ظرفیت خالی خانم‌ها',
+      label: 'ظرفیت خالی بانوان',
       value: stats.emptyFemaleCapacity,
       color: 'bg-teal-500',
     },
@@ -53,23 +54,33 @@ function CapacityCards({ stats }: { stats: CapacityStats }) {
 }
 
 export function DashboardPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const hasMawkibOwnerRole = user?.roles.includes('MawkibOwner') ?? false;
   const isAdmin = user?.roles.includes('Admin') ?? false;
-  const isMawkibOwner =
-    (user?.roles.includes('MawkibOwner') ?? false) && !isAdmin;
   const isPilgrim =
-    (user?.roles.includes('Pilgrim') ?? false) && !isAdmin && !isMawkibOwner;
+    (user?.roles.includes('Pilgrim') ?? false) &&
+    !hasMawkibOwnerRole &&
+    !isAdmin;
 
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: dashboardApi.getStats,
+    enabled: !!user,
   });
+
+  if (authLoading) {
+    return <p className="text-slate-500">در حال بارگذاری...</p>;
+  }
+
+  if (hasMawkibOwnerRole) {
+    return <MawkibOwnerDashboard fullName={user?.fullName ?? ''} />;
+  }
 
   if (isPilgrim) {
     return <PilgrimDashboard fullName={user?.fullName ?? ''} />;
   }
 
-  if (isLoading) return <p className="text-slate-500">در حال بارگذاری...</p>;
+  if (statsLoading) return <p className="text-slate-500">در حال بارگذاری...</p>;
 
   const adminStats = isAdmin
     ? [
@@ -82,15 +93,6 @@ export function DashboardPage() {
   return (
     <div>
       <h1 className="mb-4 text-xl font-bold text-slate-800 sm:mb-6 sm:text-2xl">داشبورد</h1>
-
-      {isMawkibOwner && stats?.myMawkibsStats && (
-        <section className="mb-6 sm:mb-8">
-          <h2 className="mb-3 text-base font-semibold text-slate-700 sm:mb-4 sm:text-lg">
-            موکب‌های من
-          </h2>
-          <CapacityCards stats={stats.myMawkibsStats} />
-        </section>
-      )}
 
       {(isAdmin) && stats?.capacityStats && (
         <section className="mb-6 sm:mb-8">

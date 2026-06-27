@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { DropdownLinkContent, NavIcon } from "./ui/NavIcons";
 
 interface CooperationRequestNavProps {
+  collapsed?: boolean;
   showNewRequest: boolean;
   showServantsList?: boolean;
   onNavigate?: () => void;
@@ -16,8 +17,10 @@ function isCooperationActive(pathname: string) {
   );
 }
 
-const listLinkClass = (isActive: boolean) =>
-  `flex items-center rounded-lg px-3 py-2 text-sm transition ${
+const listLinkClass = (isActive: boolean, collapsed = false) =>
+  `flex items-center rounded-lg py-2 text-sm transition ${
+    collapsed ? "justify-center px-2" : "px-3"
+  } ${
     isActive
       ? "bg-[#e8eef6] font-medium text-[#4a6fa5]"
       : "text-slate-700 hover:bg-slate-50"
@@ -119,47 +122,65 @@ export function CooperationRequestDropdown({
 }
 
 export function CooperationRequestSidebarSection({
+  collapsed = false,
   showNewRequest,
   showServantsList = false,
   onNavigate,
 }: CooperationRequestNavProps) {
   return (
     <div className="mb-2">
-      <p className="px-3 pt-2 text-xs font-semibold text-[#4a6fa5]">
-        سامانه خادمین
-      </p>
-      <div className="mx-3 mb-2 border-b border-slate-200" />
+      {!collapsed && (
+        <>
+          <p className="px-3 pt-2 text-xs font-semibold text-[#4a6fa5]">
+            سامانه خادمین
+          </p>
+          <div className="mx-3 mb-2 border-b border-slate-200" />
+        </>
+      )}
       {showServantsList && (
         <NavLink
           to="/users/honorary-servants"
           onClick={onNavigate}
-          className={({ isActive }) => listLinkClass(isActive)}
+          className={({ isActive }) => listLinkClass(isActive, collapsed)}
+          title="خادمین"
         >
-          <span className="flex items-center gap-2.5 px-1">
+          <span
+            className={`flex items-center ${collapsed ? "" : "gap-2.5 px-1"}`}
+          >
             <NavIcon name="honorary" />
-            <span>خادمین</span>
+            <span className={collapsed ? "sr-only" : undefined}>خادمین</span>
           </span>
         </NavLink>
       )}
       <NavLink
         to="/honorary-volunteers"
         onClick={onNavigate}
-        className={({ isActive }) => listLinkClass(isActive)}
+        className={({ isActive }) => listLinkClass(isActive, collapsed)}
+        title="درخواست‌های همکاری"
       >
-        <span className="flex items-center gap-2.5 px-1">
+        <span
+          className={`flex items-center ${collapsed ? "" : "gap-2.5 px-1"}`}
+        >
           <NavIcon name="myRequests" />
-          <span>درخواست‌های همکاری</span>
+          <span className={collapsed ? "sr-only" : undefined}>
+            درخواست‌های همکاری
+          </span>
         </span>
       </NavLink>
       {showNewRequest && (
         <NavLink
           to="/honorary-volunteers/new"
           onClick={onNavigate}
-          className={({ isActive }) => listLinkClass(isActive)}
+          className={({ isActive }) => listLinkClass(isActive, collapsed)}
+          title="درخواست خادم جدید"
         >
-          <span className="flex items-center gap-2.5 px-1">
+          <span
+            className={`flex items-center ${collapsed ? "" : "gap-2.5 px-1"}`}
+          >
             <NavIcon name="honoraryAdd" />
-            <span>درخواست خادم جدید</span>
+            <span className={collapsed ? "sr-only" : undefined}>
+              درخواست خادم جدید
+            </span>
           </span>
         </NavLink>
       )}

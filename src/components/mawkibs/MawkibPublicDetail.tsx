@@ -424,7 +424,7 @@ export function MawkibPublicDetail({ mawkib }: MawkibPublicDetailProps) {
           />
           <StatCard
             icon={icons.female}
-            label="ظرفیت خانم‌ها"
+            label="ظرفیت بانوان"
             value={formatCapacityFraction(
               mawkib.availableFemaleCapacity,
               mawkib.femaleCapacity,

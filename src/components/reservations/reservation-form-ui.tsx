@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
-import { formatCapacityLine } from '../../lib/capacity';
+import { MAWKIB_AMENITY_FIELDS } from '../mawkibs/MawkibExtraFields';
+import { formatPersianDate } from '../ui/PersianDateInput';
+import { formatCapacityFraction } from '../../lib/capacity';
 import { guestTheme } from '../../lib/guest-theme';
 import type { Mawkib } from '../../types';
 
@@ -119,6 +121,165 @@ export function SectionHeader({
   );
 }
 
+function CardSvgIcon({
+  className = 'h-3.5 w-3.5',
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      aria-hidden
+    >
+      {children}
+    </svg>
+  );
+}
+
+const cardIcons = {
+  mawkib: (
+    <CardSvgIcon className="h-4 w-4">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
+      />
+    </CardSvgIcon>
+  ),
+  male: (
+    <CardSvgIcon>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+      />
+    </CardSvgIcon>
+  ),
+  female: (
+    <CardSvgIcon>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
+      />
+    </CardSvgIcon>
+  ),
+  owner: (
+    <CardSvgIcon>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+      />
+    </CardSvgIcon>
+  ),
+  phone: (
+    <CardSvgIcon>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"
+      />
+    </CardSvgIcon>
+  ),
+  calendar: (
+    <CardSvgIcon>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"
+      />
+    </CardSvgIcon>
+  ),
+  amenity: (
+    <CardSvgIcon className="h-3 w-3">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"
+      />
+    </CardSvgIcon>
+  ),
+};
+
+function CardIconBadge({ icon }: { icon: ReactNode }) {
+  return (
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#f0f4fa] text-[#4a6fa5]">
+      {icon}
+    </span>
+  );
+}
+
+function CapacityPill({
+  icon,
+  label,
+  available,
+  total,
+  tone,
+}: {
+  icon: ReactNode;
+  label: string;
+  available: number;
+  total: number;
+  tone: 'male' | 'female';
+}) {
+  const hasAvailability = available > 0;
+  const toneClass =
+    tone === 'male'
+      ? 'bg-sky-50 text-sky-700 ring-sky-100'
+      : 'bg-rose-50 text-rose-700 ring-rose-100';
+
+  return (
+    <span
+      className={`inline-flex min-w-[7.5rem] flex-col gap-0.5 rounded-lg px-2.5 py-1.5 text-xs ring-1 ${toneClass}`}
+    >
+      <span className="text-[10px] font-medium opacity-80">{label}</span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="opacity-80">{icon}</span>
+        <span className={`font-bold tabular-nums ${hasAvailability ? '' : 'opacity-70'}`}>
+          {formatCapacityFraction(available, total)}
+        </span>
+      </span>
+    </span>
+  );
+}
+
+function MawkibCardRow({
+  icon,
+  children,
+  dir,
+  className = '',
+}: {
+  icon: ReactNode;
+  children: ReactNode;
+  dir?: 'ltr' | 'rtl';
+  className?: string;
+}) {
+  return (
+    <div className={`flex min-w-0 items-center gap-2 ${className}`}>
+      <CardIconBadge icon={icon} />
+      <div className="min-w-0 flex-1 truncate text-sm text-slate-600" dir={dir}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function getActiveAmenities(mawkib: Mawkib) {
+  return MAWKIB_AMENITY_FIELDS.filter(({ key }) => Boolean(mawkib[key]));
+}
+
+function formatServiceDate(value?: string | null) {
+  if (!value) return null;
+  return formatPersianDate(value.slice(0, 10));
+}
+
 export function MawkibCard({
   mawkib,
   selected,
@@ -128,52 +289,115 @@ export function MawkibCard({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const capacity = mawkibCapacitySnapshot(mawkib);
+  const ownerName = mawkib.owner?.fullName?.trim();
+  const contactPhone = (mawkib.phoneNumber || mawkib.owner?.mobileNumber)?.trim();
+  const serviceStart = formatServiceDate(mawkib.serviceStartDate);
+  const serviceEnd = formatServiceDate(mawkib.serviceEndDate);
+  const showServiceDates = Boolean(serviceStart && serviceEnd);
+  const amenities = getActiveAmenities(mawkib);
+  const address = mawkib.address?.trim();
+
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`w-full rounded-xl border-2 p-4 text-right transition-all ${
+      className={`w-full overflow-hidden rounded-2xl border-2 text-right transition-all ${
         selected
-          ? 'border-[#4a6fa5] bg-[#f0f4fa] shadow-md shadow-[#c5d4e8]/40'
-          : 'border-slate-200 bg-white hover:border-[#c5d4e8] hover:bg-[#f0f4fa]/50'
+          ? 'border-[#4a6fa5] bg-gradient-to-b from-[#f0f4fa] to-white shadow-md shadow-[#c5d4e8]/40'
+          : 'border-slate-200 bg-white hover:border-[#c5d4e8] hover:shadow-sm'
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold text-slate-800">{mawkib.name}</p>
-          <p className="mt-1 line-clamp-2 text-sm text-slate-500">{mawkib.address}</p>
-          {(mawkib.owner?.province || mawkib.owner?.city) && (
-            <p className="mt-1 text-xs text-slate-400">
-              {[mawkib.owner?.province, mawkib.owner?.city].filter(Boolean).join('، ')}
-            </p>
-          )}
+      <div className="p-4">
+        <div className="flex items-start gap-3">
+          <CardIconBadge icon={cardIcons.mawkib} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-base font-bold text-slate-800">{mawkib.name}</p>
+            {address && (
+              <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500">
+                {address}
+              </p>
+            )}
+          </div>
+          <div
+            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition ${
+              selected ? 'border-[#4a6fa5] bg-[#4a6fa5]' : 'border-slate-300 bg-white'
+            }`}
+            aria-hidden
+          >
+            {selected && (
+              <svg
+                className="h-3.5 w-3.5 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={3}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+            )}
+          </div>
         </div>
-        <div
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
-            selected ? 'border-[#4a6fa5] bg-[#4a6fa5]' : 'border-slate-300'
-          }`}
-        >
-          {selected && (
-            <svg
-              className="h-3.5 w-3.5 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={3}
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <CapacityPill
+            icon={cardIcons.male}
+            label="ظرفیت آقایان"
+            available={capacity.availableMale}
+            total={capacity.maleCapacity}
+            tone="male"
+          />
+          <CapacityPill
+            icon={cardIcons.female}
+            label="ظرفیت بانوان"
+            available={capacity.availableFemale}
+            total={capacity.femaleCapacity}
+            tone="female"
+          />
+        </div>
+
+        {showServiceDates && (
+          <div className="mt-3 flex items-center gap-2 rounded-xl bg-[#f8fafc] px-3 py-2 ring-1 ring-slate-100">
+            <span className="text-[#4a6fa5]">{cardIcons.calendar}</span>
+            <span className="text-xs font-medium text-slate-700">{serviceStart}</span>
+            <span className="text-slate-300" aria-hidden>
+              ←
+            </span>
+            <span className="text-xs font-medium text-slate-700">{serviceEnd}</span>
+          </div>
+        )}
+      </div>
+
+      {(ownerName || contactPhone) && (
+        <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {ownerName && (
+              <MawkibCardRow icon={cardIcons.owner}>
+                <span className="text-xs font-medium text-slate-700">{ownerName}</span>
+              </MawkibCardRow>
+            )}
+            {contactPhone && (
+              <MawkibCardRow icon={cardIcons.phone} dir="ltr">
+                <span className="font-mono text-xs font-medium text-slate-700">{contactPhone}</span>
+              </MawkibCardRow>
+            )}
+          </div>
+        </div>
+      )}
+
+      {amenities.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 border-t border-slate-100 px-4 py-2.5">
+          {amenities.map(({ key, label }) => (
+            <span
+              key={key}
+              className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-[10px] font-medium text-slate-600 ring-1 ring-slate-200/80"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-            </svg>
-          )}
+              <span className="text-[#4a6fa5]">{cardIcons.amenity}</span>
+              {label}
+            </span>
+          ))}
         </div>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <span className="rounded-full bg-[#e8eef6] px-2.5 py-0.5 text-xs font-medium text-[#3d5d8a]">
-          ظرفیت باقی‌مانده: {formatCapacityLine(mawkibCapacitySnapshot(mawkib), 'available')}
-        </span>
-        <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600">
-          ظرفیت کل: {formatCapacityLine(mawkibCapacitySnapshot(mawkib), 'total')}
-        </span>
-      </div>
+      )}
     </button>
   );
 }

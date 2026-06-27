@@ -1,6 +1,10 @@
 import { useMemo } from 'react';
-import { getCitiesByProvince, IRAN_PROVINCES } from '../../lib/iran-locations';
+import {
+  getCitiesByProvinceFromLocations,
+  getProvincesFromLocations,
+} from '../../lib/iran-locations';
 import { filterInputClass, inputClass } from '../../lib/styles';
+import { useIranLocations } from '../../lib/use-iran-locations';
 import { SearchableSelect } from './SearchableSelect';
 
 interface ProvinceCitySelectProps {
@@ -24,22 +28,26 @@ export function ProvinceCitySelect({
   disabled = false,
   compact = false,
 }: ProvinceCitySelectProps) {
+  const { data: locations = [] } = useIranLocations();
+
   const provinceOptions = useMemo(() => {
-    if (province && !IRAN_PROVINCES.includes(province)) {
-      return [province, ...IRAN_PROVINCES];
+    const provinces = getProvincesFromLocations(locations);
+    if (province && !provinces.includes(province)) {
+      return [province, ...provinces];
     }
-    return IRAN_PROVINCES;
-  }, [province]);
+    return provinces;
+  }, [locations, province]);
 
   const cityOptions = useMemo(() => {
-    const cities = province ? getCitiesByProvince(province) : [];
+    const cities = province ? getCitiesByProvinceFromLocations(locations, province) : [];
     if (city && !cities.includes(city)) {
       return [city, ...cities];
     }
     return cities;
-  }, [province, city]);
+  }, [locations, province, city]);
 
   const selectClass = compact ? filterInputClass : inputClass;
+  const isLoading = locations.length === 0;
 
   const provinceSelect = (
     <SearchableSelect
@@ -49,9 +57,11 @@ export function ProvinceCitySelect({
         if (value !== province) onCityChange('');
       }}
       options={provinceOptions}
-      placeholder={compact ? 'استان' : 'انتخاب استان'}
+      placeholder={
+        isLoading ? 'در حال بارگذاری...' : compact ? 'استان' : 'انتخاب استان'
+      }
       searchPlaceholder="جستجوی استان..."
-      disabled={disabled}
+      disabled={disabled || isLoading}
       className={selectClass}
       emptyMessage="استانی یافت نشد"
     />
@@ -63,10 +73,14 @@ export function ProvinceCitySelect({
       onChange={onCityChange}
       options={cityOptions}
       placeholder={
-        compact ? 'شهر' : province ? 'انتخاب شهر' : 'ابتدا استان را انتخاب کنید'
+        compact
+          ? 'شهر'
+          : province
+            ? 'انتخاب شهر'
+            : 'ابتدا استان را انتخاب کنید'
       }
       searchPlaceholder="جستجوی شهر..."
-      disabled={disabled || !province}
+      disabled={disabled || !province || isLoading}
       className={selectClass}
       emptyMessage="شهری یافت نشد"
     />

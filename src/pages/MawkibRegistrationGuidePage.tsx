@@ -17,7 +17,7 @@ type FieldGroup = {
 const ownerFields: FieldItem[] = [
   { label: 'نام و نام خانوادگی', hint: 'نام کامل مسئول موکب', required: true },
   { label: 'شماره موبایل', hint: 'برای ورود و ارتباط سامانه', required: true },
-  { label: 'رمز عبور', hint: 'حداقل ۶ کاراکتر برای ورود امن', required: true },
+  { label: 'رمز عبور', hint: '۴ رقم عددی برای ورود', required: true },
   { label: 'استان و شهر', hint: 'محل فعالیت یا سکونت شما' },
   { label: 'توضیحات', hint: 'معرفی کوتاه درباره خود یا موکب' },
   { label: 'شبکه‌های اجتماعی', hint: 'واتس‌اپ، تلگرام، بله، ایتا و ایمیل (اختیاری)' },
@@ -51,7 +51,7 @@ const mawkibFieldGroups: FieldGroup[] = [
     title: 'ظرفیت و بازه خدمات',
     fields: [
       { label: 'ظرفیت آقایان', hint: 'تعداد نفر قابل پذیرش (آقایان)', required: true },
-      { label: 'ظرفیت خانم‌ها', hint: 'تعداد نفر قابل پذیرش (خانم‌ها)', required: true },
+      { label: 'ظرفیت بانوان', hint: 'تعداد نفر قابل پذیرش (بانوان)', required: true },
       { label: 'شروع و پایان خدمات', hint: 'بازه زمانی فعالیت موکب در ایام زیارتی' },
       { label: 'حداکثر بازه رزرو', hint: 'حداکثر تعداد روز قابل رزرو توسط هر زائر' },
     ],

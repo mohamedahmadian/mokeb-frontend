@@ -15,15 +15,15 @@ export function totalAvailable(snapshot: Pick<MawkibCapacitySnapshot, 'available
 
 export function formatCapacityLine(snapshot: MawkibCapacitySnapshot, mode: 'total' | 'available' = 'total') {
   if (mode === 'available') {
-    return `آقایان: ${snapshot.availableMale} — خانم‌ها: ${snapshot.availableFemale} (مجموع: ${totalAvailable(snapshot)})`;
+    return `آقایان: ${snapshot.availableMale} — بانوان: ${snapshot.availableFemale} (مجموع: ${totalAvailable(snapshot)})`;
   }
-  return `آقایان: ${snapshot.maleCapacity} — خانم‌ها: ${snapshot.femaleCapacity} (مجموع: ${totalCapacity(snapshot)})`;
+  return `آقایان: ${snapshot.maleCapacity} — بانوان: ${snapshot.femaleCapacity} (مجموع: ${totalCapacity(snapshot)})`;
 }
 
 export function formatGuestCount(male: number, female: number) {
   const parts: string[] = [];
   if (male > 0) parts.push(`آقایان: ${male}`);
-  if (female > 0) parts.push(`خانم‌ها: ${female}`);
+  if (female > 0) parts.push(`بانوان: ${female}`);
   if (parts.length === 0) return '۰ نفر';
   return `${parts.join(' — ')} (مجموع: ${male + female})`;
 }
