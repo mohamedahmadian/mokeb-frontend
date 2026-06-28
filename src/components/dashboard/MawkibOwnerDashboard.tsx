@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { MawkibFeedbackDetailModal } from "../mawkib-feedback/MawkibFeedbackDetailModal";
 import { MawkibFormModal } from "../mawkibs/MawkibFormModal";
+import { MawkibCapacityViewModal } from "../mawkibs/MawkibCapacityViewModal";
+import { MawkibCapacityPills } from "../mawkibs/MawkibInfoCard";
 import { CancelReservationModal } from "../reservations/CancelReservationModal";
 import { ReservationTrackLookup } from "./ReservationTrackLookup";
 import { formatPersianDateRange } from "../ui/PersianDateRangePicker";
@@ -379,9 +381,11 @@ function PilgrimRow({ pilgrim }: { pilgrim: AdminUser }) {
 function MawkibQuickCard({
   mawkib,
   onEdit,
+  onViewCapacity,
 }: {
   mawkib: Mawkib;
   onEdit: () => void;
+  onViewCapacity: () => void;
 }) {
   return (
     <div className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm">
@@ -412,36 +416,52 @@ function MawkibQuickCard({
               : "رد شده"}
         </span>
       </div>
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        <Link
-          to={`/reservations/new?mawkibId=${mawkib.id}`}
-          className="inline-flex items-center gap-1 rounded-lg bg-[#4a6fa5] px-2.5 py-1.5 text-[11px] font-medium text-white transition hover:bg-[#3d5d8a]"
-        >
-          <NavIcon name="quickReserve" className="h-3.5 w-3.5" />
-          رزرو جدید
-        </Link>
-        <Link
-          to={`/reservations?mawkibId=${mawkib.id}`}
-          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50"
-        >
-          <NavIcon name="reservations" className="h-3.5 w-3.5" />
-          رزروها
-        </Link>
-        <Link
-          to={`/users/pilgrims?mawkibId=${mawkib.id}`}
-          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50"
-        >
-          <NavIcon name="pilgrims" className="h-3.5 w-3.5" />
-          زائرین
-        </Link>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50"
-        >
-          <NavIcon name="mawkibs" className="h-3.5 w-3.5" />
-          ویرایش موکب
-        </button>
+
+      <div className="mt-3">
+        <MawkibCapacityPills mawkib={mawkib} />
+      </div>
+
+      <div className="mt-3 space-y-1.5">
+        <div className="flex flex-wrap gap-1.5">
+          <Link
+            to={`/reservations/new?mawkibId=${mawkib.id}`}
+            className="inline-flex items-center gap-1 rounded-lg bg-[#4a6fa5] px-2.5 py-1.5 text-[11px] font-medium text-white transition hover:bg-[#3d5d8a]"
+          >
+            <NavIcon name="quickReserve" className="h-3.5 w-3.5" />
+            رزرو جدید
+          </Link>
+          <Link
+            to={`/reservations?mawkibId=${mawkib.id}`}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            <NavIcon name="reservations" className="h-3.5 w-3.5" />
+            رزروها
+          </Link>
+          <Link
+            to={`/users/pilgrims?mawkibId=${mawkib.id}`}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            <NavIcon name="pilgrims" className="h-3.5 w-3.5" />
+            زائرین
+          </Link>
+        </div>
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            onClick={onViewCapacity}
+            className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-[11px] font-medium text-violet-700 transition hover:bg-violet-100"
+          >
+            مشاهده ظرفیت
+          </button>
+          <button
+            type="button"
+            onClick={onEdit}
+            className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            <NavIcon name="mawkibs" className="h-3.5 w-3.5" />
+            ویرایش موکب
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -461,6 +481,7 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
   );
   const [editingMawkib, setEditingMawkib] = useState<Mawkib | null>(null);
   const [mawkibFormOpen, setMawkibFormOpen] = useState(false);
+  const [capacityMawkib, setCapacityMawkib] = useState<Mawkib | null>(null);
   const [rejectingReservation, setRejectingReservation] =
     useState<Reservation | null>(null);
   const [actionReservationId, setActionReservationId] = useState<number | null>(
@@ -765,6 +786,7 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
                 key={mawkib.id}
                 mawkib={mawkib}
                 onEdit={() => openMawkibEditor(mawkib)}
+                onViewCapacity={() => setCapacityMawkib(mawkib)}
               />
             ))}
           </div>
@@ -869,6 +891,14 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
         description="در صورت تمایل دلیل رد درخواست را بنویسید تا برای زائر نمایش داده شود."
         noteLabel="دلیل رد (اختیاری)"
         submitLabel="رد درخواست"
+      />
+
+      <MawkibCapacityViewModal
+        open={!!capacityMawkib}
+        onClose={() => setCapacityMawkib(null)}
+        mawkibId={capacityMawkib?.id ?? 0}
+        mawkibName={capacityMawkib?.name ?? ""}
+        authenticated
       />
     </div>
   );

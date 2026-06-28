@@ -42,6 +42,23 @@ export function FeedbackViewReplyButton({
   );
 }
 
+export function FeedbackReviewButton({
+  onClick,
+}: {
+  onClick: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`${btnAction} inline-flex items-center gap-1.5 border border-[#c5d4e8] bg-[#f0f4fa] text-[#3d5d8a] hover:bg-[#e8eef6]`}
+    >
+      <NavIcon name="info" className={actionIconClass} />
+      بررسی
+    </button>
+  );
+}
+
 export function FeedbackReplyListCell({
   feedback,
   onView,

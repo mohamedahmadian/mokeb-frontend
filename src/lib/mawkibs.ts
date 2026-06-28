@@ -1,17 +1,18 @@
 import api from './api';
-import type { MawkibCity } from './mawkib-locations';
+import type { MawkibAmenityKey } from '../components/mawkibs/MawkibExtraFields';
+import type { MawkibCity, MawkibCountry } from './mawkib-locations';
 import type { Mawkib, MawkibExtraFields, MawkibStatus } from '../types';
 
 export type MawkibCapacityFilter = 'all' | 'available' | 'full';
 
-export interface MawkibFilters {
+export interface MawkibFilters extends Partial<Pick<MawkibExtraFields, MawkibAmenityKey>> {
   q?: string;
   name?: string;
+  ownerName?: string;
   phoneNumber?: string;
   ownerUserId?: number;
   status?: MawkibStatus;
-  province?: string;
-  city?: string;
+  country?: MawkibCountry;
   mawkibCity?: MawkibCity;
   reservationDate?: string;
   reservationDateFrom?: string;
@@ -72,10 +73,39 @@ export interface DeleteMawkibResponse {
   softDeleted: boolean;
 }
 
+export interface MawkibInventoryHorizon {
+  horizonDays: number;
+  minDate: string;
+  maxDate: string;
+}
+
+export interface MawkibDailyInventoryDay {
+  date: string;
+  maleCapacity: number;
+  femaleCapacity: number;
+  reservedMale: number;
+  reservedFemale: number;
+  availableMale: number;
+  availableFemale: number;
+}
+
+export interface MawkibInventoryRange {
+  mawkibId: number;
+  mawkibName: string;
+  startDate: string;
+  endDate: string;
+  horizon: MawkibInventoryHorizon;
+  days: MawkibDailyInventoryDay[];
+}
+
 function buildParams(filters?: MawkibFilters) {
   const params = new URLSearchParams();
   if (!filters) return params;
   Object.entries(filters).forEach(([key, value]) => {
+    if (typeof value === 'boolean') {
+      if (value) params.set(key, 'true');
+      return;
+    }
     if (value !== undefined && value !== '') {
       params.set(key, String(value));
     }
@@ -88,9 +118,9 @@ export const mawkibsApi = {
     MawkibFilters,
     | 'q'
     | 'name'
-    | 'city'
+    | 'ownerName'
+    | 'country'
     | 'mawkibCity'
-    | 'province'
     | 'reservationDate'
     | 'reservationDateFrom'
     | 'reservationDateTo'
@@ -102,6 +132,7 @@ export const mawkibsApi = {
     | 'serviceStartTo'
     | 'serviceEndFrom'
     | 'serviceEndTo'
+    | MawkibAmenityKey
   >) =>
     api.get<Mawkib[]>('/mawkibs', { params: buildParams(filters) }).then((r) => r.data),
 
@@ -128,4 +159,21 @@ export const mawkibsApi = {
 
   remove: (id: number) =>
     api.delete<DeleteMawkibResponse>(`/mawkibs/${id}`).then((r) => r.data),
+
+  getInventoryHorizon: () =>
+    api.get<MawkibInventoryHorizon>('/mawkibs/inventory/horizon').then((r) => r.data),
+
+  getPublicInventory: (id: number, startDate: string, endDate: string) =>
+    api
+      .get<MawkibInventoryRange>(`/mawkibs/public/${id}/inventory`, {
+        params: { startDate, endDate },
+      })
+      .then((r) => r.data),
+
+  getInventory: (id: number, startDate: string, endDate: string) =>
+    api
+      .get<MawkibInventoryRange>(`/mawkibs/${id}/inventory`, {
+        params: { startDate, endDate },
+      })
+      .then((r) => r.data),
 };

@@ -12,6 +12,10 @@ import {
   MawkibOwnerSidebarSection,
   getPortalSectionsInsertIndex,
 } from "./MawkibOwnerNav";
+import {
+  FeedbackSidebarSection,
+  resolveFeedbackNavVariant,
+} from "./FeedbackNav";
 import type { RoleName } from "../types";
 
 interface NavItem {
@@ -35,13 +39,13 @@ function buildNavItems(user: { roles: RoleName[] } | null): NavItem[] {
       icon: "dashboard",
       roles: ["Admin", "MawkibOwner", "Pilgrim", "HonoraryServant"],
     },
-    { to: "/users", label: "کاربران", icon: "users", roles: ["Admin"] },
     {
-      to: "/feedback/admin",
-      label: "انتقادات و پیشنهادات",
-      icon: "feedback",
-      roles: ["Admin"],
+      to: "/mawkibs/map",
+      label: "جستجوی موکب ( نقشه )",
+      icon: "map",
+      roles: ["Admin", "MawkibOwner", "Pilgrim", "HonoraryServant"],
     },
+    { to: "/users", label: "کاربران", icon: "users", roles: ["Admin"] },
     {
       to: "/users/pilgrims",
       label: "زائرین",
@@ -73,12 +77,6 @@ function buildNavItems(user: { roles: RoleName[] } | null): NavItem[] {
         icon: "reservations",
         roles: ["Pilgrim"],
       },
-      {
-        to: "/feedback",
-        label: "انتقادات و پیشنهادات",
-        icon: "feedback",
-        roles: ["Pilgrim"],
-      },
     );
   }
 
@@ -94,25 +92,20 @@ function buildNavItems(user: { roles: RoleName[] } | null): NavItem[] {
 
 function isNavItemActive(item: NavItem, pathname: string): boolean {
   if (item.to === "/dashboard") return pathname === "/dashboard";
+  if (item.to === "/mawkibs/map") {
+    return pathname === "/mawkibs/map" || /^\/mawkibs\/\d+\/view/.test(pathname);
+  }
   if (item.to === "/users") return pathname === "/users";
   if (item.to === "/reservations/new") return pathname === "/reservations/new";
   if (item.to === "/honorary-volunteers/my")
     return pathname === "/honorary-volunteers/my";
-  if (item.to === "/feedback") {
-    return (
-      pathname === "/feedback" ||
-      pathname === "/feedback/new" ||
-      pathname.startsWith("/feedback/new/") ||
-      /^\/feedback\/\d+\/edit/.test(pathname)
-    );
-  }
-  if (item.to === "/feedback/admin") {
-    return pathname === "/feedback/admin";
-  }
   if (item.to === "/reservations") {
     return (
       pathname === "/reservations" || /^\/reservations\/\d+/.test(pathname)
     );
+  }
+  if (item.to === "/mawkibs") {
+    return pathname === "/mawkibs";
   }
   return pathname === item.to || pathname.startsWith(`${item.to}/`);
 }
@@ -214,14 +207,15 @@ export function AdminLayout() {
     (user?.roles.includes("Admin") ?? false) ||
     (user?.roles.includes("MawkibOwner") ?? false);
   const showMawkibOwnersList = user?.roles.includes("Admin") ?? false;
-  const showMawkibOwnerFeedbackInbox =
-    user?.roles.includes("MawkibOwner") ?? false;
   const showCooperationNav =
     (user?.roles.includes("Admin") ?? false) ||
     (user?.roles.includes("MawkibOwner") ?? false);
   const showNewCooperationRequest =
     user?.roles.includes("MawkibOwner") ?? false;
   const showHonoraryServantsList = user?.roles.includes("Admin") ?? false;
+  const feedbackNavVariant = user
+    ? resolveFeedbackNavVariant(user.roles)
+    : null;
   const portalSectionsInsertIndex = getPortalSectionsInsertIndex(visibleNav);
 
   const toggleSidebarCollapsed = () => {
@@ -246,8 +240,7 @@ export function AdminLayout() {
       to={item.to}
       end={
         item.to === "/dashboard" ||
-        item.to === "/users" ||
-        item.to === "/feedback/admin"
+        item.to === "/users"
       }
       onClick={onClose}
       className={() =>
@@ -274,7 +267,6 @@ export function AdminLayout() {
                 <MawkibOwnerSidebarSection
                   collapsed={collapsed}
                   showOwnersList={showMawkibOwnersList}
-                  showFeedbackInbox={showMawkibOwnerFeedbackInbox}
                   onNavigate={onNavigate}
                 />
               )}
@@ -286,19 +278,25 @@ export function AdminLayout() {
                   onNavigate={onNavigate}
                 />
               )}
+              {feedbackNavVariant && (
+                <FeedbackSidebarSection
+                  collapsed={collapsed}
+                  variant={feedbackNavVariant}
+                  onNavigate={onNavigate}
+                />
+              )}
             </>
           )}
           {renderNavItem(item, collapsed, onNavigate)}
         </Fragment>
       ))}
       {portalSectionsInsertIndex >= visibleNav.length &&
-        (showMawkibOwnerNav || showCooperationNav) && (
+        (showMawkibOwnerNav || showCooperationNav || feedbackNavVariant) && (
           <>
             {showMawkibOwnerNav && (
               <MawkibOwnerSidebarSection
                 collapsed={collapsed}
                 showOwnersList={showMawkibOwnersList}
-                showFeedbackInbox={showMawkibOwnerFeedbackInbox}
                 onNavigate={onNavigate}
               />
             )}
@@ -307,6 +305,13 @@ export function AdminLayout() {
                 collapsed={collapsed}
                 showNewRequest={showNewCooperationRequest}
                 showServantsList={showHonoraryServantsList}
+                onNavigate={onNavigate}
+              />
+            )}
+            {feedbackNavVariant && (
+              <FeedbackSidebarSection
+                collapsed={collapsed}
+                variant={feedbackNavVariant}
                 onNavigate={onNavigate}
               />
             )}

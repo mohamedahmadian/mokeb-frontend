@@ -182,7 +182,7 @@ export function ReservationsPage() {
     ? ["reservations-admin", appliedFilters]
     : ["reservations-my", appliedFilters];
 
-  const { data: reservations = [], isLoading } = useQuery({
+  const { data: reservations = [], isLoading, refetch } = useQuery({
     queryKey,
     queryFn: () =>
       isAdmin
@@ -290,10 +290,21 @@ export function ReservationsPage() {
     },
   });
 
-  const applyFilters = () => setAppliedFilters(parseFilters(filters));
+  const applyFilters = () => {
+    const next = parseFilters(filters);
+    if (JSON.stringify(next) === JSON.stringify(appliedFilters)) {
+      void refetch();
+      return;
+    }
+    setAppliedFilters(next);
+  };
 
   const resetFilters = () => {
     setFilters(emptyFilters);
+    if (Object.keys(appliedFilters).length === 0) {
+      void refetch();
+      return;
+    }
     setAppliedFilters({});
   };
 

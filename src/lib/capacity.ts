@@ -28,8 +28,63 @@ export function formatGuestCount(male: number, female: number) {
   return `${parts.join(' — ')} (مجموع: ${male + female})`;
 }
 
-/** ظرفیت باقی‌مانده / ظرفیت کل — مثلاً ۳/۱۰ */
-export function formatCapacityFraction(available: number | undefined, total: number) {
-  const remaining = available ?? total;
-  return `${remaining}/${total}`;
+/** عدد با ارقام فارسی — مثلاً ۱۲ */
+export function formatPersianNumber(value: number): string {
+  return value.toLocaleString('fa-IR');
+}
+
+/** ظرفیت پرشده از روی باقی‌مانده */
+export function occupiedFromAvailable(
+  total: number,
+  available: number | undefined | null,
+): number {
+  const remaining = Math.max(0, available ?? 0);
+  return Math.max(0, total - remaining);
+}
+
+/** ظرفیت پرشده / ظرفیت کل — مثلاً ۹/۱۰ */
+export function formatOccupiedFraction(occupied: number, total: number) {
+  return `${formatPersianNumber(occupied)}/${formatPersianNumber(total)}`;
+}
+
+/** ظرفیت پرشده / ظرفیت کل — available و total از API */
+export function formatCapacityFraction(
+  available: number | undefined | null,
+  total: number,
+) {
+  return formatOccupiedFraction(occupiedFromAvailable(total, available), total);
+}
+
+/** عدد لاتین — برای نمایش ظرفیت در صفحات عمومی */
+export function formatLatinNumber(value: number): string {
+  return String(Math.max(0, value));
+}
+
+/** ظرفیت پرشده / کل با ارقام لاتین */
+export function formatCapacityFractionLatin(
+  available: number | undefined | null,
+  total: number,
+) {
+  const occupied = occupiedFromAvailable(total, available);
+  return `${formatLatinNumber(occupied)}/${formatLatinNumber(total)}`;
+}
+
+/** پرانتز ظرفیت خالی — مثلاً (1 خالی) */
+export function formatRemainingCapacityHint(available: number): string {
+  if (available <= 0) return '(تکمیل ظرفیت)';
+  return `(${formatPersianNumber(available)} خالی)`;
+}
+
+/** پرانتز ظرفیت خالی با ارقام لاتین */
+export function formatRemainingCapacityHintLatin(available: number): string {
+  if (available <= 0) return '(تکمیل ظرفیت)';
+  return `(${formatLatinNumber(available)} خالی)`;
+}
+
+export function mawkibAvailableMale(mawkib: { availableMaleCapacity?: number | null }) {
+  return mawkib.availableMaleCapacity ?? 0;
+}
+
+export function mawkibAvailableFemale(mawkib: { availableFemaleCapacity?: number | null }) {
+  return mawkib.availableFemaleCapacity ?? 0;
 }

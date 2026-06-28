@@ -6,6 +6,7 @@ export type MawkibFeedbackReplyStatus = 'all' | 'replied' | 'pending';
 export interface MawkibFeedbackFilters {
   search?: string;
   mawkibId?: number;
+  authorUserId?: number;
   replyStatus?: MawkibFeedbackReplyStatus;
   createdFrom?: string;
   createdTo?: string;

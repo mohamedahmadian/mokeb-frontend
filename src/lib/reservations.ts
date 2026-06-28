@@ -29,6 +29,7 @@ export interface CreateReservationPayload {
   pilgrimUserId?: number;
   plannedCheckInTime?: string;
   plannedCheckOutTime?: string;
+  skipCapacityCheck?: boolean;
 }
 
 function buildParams(filters?: ReservationFilters) {

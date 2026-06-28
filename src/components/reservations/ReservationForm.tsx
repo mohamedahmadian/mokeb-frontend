@@ -120,6 +120,7 @@ export function ReservationForm({
     DEFAULT_CHECK_OUT_TIME,
   );
   const [submitting, setSubmitting] = useState(false);
+  const [skipCapacityCheck, setSkipCapacityCheck] = useState(false);
 
   const [pilgrimMode, setPilgrimMode] = useState<PilgrimMode>("select");
   const [selectedPilgrim, setSelectedPilgrim] = useState<PilgrimOption | null>(
@@ -161,13 +162,21 @@ export function ReservationForm({
     setPilgrimMode("select");
   }, [initialPilgrimUserId, isPilgrim, user]);
 
-  const mawkibFilters = {
-    reservationDateFrom: dateStart,
-    reservationDateTo: dateEnd,
-    hasAvailability: true,
-    minAvailableMaleCapacity: maleGuestCount,
-    minAvailableFemaleCapacity: femaleGuestCount,
-  };
+  const canBypassCapacity = isPanel && (isAdmin || isMawkibOwner);
+
+  const mawkibFilters =
+    canBypassCapacity && skipCapacityCheck
+      ? {
+          reservationDateFrom: dateStart,
+          reservationDateTo: dateEnd,
+        }
+      : {
+          reservationDateFrom: dateStart,
+          reservationDateTo: dateEnd,
+          hasAvailability: true,
+          minAvailableMaleCapacity: maleGuestCount,
+          minAvailableFemaleCapacity: femaleGuestCount,
+        };
 
   const mawkibQueryKey = isPanel
     ? isMawkibOwner
@@ -188,6 +197,7 @@ export function ReservationForm({
       dateEnd,
       maleGuestCount,
       femaleGuestCount,
+      skipCapacityCheck,
       isMawkibOwner ? user?.id : null,
     ],
     queryFn: () => {
@@ -201,7 +211,8 @@ export function ReservationForm({
     enabled: !!dateStart && !!dateEnd && maleGuestCount + femaleGuestCount >= 1,
   });
 
-  const hasCapacity = !mawkibsError && mawkibs.length > 0;
+  const hasAvailableMawkibs = !mawkibsError && mawkibs.length > 0;
+  const capacityBlocksSubmit = !skipCapacityCheck && !hasAvailableMawkibs;
 
   useEffect(() => {
     if (mawkibsLoading || mawkibsError) return;
@@ -338,7 +349,7 @@ export function ReservationForm({
       return;
     }
 
-    if (!hasCapacity) {
+    if (capacityBlocksSubmit) {
       toast.error("در حال حاضر ظرفیت خالی وجود ندارد");
       return;
     }
@@ -418,6 +429,7 @@ export function ReservationForm({
         companions: serializeCompanions(companionsForm),
         plannedCheckInTime: plannedCheckInTime || undefined,
         plannedCheckOutTime: plannedCheckOutTime || undefined,
+        skipCapacityCheck: skipCapacityCheck || undefined,
       });
 
       queryClient.invalidateQueries({ queryKey: ["reservations-admin"] });
@@ -614,6 +626,9 @@ export function ReservationForm({
               clearable={false}
             />
           </div>
+          <p className="text-xs text-slate-500">
+            تاریخ پایان، آخرین روزی است که مهمان در موکب حضور دارد (شامل همان روز).
+          </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block">
               <span className="mb-1.5 block text-sm text-slate-600">
@@ -681,8 +696,33 @@ export function ReservationForm({
         <SectionHeader
           icon={<IconHome />}
           title="انتخاب موکب"
-          subtitle="موکب ها بر اساس تاریخ اقامت و تعداد همراهان نمایش داده می شوند  "
+          subtitle={
+            skipCapacityCheck && canBypassCapacity
+              ? "همه موکب‌های در دسترس نمایش داده می‌شوند؛ ظرفیت در این حالت بررسی نمی‌شود"
+              : "موکب ها بر اساس تاریخ اقامت و تعداد همراهان نمایش داده می شوند  "
+          }
         />
+
+        {canBypassCapacity && (
+          <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3">
+            <input
+              type="checkbox"
+              checked={skipCapacityCheck}
+              onChange={(e) => {
+                setSkipCapacityCheck(e.target.checked);
+                setSelectedMawkibId(null);
+              }}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+            />
+            <span className="text-sm leading-relaxed text-amber-900">
+              <span className="font-medium">ثبت بدون بررسی ظرفیت</span>
+              <span className="mt-1 block text-xs text-amber-800">
+                با انتخاب این گزینه، ظرفیت موکب بررسی نمی‌شود و مسئولیت پر بودن
+                موکب بر عهده شماست.
+              </span>
+            </span>
+          </label>
+        )}
 
         {mawkibsError ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-600">
@@ -692,21 +732,41 @@ export function ReservationForm({
           <div className="flex items-center justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#c5d4e8] border-t-[#4a6fa5]" />
           </div>
-        ) : !hasCapacity ? (
+        ) : !hasAvailableMawkibs ? (
           <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-600">
               <IconUsers />
             </div>
-            <p className="font-medium text-amber-900">
-              متأسفانه چون ظرفیت خالی نداریم نمی‌توانیم در خدمتتان باشیم
-            </p>
-            <p className="mt-2 text-sm text-amber-700">
-              لطفاً تاریخ دیگری انتخاب کنید یا بعداً دوباره مراجعه فرمایید.
-            </p>
-            <p className="mt-2 text-xs text-amber-600">
-              ممکن است تاریخ انتخابی شما قبل از شروع خدمات برخی موکب‌ها باشد یا
-              از حداکثر بازه رزرو آن‌ها بیشتر باشد.
-            </p>
+            {skipCapacityCheck && canBypassCapacity ? (
+              <>
+                <p className="font-medium text-amber-900">
+                  موکبی برای انتخاب یافت نشد
+                </p>
+                <p className="mt-2 text-sm text-amber-700">
+                  ممکن است تاریخ انتخابی قبل از شروع خدمات موکب باشد یا موکب
+                  تاییدشده‌ای در دسترس نباشد.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-medium text-amber-900">
+                  متأسفانه چون ظرفیت خالی نداریم نمی‌توانیم در خدمتتان باشیم
+                </p>
+                <p className="mt-2 text-sm text-amber-700">
+                  لطفاً تاریخ دیگری انتخاب کنید یا بعداً دوباره مراجعه فرمایید.
+                </p>
+                <p className="mt-2 text-xs text-amber-600">
+                  ممکن است تاریخ انتخابی شما قبل از شروع خدمات برخی موکب‌ها باشد یا
+                  از حداکثر بازه رزرو آن‌ها بیشتر باشد.
+                </p>
+                {canBypassCapacity && (
+                  <p className="mt-3 text-xs font-medium text-amber-800">
+                    در صورت نیاز می‌توانید گزینه «ثبت بدون بررسی ظرفیت» را فعال
+                    کنید.
+                  </p>
+                )}
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -753,8 +813,9 @@ export function ReservationForm({
           type="submit"
           disabled={
             submitting ||
-            !hasCapacity ||
+            capacityBlocksSubmit ||
             mawkibsLoading ||
+            !selectedMawkibId ||
             maleGuestCount + femaleGuestCount < 1
           }
           className={`${guestTheme.btnPrimaryLg} flex-1 py-3.5 sm:min-w-[200px]`}

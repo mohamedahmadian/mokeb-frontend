@@ -8,6 +8,7 @@ export function AdminFeedbackPage() {
       queryKeyPrefix="mawkib-feedback-admin"
       emptyMessage="انتقاد یا پیشنهادی ثبت نشده است"
       fetchList={mawkibFeedbackApi.listAll}
+      mawkibScope="admin"
     />
   );
 }

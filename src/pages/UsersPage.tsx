@@ -39,7 +39,7 @@ export function UsersPage() {
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
 
-  const { data: users = [], isLoading } = useQuery({
+  const { data: users = [], isLoading, refetch } = useQuery({
     queryKey: ['users', appliedFilters],
     queryFn: () => usersApi.getAll(appliedFilters),
   });
@@ -72,6 +72,24 @@ export function UsersPage() {
       toastApiError(error, 'خطا در حذف کاربر');
     },
   });
+
+  const applyFilters = () => {
+    const next = toApiFilters(filters);
+    if (JSON.stringify(next) === JSON.stringify(appliedFilters)) {
+      void refetch();
+      return;
+    }
+    setAppliedFilters(next);
+  };
+
+  const resetFilters = () => {
+    setFilters(emptyFilters);
+    if (Object.keys(appliedFilters).length === 0) {
+      void refetch();
+      return;
+    }
+    setAppliedFilters({});
+  };
 
   const openCreate = () => {
     setEditingUser(null);
@@ -130,13 +148,7 @@ export function UsersPage() {
         }
       />
 
-      <FilterPanel
-        onApply={() => setAppliedFilters(toApiFilters(filters))}
-        onReset={() => {
-          setFilters(emptyFilters);
-          setAppliedFilters({});
-        }}
-      >
+      <FilterPanel onApply={applyFilters} onReset={resetFilters}>
         <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <input
             type="text"

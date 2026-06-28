@@ -9,6 +9,7 @@ interface MawkibFilterSelectProps {
   onChange: (mawkibId: string) => void;
   className?: string;
   placeholder?: string;
+  scope?: 'my' | 'admin';
 }
 
 export function MawkibFilterSelect({
@@ -16,10 +17,12 @@ export function MawkibFilterSelect({
   onChange,
   className = filterInputClass,
   placeholder = 'همه موکب‌ها',
+  scope = 'my',
 }: MawkibFilterSelectProps) {
   const { data: mawkibs = [], isLoading } = useQuery({
-    queryKey: ['mawkibs-my-filter'],
-    queryFn: () => mawkibsApi.getMyList(),
+    queryKey: ['mawkibs-filter', scope],
+    queryFn: () =>
+      scope === 'admin' ? mawkibsApi.getAdminList() : mawkibsApi.getMyList(),
   });
 
   const options = useMemo(

@@ -3,18 +3,19 @@ import { useQuery } from "@tanstack/react-query";
 import { DataCard } from "../ui/DataCard";
 import { FilterPanel } from "../ui/FilterPanel";
 import { PageHeader } from "../ui/PageHeader";
-import { formatPersianDateFromIso, PersianDateInput } from "../ui/PersianDateInput";
+import {
+  formatPersianDateTimeFromIso,
+  PersianDateInput,
+} from "../ui/PersianDateInput";
+import { MawkibFilterSelect } from "../mawkibs/MawkibFilterSelect";
+import { PilgrimFilterSelect } from "../reservations/PilgrimFilterSelect";
 import { MawkibFeedbackDetailModal } from "../mawkib-feedback/MawkibFeedbackDetailModal";
 import {
-  FEEDBACK_CONTENT_PREVIEW_LENGTH,
-  FeedbackReplyListCell,
-  FeedbackViewReplyButton,
-  hasOwnerReply,
+  FeedbackReviewButton,
   replyStatusBadge,
 } from "../mawkib-feedback/feedback-list-ui";
 import type { MawkibFeedbackFilters } from "../../lib/mawkib-feedback";
 import { filterInputClass } from "../../lib/styles";
-import { truncateText } from "../../lib/text";
 import type { MawkibFeedback } from "../../types";
 
 const replyStatusLabels: Record<string, string> = {
@@ -23,11 +24,56 @@ const replyStatusLabels: Record<string, string> = {
   pending: "در انتظار پاسخ",
 };
 
+interface FilterDraft {
+  search: string;
+  replyStatus: MawkibFeedbackFilters["replyStatus"];
+  createdFrom: string;
+  createdTo: string;
+  pilgrimUserId: string;
+  mawkibId: string;
+}
+
+const emptyDraft = (): FilterDraft => ({
+  search: "",
+  replyStatus: "all",
+  createdFrom: "",
+  createdTo: "",
+  pilgrimUserId: "",
+  mawkibId: "",
+});
+
+function draftToFilters(draft: FilterDraft): MawkibFeedbackFilters {
+  const filters: MawkibFeedbackFilters = {
+    replyStatus: draft.replyStatus ?? "all",
+  };
+
+  const search = draft.search.trim();
+  if (search) filters.search = search;
+
+  if (draft.createdFrom) filters.createdFrom = draft.createdFrom;
+  if (draft.createdTo) filters.createdTo = draft.createdTo;
+
+  const mawkibId = draft.mawkibId ? parseInt(draft.mawkibId, 10) : NaN;
+  if (!Number.isNaN(mawkibId) && mawkibId > 0) {
+    filters.mawkibId = mawkibId;
+  }
+
+  const authorUserId = draft.pilgrimUserId
+    ? parseInt(draft.pilgrimUserId, 10)
+    : NaN;
+  if (!Number.isNaN(authorUserId) && authorUserId > 0) {
+    filters.authorUserId = authorUserId;
+  }
+
+  return filters;
+}
+
 interface FeedbackInboxListProps {
   title: string;
   queryKeyPrefix: string;
   emptyMessage: string;
   fetchList: (filters: MawkibFeedbackFilters) => Promise<MawkibFeedback[]>;
+  mawkibScope?: "my" | "admin";
 }
 
 export function FeedbackInboxList({
@@ -35,13 +81,12 @@ export function FeedbackInboxList({
   queryKeyPrefix,
   emptyMessage,
   fetchList,
+  mawkibScope = "my",
 }: FeedbackInboxListProps) {
-  const [filters, setFilters] = useState<MawkibFeedbackFilters>({
-    replyStatus: "all",
-  });
-  const [draft, setDraft] = useState<MawkibFeedbackFilters>({
-    replyStatus: "all",
-  });
+  const [filters, setFilters] = useState<MawkibFeedbackFilters>(() =>
+    draftToFilters(emptyDraft()),
+  );
+  const [draft, setDraft] = useState<FilterDraft>(() => emptyDraft());
   const [viewing, setViewing] = useState<MawkibFeedback | null>(null);
 
   const queryKey = useMemo(
@@ -49,38 +94,75 @@ export function FeedbackInboxList({
     [queryKeyPrefix, filters],
   );
 
-  const { data: feedbacks = [], isLoading } = useQuery({
+  const { data: feedbacks = [], isLoading, refetch } = useQuery({
     queryKey,
     queryFn: () => fetchList(filters),
   });
 
   const openView = (item: MawkibFeedback) => setViewing(item);
 
+  const applyFilters = () => {
+    const next = draftToFilters(draft);
+    if (JSON.stringify(next) === JSON.stringify(filters)) {
+      void refetch();
+      return;
+    }
+    setFilters(next);
+  };
+
+  const resetFilters = () => {
+    const reset = emptyDraft();
+    setDraft(reset);
+    const next = draftToFilters(reset);
+    if (JSON.stringify(next) === JSON.stringify(filters)) {
+      void refetch();
+      return;
+    }
+    setFilters(next);
+  };
+
   return (
     <div>
       <PageHeader title={title} />
 
-      <FilterPanel
-        onApply={() => setFilters({ ...draft })}
-        onReset={() => {
-          const reset: MawkibFeedbackFilters = { replyStatus: "all" };
-          setDraft(reset);
-          setFilters(reset);
-        }}
-      >
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <FilterPanel onApply={applyFilters} onReset={resetFilters}>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           <label className="block text-sm">
-            <span className="mb-1 block text-slate-600">جستجو</span>
+            <span className="mb-1 block text-slate-600">زائر</span>
+            <PilgrimFilterSelect
+              value={draft.pilgrimUserId}
+              onChange={(pilgrimUserId) =>
+                setDraft((prev) => ({ ...prev, pilgrimUserId }))
+              }
+              placeholder="جستجو و انتخاب زائر..."
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-slate-600">موکب</span>
+            <MawkibFilterSelect
+              value={draft.mawkibId}
+              onChange={(mawkibId) =>
+                setDraft((prev) => ({ ...prev, mawkibId }))
+              }
+              scope={mawkibScope}
+              placeholder="جستجو و انتخاب موکب..."
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-slate-600">متن یا پاسخ</span>
             <input
               type="search"
-              value={draft.search ?? ""}
+              value={draft.search}
               onChange={(e) =>
                 setDraft((prev) => ({ ...prev, search: e.target.value }))
               }
               className={filterInputClass}
-              placeholder="متن، نام زائر، موکب..."
+              placeholder="جستجو در متن انتقاد یا پاسخ..."
             />
           </label>
+        </div>
+
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <label className="block text-sm">
             <span className="mb-1 block text-slate-600">وضعیت پاسخ</span>
             <select
@@ -103,7 +185,7 @@ export function FeedbackInboxList({
           <label className="block text-sm">
             <span className="mb-1 block text-slate-600">از تاریخ</span>
             <PersianDateInput
-              value={draft.createdFrom ?? ""}
+              value={draft.createdFrom}
               onChange={(createdFrom) =>
                 setDraft((prev) => ({ ...prev, createdFrom }))
               }
@@ -113,7 +195,7 @@ export function FeedbackInboxList({
           <label className="block text-sm">
             <span className="mb-1 block text-slate-600">تا تاریخ</span>
             <PersianDateInput
-              value={draft.createdTo ?? ""}
+              value={draft.createdTo}
               minDate={draft.createdFrom}
               onChange={(createdTo) =>
                 setDraft((prev) => ({ ...prev, createdTo }))
@@ -138,24 +220,18 @@ export function FeedbackInboxList({
                 <DataCard
                   key={item.id}
                   title={item.author.fullName}
-                  subtitle={formatPersianDateFromIso(item.createdAt)}
+                  subtitle={formatPersianDateTimeFromIso(item.createdAt)}
                   badge={replyStatusBadge(item)}
-                  onClick={() => openView(item)}
                   rows={[
-                    { label: "موکب", value: truncateText(item.mawkib.name, 40) },
-                    { label: "متن", value: truncateText(item.content, FEEDBACK_CONTENT_PREVIEW_LENGTH) },
+                    { label: "موکب", value: item.mawkib.name },
                   ]}
                   actions={
-                    hasOwnerReply(item) ? (
-                      <FeedbackViewReplyButton
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openView(item);
-                        }}
-                      />
-                    ) : (
-                      <span className="text-xs text-slate-400">در انتظار پاسخ</span>
-                    )
+                    <FeedbackReviewButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openView(item);
+                      }}
+                    />
                   }
                 />
               ))
@@ -169,16 +245,15 @@ export function FeedbackInboxList({
                   <th className="px-4 py-3 text-right">تاریخ</th>
                   <th className="px-4 py-3 text-right">زائر</th>
                   <th className="px-4 py-3 text-right">موکب</th>
-                  <th className="px-4 py-3 text-right">متن</th>
-                  <th className="px-4 py-3 text-right">پاسخ</th>
                   <th className="px-4 py-3 text-right">وضعیت</th>
+                  <th className="px-4 py-3 text-right">عملیات</th>
                 </tr>
               </thead>
               <tbody>
                 {feedbacks.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={5}
                       className="px-4 py-8 text-center text-slate-400"
                     >
                       {emptyMessage}
@@ -188,29 +263,19 @@ export function FeedbackInboxList({
                   feedbacks.map((item) => (
                     <tr
                       key={item.id}
-                      onClick={() => openView(item)}
-                      className="cursor-pointer border-t border-slate-100 transition hover:bg-slate-50"
+                      className="border-t border-slate-100 transition hover:bg-slate-50"
                     >
                       <td className="whitespace-nowrap px-4 py-3">
-                        {formatPersianDateFromIso(item.createdAt)}
+                        {formatPersianDateTimeFromIso(item.createdAt)}
                       </td>
                       <td className="px-4 py-3">{item.author.fullName}</td>
                       <td className="px-4 py-3">{item.mawkib.name}</td>
-                      <td className="max-w-xs px-4 py-3">
-                        <span className="line-clamp-2 text-slate-800">
-                          {truncateText(item.content, FEEDBACK_CONTENT_PREVIEW_LENGTH)}
-                        </span>
-                      </td>
-                      <td
-                        className="min-w-[12rem] max-w-sm px-4 py-3"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <FeedbackReplyListCell
-                          feedback={item}
-                          onView={() => openView(item)}
+                      <td className="px-4 py-3">{replyStatusBadge(item)}</td>
+                      <td className="px-4 py-3">
+                        <FeedbackReviewButton
+                          onClick={() => openView(item)}
                         />
                       </td>
-                      <td className="px-4 py-3">{replyStatusBadge(item)}</td>
                     </tr>
                   ))
                 )}

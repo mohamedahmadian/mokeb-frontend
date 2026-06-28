@@ -47,7 +47,7 @@ export function FeedbackListPage() {
 
   const queryKey = useMemo(() => ["mawkib-feedback-my", filters], [filters]);
 
-  const { data: feedbacks = [], isLoading } = useQuery({
+  const { data: feedbacks = [], isLoading, refetch } = useQuery({
     queryKey,
     queryFn: () => mawkibFeedbackApi.listMine(filters),
   });
@@ -112,10 +112,21 @@ export function FeedbackListPage() {
       </div>
 
       <FilterPanel
-        onApply={() => setFilters({ ...draft })}
+        onApply={() => {
+          const next = { ...draft };
+          if (JSON.stringify(next) === JSON.stringify(filters)) {
+            void refetch();
+            return;
+          }
+          setFilters(next);
+        }}
         onReset={() => {
           const reset: MawkibFeedbackFilters = { replyStatus: "all" };
           setDraft(reset);
+          if (JSON.stringify(reset) === JSON.stringify(filters)) {
+            void refetch();
+            return;
+          }
           setFilters(reset);
         }}
       >

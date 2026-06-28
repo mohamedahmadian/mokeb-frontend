@@ -6,6 +6,7 @@ import { formatGuestCount } from "../../lib/capacity";
 import { RESERVATION_STATUS_LABELS } from "../../lib/constants";
 import { formatTimeFa, formatTimeFromIso } from "../../lib/format-time";
 import { lookupOwnerReservation } from "../../lib/mawkib-owner-dashboard";
+import type { lookupAdminReservation } from "../../lib/admin-dashboard";
 import { reservationsApi } from "../../lib/reservations";
 import { btnAction, btnPrimary, inputClass } from "../../lib/styles";
 import { toast, toastApiError } from "../../lib/toast";
@@ -68,12 +69,14 @@ function TrackResultRow({
   checkingIn,
   detailsLinkRef,
   highlightDetails = false,
+  showCheckIn = true,
 }: {
   reservation: Reservation;
   onCheckIn: (id: number) => void;
   checkingIn: boolean;
   detailsLinkRef?: RefObject<HTMLAnchorElement | null>;
   highlightDetails?: boolean;
+  showCheckIn?: boolean;
 }) {
   const endDate = reservation.reservationEndDate ?? reservation.reservationDate;
   const hasActualCheckIn = !!reservation.actualCheckInAt;
@@ -160,7 +163,7 @@ function TrackResultRow({
             <NavIcon name="info" className="h-3.5 w-3.5" strokeWidth={1.75} />
             مشاهده جزئیات
           </Link>
-          {canCheckIn && (
+          {showCheckIn && canCheckIn && (
             <button
               type="button"
               onClick={() => onCheckIn(reservation.id)}
@@ -177,7 +180,19 @@ function TrackResultRow({
   );
 }
 
-export function ReservationTrackLookup() {
+type LookupResult = Awaited<
+  ReturnType<typeof lookupOwnerReservation | typeof lookupAdminReservation>
+>;
+
+interface ReservationTrackLookupProps {
+  lookupFn?: (query: string) => Promise<LookupResult>;
+  showCheckIn?: boolean;
+}
+
+export function ReservationTrackLookup({
+  lookupFn = lookupOwnerReservation,
+  showCheckIn = true,
+}: ReservationTrackLookupProps = {}) {
   const navigate = useNavigate();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const detailsLinkRef = useRef<HTMLAnchorElement>(null);
@@ -202,7 +217,7 @@ export function ReservationTrackLookup() {
     setLoading(true);
     setSearched(true);
     try {
-      const result = await lookupOwnerReservation(trimmed);
+      const result = await lookupFn(trimmed);
       const matches = result.reservation
         ? [result.reservation, ...result.alternatives]
         : [];
@@ -309,6 +324,7 @@ export function ReservationTrackLookup() {
           checkingIn={checkingInId === reservation.id}
           detailsLinkRef={index === 0 ? detailsLinkRef : undefined}
           highlightDetails={index === 0}
+          showCheckIn={showCheckIn}
         />
       ))}
     </section>

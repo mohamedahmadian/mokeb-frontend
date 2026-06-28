@@ -51,10 +51,29 @@ export function MawkibOwnersPage() {
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
 
-  const { data: owners = [], isLoading } = useQuery({
+  const { data: owners = [], isLoading, refetch } = useQuery({
     queryKey: ['mawkib-owners-list', appliedFilters],
     queryFn: () => usersApi.getMawkibOwners(appliedFilters),
   });
+
+  const applyFilters = () => {
+    const next = toApiFilters(filters);
+    if (JSON.stringify(next) === JSON.stringify(appliedFilters)) {
+      void refetch();
+      return;
+    }
+    setAppliedFilters(next);
+  };
+
+  const resetFilters = () => {
+    setFilters(emptyFilters);
+    const next = toApiFilters(emptyFilters);
+    if (JSON.stringify(next) === JSON.stringify(appliedFilters)) {
+      void refetch();
+      return;
+    }
+    setAppliedFilters(next);
+  };
 
   const createMutation = useMutation({
     mutationFn: (payload: CreateUserPayload) => usersApi.create(payload),
@@ -166,13 +185,7 @@ export function MawkibOwnersPage() {
         }
       />
 
-      <FilterPanel
-        onApply={() => setAppliedFilters(toApiFilters(filters))}
-        onReset={() => {
-          setFilters(emptyFilters);
-          setAppliedFilters({ role: 'MawkibOwner' });
-        }}
-      >
+      <FilterPanel onApply={applyFilters} onReset={resetFilters}>
         <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <input
             type="text"

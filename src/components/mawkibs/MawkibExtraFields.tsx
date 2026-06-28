@@ -38,6 +38,14 @@ export const MAWKIB_AMENITY_FIELDS = [
   { key: 'familyFriendly' as const, label: 'خانوادگی' },
 ];
 
+export type MawkibAmenityKey = (typeof MAWKIB_AMENITY_FIELDS)[number]['key'];
+
+export function emptyMawkibAmenityFilters(): Record<MawkibAmenityKey, false> {
+  return Object.fromEntries(
+    MAWKIB_AMENITY_FIELDS.map(({ key }) => [key, false]),
+  ) as Record<MawkibAmenityKey, false>;
+}
+
 export const MAWKIB_NOTIFY_FIELDS = [
   { key: 'telegramChannel' as const, label: 'کانال تلگرام', placeholder: 'آیدی یا لینک کانال' },
   { key: 'whatsapp' as const, label: 'واتس‌اپ', placeholder: 'شماره یا لینک' },
@@ -126,15 +134,19 @@ export function mawkibExtraFieldsToPayload(
 interface MawkibExtraFieldsProps {
   values: MawkibExtraFormValues;
   onChange: (values: MawkibExtraFormValues) => void;
+  readOnly?: boolean;
 }
 
-export function MawkibExtraFields({ values, onChange }: MawkibExtraFieldsProps) {
+export function MawkibExtraFields({ values, onChange, readOnly = false }: MawkibExtraFieldsProps) {
   const setField = <K extends keyof MawkibExtraFormValues>(
     key: K,
     value: MawkibExtraFormValues[K],
   ) => {
+    if (readOnly) return;
     onChange({ ...values, [key]: value });
   };
+
+  const fieldProps = readOnly ? { disabled: true, readOnly: true } : {};
 
   return (
     <div className="space-y-4">
@@ -150,6 +162,7 @@ export function MawkibExtraFields({ values, onChange }: MawkibExtraFieldsProps) 
               searchPlaceholder="جستجوی کشور..."
               className={inputClass}
               clearable={false}
+              disabled={readOnly}
             />
           </label>
           <label className="block">
@@ -161,6 +174,7 @@ export function MawkibExtraFields({ values, onChange }: MawkibExtraFieldsProps) 
               placeholder="انتخاب شهر"
               searchPlaceholder="جستجوی شهر..."
               className={inputClass}
+              disabled={readOnly}
             />
           </label>
           <label className="block">
@@ -172,6 +186,7 @@ export function MawkibExtraFields({ values, onChange }: MawkibExtraFieldsProps) 
               onChange={(e) => setField('maxReservationDays', e.target.value)}
               className={inputClass}
               placeholder="بدون محدودیت"
+              {...fieldProps}
             />
           </label>
           <label className="block">
@@ -182,6 +197,7 @@ export function MawkibExtraFields({ values, onChange }: MawkibExtraFieldsProps) 
               onChange={(e) => setField('distanceToShrine', e.target.value)}
               className={inputClass}
               placeholder="مثلاً ۵۰۰ متر"
+              {...fieldProps}
             />
           </label>
         </div>
@@ -190,12 +206,18 @@ export function MawkibExtraFields({ values, onChange }: MawkibExtraFieldsProps) 
       <FormSection title="امکانات" icon={<NavIcon name="mawkibs" className="h-4 w-4" />}>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {MAWKIB_AMENITY_FIELDS.map(({ key, label }) => (
-            <label key={key} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2">
+            <label
+              key={key}
+              className={`flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 ${
+                readOnly ? 'bg-slate-50' : ''
+              }`}
+            >
               <input
                 type="checkbox"
                 checked={values[key]}
                 onChange={(e) => setField(key, e.target.checked)}
                 className="h-4 w-4 rounded border-slate-300 text-[#4a6fa5] focus:ring-[#4a6fa5]"
+                disabled={readOnly}
               />
               <span className="text-sm text-slate-700">{label}</span>
             </label>
@@ -212,6 +234,7 @@ export function MawkibExtraFields({ values, onChange }: MawkibExtraFieldsProps) 
           rows={3}
           className={inputClass}
           placeholder="قوانین و مقررات موکب..."
+          {...fieldProps}
         />
         </label>
       </FormSection>
@@ -228,6 +251,7 @@ export function MawkibExtraFields({ values, onChange }: MawkibExtraFieldsProps) 
                 className={inputClass}
                 placeholder={placeholder}
                 dir={type === 'url' ? 'ltr' : undefined}
+                {...fieldProps}
               />
             </label>
           ))}

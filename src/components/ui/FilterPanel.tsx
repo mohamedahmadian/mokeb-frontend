@@ -6,6 +6,7 @@ interface FilterPanelProps {
   children: ReactNode;
   onApply: () => void;
   onReset: () => void;
+  applyLabel?: string;
 }
 
 export function FilterPanel({
@@ -13,6 +14,7 @@ export function FilterPanel({
   children,
   onApply,
   onReset,
+  applyLabel = 'اعمال فیلتر',
 }: FilterPanelProps) {
   const [open, setOpen] = useState(false);
 
@@ -38,17 +40,23 @@ export function FilterPanel({
         {title}
       </h2>
 
-      <div className={`${open ? 'mt-3 block' : 'hidden'} md:block`}>
+      <form
+        className={`${open ? 'mt-3 block' : 'hidden'} md:block`}
+        onSubmit={(e) => {
+          e.preventDefault();
+          onApply();
+        }}
+      >
         {children}
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-          <button type="button" onClick={onApply} className={btnPrimary}>
-            اعمال فیلتر
+          <button type="submit" className={btnPrimary}>
+            {applyLabel}
           </button>
           <button type="button" onClick={onReset} className={btnSecondary}>
             پاک کردن
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

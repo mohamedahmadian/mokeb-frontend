@@ -126,3 +126,90 @@ html {
 [data-sonner-toast][data-type='info'] [data-icon] {
   color: #4a6fa5 !important;
 }
+
+/* Leaflet map — mawkib location search */
+.mawkib-map-root {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.mawkib-map-root .leaflet-container {
+  width: 100%;
+  height: 100%;
+  min-height: 24rem;
+  border-radius: 0.75rem;
+  background: #e2e8f0;
+}
+
+@media (min-width: 640px) {
+  .mawkib-map-root .leaflet-container {
+    min-height: 28rem;
+  }
+}
+
+.mawkib-mini-map {
+  height: 12rem;
+}
+
+.mawkib-mini-map .leaflet-container {
+  width: 100%;
+  height: 100%;
+  min-height: 12rem;
+  border-radius: 0.75rem;
+  background: #e2e8f0;
+}
+
+.mawkib-mini-map-modal {
+  height: 18rem;
+}
+
+.mawkib-mini-map-modal .leaflet-container {
+  min-height: 18rem;
+}
+
+@media (min-width: 640px) {
+  .mawkib-mini-map-modal {
+    height: 22rem;
+  }
+
+  .mawkib-mini-map-modal .leaflet-container {
+    min-height: 22rem;
+  }
+}
+
+.mawkib-map-hover-portal {
+  font-family: Vazir, ui-sans-serif, system-ui, sans-serif;
+}
+
+.mawkib-map-hover-card {
+  font-family: Vazir, ui-sans-serif, system-ui, sans-serif;
+}
+
+.mawkib-map-hover-card a {
+  color: #ffffff !important;
+  text-decoration: none !important;
+}
+
+.mawkib-leaflet-marker {
+  background: transparent;
+  border: none;
+}
+
+.mawkib-leaflet-marker-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: #4a6fa5;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 0.75rem;
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px;
+  font-family: inherit;
+}

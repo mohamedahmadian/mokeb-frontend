@@ -18,6 +18,7 @@ interface PersianDateInputProps {
   clearable?: boolean;
   minDate?: string;
   inputClassName?: string;
+  disabled?: boolean;
 }
 
 function toGregorianString(date: DateObject): string {
@@ -72,6 +73,7 @@ export function PersianDateInput({
   clearable = true,
   minDate,
   inputClassName,
+  disabled = false,
 }: PersianDateInputProps) {
   const pickerValue = fromGregorianString(value);
   const baseInputClass = inputClassName ?? filterInputClass;
@@ -88,6 +90,7 @@ export function PersianDateInput({
       locale={persian_fa}
       value={pickerValue}
       minDate={minDateValue}
+      disabled={disabled}
       onChange={(date) => {
         if (!date || Array.isArray(date)) {
           onChange('');
@@ -109,7 +112,7 @@ export function PersianDateInput({
       {label && !compact && (
         <span className="mb-1 block text-sm text-slate-600">{label}</span>
       )}
-      {clearable ? (
+      {clearable && !disabled ? (
         <DatePickerClearWrap hasValue={!!value} onClear={() => onChange('')}>
           {picker}
         </DatePickerClearWrap>

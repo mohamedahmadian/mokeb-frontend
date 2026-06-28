@@ -59,7 +59,7 @@ export function PilgrimsPage() {
     setAppliedFilters(buildInitialAppliedFilters(initialMawkibId));
   }, [initialMawkibId]);
 
-  const { data: pilgrims = [], isLoading } = useQuery({
+  const { data: pilgrims = [], isLoading, refetch } = useQuery({
     queryKey: ['pilgrims-list', appliedFilters],
     queryFn: () => usersApi.getPilgrims(appliedFilters),
   });
@@ -96,6 +96,24 @@ export function PilgrimsPage() {
       toastApiError(error, 'خطا در حذف زائر');
     },
   });
+
+  const applyFilters = () => {
+    const next = toApiFilters(filters);
+    if (JSON.stringify(next) === JSON.stringify(appliedFilters)) {
+      void refetch();
+      return;
+    }
+    setAppliedFilters(next);
+  };
+
+  const resetFilters = () => {
+    setFilters(emptyFilters);
+    if (Object.keys(appliedFilters).length === 0) {
+      void refetch();
+      return;
+    }
+    setAppliedFilters({});
+  };
 
   const renderActions = (pilgrim: AdminUser) => (
     <>
@@ -150,13 +168,7 @@ export function PilgrimsPage() {
         }
       />
 
-      <FilterPanel
-        onApply={() => setAppliedFilters(toApiFilters(filters))}
-        onReset={() => {
-          setFilters(emptyFilters);
-          setAppliedFilters({});
-        }}
-      >
+      <FilterPanel onApply={applyFilters} onReset={resetFilters}>
         <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {isMawkibOwner && !isAdmin && (
             <MawkibFilterSelect

@@ -1,58 +1,57 @@
-export function eachGregorianDay(start: string, end: string): string[] {
-  const days: string[] = [];
-  const cur = new Date(start + 'T12:00:00');
-  const endDate = new Date(end + 'T12:00:00');
-
-  while (cur <= endDate) {
-    const y = cur.getFullYear();
-    const m = String(cur.getMonth() + 1).padStart(2, '0');
-    const d = String(cur.getDate()).padStart(2, '0');
-    days.push(`${y}-${m}-${d}`);
-    cur.setDate(cur.getDate() + 1);
-  }
-
-  return days;
+/** Today as YYYY-MM-DD in local timezone. */
+export function todayGregorian(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
-export async function getMinCapacityInRange(
-  fetchCapacity: (date: string) => Promise<import('./capacity').MawkibCapacitySnapshot>,
-  start: string,
-  end: string,
-): Promise<import('./capacity').MawkibCapacitySnapshot> {
-  const days = eachGregorianDay(start, end);
-  const snapshots = await Promise.all(days.map((day) => fetchCapacity(day)));
+export function addGregorianDays(dateStr: string, days: number): string {
+  const d = new Date(`${dateStr}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Default capacity view: 7 days starting today. */
+export function defaultCapacityRange(): { startDate: string; endDate: string } {
+  const startDate = todayGregorian();
   return {
-    maleCapacity: snapshots[0]?.maleCapacity ?? 0,
-    femaleCapacity: snapshots[0]?.femaleCapacity ?? 0,
-    availableMale: Math.min(...snapshots.map((s) => s.availableMale)),
-    availableFemale: Math.min(...snapshots.map((s) => s.availableFemale)),
+    startDate,
+    endDate: addGregorianDays(startDate, 6),
   };
 }
 
-export function toDateOnlyString(value?: string | null): string | undefined {
-  if (!value) return undefined;
-  return value.slice(0, 10);
+export function countDaysInclusive(startDate: string, endDate: string): number {
+  const start = new Date(`${startDate}T12:00:00`);
+  const end = new Date(`${endDate}T12:00:00`);
+  const diff = Math.round((end.getTime() - start.getTime()) / 86_400_000);
+  return diff + 1;
 }
 
-export function countDaysInRange(start: string, end: string): number {
-  if (!start || !end) return 0;
-  return eachGregorianDay(start, end).length;
-}
-
-export function isWithinMaxReservationDays(
-  start: string,
-  end: string,
-  maxDays?: number | null,
+export function isRangeWithinBounds(
+  startDate: string,
+  endDate: string,
+  minDate: string,
+  maxDate: string,
 ): boolean {
-  if (!maxDays) return true;
-  return countDaysInRange(start, end) <= maxDays;
+  return startDate >= minDate && endDate <= maxDate && endDate >= startDate;
 }
 
 export function isOnOrAfterServiceStart(
   reservationStart: string,
-  serviceStartDate?: string | null,
+  serviceStartDate: string,
 ): boolean {
-  const serviceStart = toDateOnlyString(serviceStartDate);
-  if (!serviceStart || !reservationStart) return true;
-  return reservationStart >= serviceStart;
+  return reservationStart.slice(0, 10) >= serviceStartDate.slice(0, 10);
+}
+
+export function isWithinMaxReservationDays(
+  startDate: string,
+  endDate: string,
+  maxDays: number,
+): boolean {
+  return countDaysInclusive(startDate, endDate) <= maxDays;
 }

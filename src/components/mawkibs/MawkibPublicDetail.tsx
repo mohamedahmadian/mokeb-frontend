@@ -4,12 +4,19 @@ import {
   MAWKIB_AMENITY_FIELDS,
   MAWKIB_NOTIFY_FIELDS,
 } from "../mawkibs/MawkibExtraFields";
-import { formatCapacityFraction } from "../../lib/capacity";
+import {
+  formatCapacityFractionLatin,
+  mawkibAvailableFemale,
+  mawkibAvailableMale,
+} from "../../lib/capacity";
+import { RemainingCapacityHint } from "./RemainingCapacityHint";
 import {
   mawkibCityLabel,
   mawkibCountryLabel,
 } from "../../lib/mawkib-locations";
+import { guestTheme } from "../../lib/guest-theme";
 import type { Mawkib } from "../../types";
+import { MawkibLocationMapTrigger } from "./MawkibLocationMapTrigger";
 
 function Icon({
   children,
@@ -346,21 +353,38 @@ function FieldRow({
   );
 }
 
-function StatCard({
+function CapacityDetailRow({
   icon,
   label,
-  value,
+  available,
+  total,
 }: {
   icon: ReactNode;
   label: string;
-  value: ReactNode;
+  available: number;
+  total: number;
 }) {
+  const hasAvailability = available > 0;
+
   return (
-    <div className="flex items-center gap-2 rounded-lg bg-[#f0f4fa] px-2.5 py-1.5 ring-1 ring-[#e8eef6]">
+    <div className="flex min-w-0 items-start gap-1.5 rounded-lg bg-[#f0f4fa] px-2 py-2 ring-1 ring-[#e8eef6]">
       <IconBadge icon={icon} size="sm" />
-      <div className="min-w-0">
-        <p className="text-[10px] text-slate-500">{label}</p>
-        <p className="font-mono text-sm font-bold text-[#4a6fa5]">{value}</p>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[10px] text-slate-500">{label}</p>
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs sm:text-sm">
+          <span
+            className={`shrink-0 font-mono font-bold tabular-nums ${hasAvailability ? "text-[#4a6fa5]" : "text-amber-600"}`}
+            title="رزرو شده / ظرفیت کل"
+          >
+            {formatCapacityFractionLatin(available, total)}
+          </span>
+          <RemainingCapacityHint
+            available={available}
+            numerals="latin"
+            className="text-slate-500"
+            fullClassName="text-[10px] font-semibold text-red-600 sm:text-[11px]"
+          />
+        </div>
       </div>
     </div>
   );
@@ -372,14 +396,10 @@ function hasText(value?: string | null) {
 
 interface MawkibPublicDetailProps {
   mawkib: Mawkib;
+  onViewCapacity?: () => void;
 }
 
-export function MawkibPublicDetail({ mawkib }: MawkibPublicDetailProps) {
-  const hasCoords = mawkib.latitude != null && mawkib.longitude != null;
-  const mapUrl = hasCoords
-    ? `https://www.google.com/maps?q=${mawkib.latitude},${mawkib.longitude}`
-    : null;
-
+export function MawkibPublicDetail({ mawkib, onViewCapacity }: MawkibPublicDetailProps) {
   const activeAmenities = MAWKIB_AMENITY_FIELDS.filter((f) => mawkib[f.key]);
   const socialLinks = MAWKIB_NOTIFY_FIELDS.filter((f) =>
     hasText(mawkib[f.key]),
@@ -413,24 +433,29 @@ export function MawkibPublicDetail({ mawkib }: MawkibPublicDetailProps) {
       </DetailSection>
 
       <DetailSection icon={icons.calendar} title="ظرفیت و زمان‌بندی">
-        <div className="grid grid-cols-1 gap-2 py-2 sm:grid-cols-2">
-          <StatCard
+        <div className="grid grid-cols-2 gap-2 py-2">
+          <CapacityDetailRow
             icon={icons.male}
             label="ظرفیت آقایان"
-            value={formatCapacityFraction(
-              mawkib.availableMaleCapacity,
-              mawkib.maleCapacity,
-            )}
+            available={mawkibAvailableMale(mawkib)}
+            total={mawkib.maleCapacity}
           />
-          <StatCard
+          <CapacityDetailRow
             icon={icons.female}
             label="ظرفیت بانوان"
-            value={formatCapacityFraction(
-              mawkib.availableFemaleCapacity,
-              mawkib.femaleCapacity,
-            )}
+            available={mawkibAvailableFemale(mawkib)}
+            total={mawkib.femaleCapacity}
           />
         </div>
+        {onViewCapacity && (
+          <button
+            type="button"
+            onClick={onViewCapacity}
+            className={`${guestTheme.btnPrimary} mb-1 w-full`}
+          >
+            مشاهده ظرفیت موکب
+          </button>
+        )}
         {mawkib.serviceStartDate && (
           <FieldRow
             icon={icons.calendar}
@@ -481,39 +506,39 @@ export function MawkibPublicDetail({ mawkib }: MawkibPublicDetailProps) {
             value={mawkib.distanceToShrine}
           />
         )}
-        {mawkib.latitude != null && (
-          <FieldRow
+        {(mawkib.latitude != null || mawkib.longitude != null) && (
+          <PairFieldRow
             icon={icons.coordinates}
-            label="عرض جغرافیایی"
-            value={
-              <span className="font-mono" dir="ltr">
-                {mawkib.latitude}
-              </span>
+            leftLabel="عرض جغرافیایی"
+            leftValue={
+              mawkib.latitude != null ? (
+                <span className="font-mono" dir="ltr">
+                  {mawkib.latitude}
+                </span>
+              ) : (
+                <span className="text-slate-400">—</span>
+              )
+            }
+            rightLabel="طول جغرافیایی"
+            rightValue={
+              mawkib.longitude != null ? (
+                <span className="font-mono" dir="ltr">
+                  {mawkib.longitude}
+                </span>
+              ) : (
+                <span className="text-slate-400">—</span>
+              )
             }
           />
         )}
-        {mawkib.longitude != null && (
-          <FieldRow
-            icon={icons.coordinates}
-            label="طول جغرافیایی"
-            value={
-              <span className="font-mono" dir="ltr">
-                {mawkib.longitude}
-              </span>
-            }
+        <div className="py-1">
+          <p className="mb-2 text-xs text-slate-500">موقعیت روی نقشه</p>
+          <MawkibLocationMapTrigger
+            latitude={mawkib.latitude}
+            longitude={mawkib.longitude}
+            mawkibName={mawkib.name}
           />
-        )}
-        {mapUrl && (
-          <a
-            href={mapUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="my-1 flex items-center gap-2 rounded-lg bg-[#f0f4fa] px-2.5 py-2 text-sm font-medium text-[#3d5d8a] transition hover:bg-[#e8eef6]"
-          >
-            <IconBadge icon={icons.map} size="sm" />
-            مشاهده روی نقشه
-          </a>
-        )}
+        </div>
       </DetailSection>
 
       {activeAmenities.length > 0 && (

@@ -90,16 +90,6 @@ export function CooperationRequestDropdown({
                 <DropdownLinkContent icon="honorary" label="خادمین" />
               </Link>
             )}
-            <Link
-              to="/honorary-volunteers"
-              onClick={close}
-              className={listLinkClass(pathname === "/honorary-volunteers")}
-            >
-              <DropdownLinkContent
-                icon="myRequests"
-                label="درخواست‌های همکاری"
-              />
-            </Link>
             {showNewRequest && (
               <Link
                 to="/honorary-volunteers/new"
@@ -114,6 +104,16 @@ export function CooperationRequestDropdown({
                 />
               </Link>
             )}
+            <Link
+              to="/honorary-volunteers"
+              onClick={close}
+              className={listLinkClass(pathname === "/honorary-volunteers")}
+            >
+              <DropdownLinkContent
+                icon="myRequests"
+                label="تاریخچه درخواست‌های همکاری"
+              />
+            </Link>
           </div>
         </div>
       )}
@@ -152,21 +152,6 @@ export function CooperationRequestSidebarSection({
           </span>
         </NavLink>
       )}
-      <NavLink
-        to="/honorary-volunteers"
-        onClick={onNavigate}
-        className={({ isActive }) => listLinkClass(isActive, collapsed)}
-        title="درخواست‌های همکاری"
-      >
-        <span
-          className={`flex items-center ${collapsed ? "" : "gap-2.5 px-1"}`}
-        >
-          <NavIcon name="myRequests" />
-          <span className={collapsed ? "sr-only" : undefined}>
-            درخواست‌های همکاری
-          </span>
-        </span>
-      </NavLink>
       {showNewRequest && (
         <NavLink
           to="/honorary-volunteers/new"
@@ -184,6 +169,21 @@ export function CooperationRequestSidebarSection({
           </span>
         </NavLink>
       )}
+      <NavLink
+        to="/honorary-volunteers"
+        onClick={onNavigate}
+        className={({ isActive }) => listLinkClass(isActive, collapsed)}
+        title="تاریخچه درخواست‌های همکاری"
+      >
+        <span
+          className={`flex items-center ${collapsed ? "" : "gap-2.5 px-1"}`}
+        >
+          <NavIcon name="myRequests" />
+          <span className={collapsed ? "sr-only" : undefined}>
+            تاریخچه درخواست‌های همکاری
+          </span>
+        </span>
+      </NavLink>
     </div>
   );
 }

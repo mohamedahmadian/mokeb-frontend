@@ -4,7 +4,6 @@ import { NavIcon } from "./ui/NavIcons";
 interface MawkibOwnerNavProps {
   collapsed?: boolean;
   showOwnersList: boolean;
-  showFeedbackInbox?: boolean;
   onNavigate?: () => void;
 }
 
@@ -18,13 +17,17 @@ const listLinkClass = (isActive: boolean, collapsed: boolean) =>
   }`;
 
 function isReservationsActive(pathname: string) {
+  if (pathname === "/reservations/new") return false;
   return pathname === "/reservations" || /^\/reservations\/\d+/.test(pathname);
+}
+
+function isNewReservationActive(pathname: string) {
+  return pathname === "/reservations/new";
 }
 
 export function MawkibOwnerSidebarSection({
   collapsed = false,
   showOwnersList,
-  showFeedbackInbox = false,
   onNavigate,
 }: MawkibOwnerNavProps) {
   const { pathname } = useLocation();
@@ -55,16 +58,16 @@ export function MawkibOwnerSidebarSection({
         </NavLink>
       )}
       <NavLink
-        to="/mawkibs"
+        to="/reservations/new"
         onClick={onNavigate}
-        className={({ isActive }) => listLinkClass(isActive, collapsed)}
-        title="موکب‌ها"
+        className={listLinkClass(isNewReservationActive(pathname), collapsed)}
+        title="رزرو جدید"
       >
         <span
           className={`flex items-center ${collapsed ? "" : "gap-2.5 px-1"}`}
         >
-          <NavIcon name="mawkibs" />
-          <span className={collapsed ? "sr-only" : undefined}>موکب‌ها</span>
+          <NavIcon name="quickReserve" />
+          <span className={collapsed ? "sr-only" : undefined}>رزرو جدید</span>
         </span>
       </NavLink>
       <NavLink
@@ -82,23 +85,20 @@ export function MawkibOwnerSidebarSection({
           </span>
         </span>
       </NavLink>
-      {showFeedbackInbox && (
-        <NavLink
-          to="/feedback/inbox"
-          onClick={onNavigate}
-          className={({ isActive }) => listLinkClass(isActive, collapsed)}
-          title="انتقادات و پیشنهادات"
+      <NavLink
+        to="/mawkibs"
+        end
+        onClick={onNavigate}
+        className={({ isActive }) => listLinkClass(isActive, collapsed)}
+        title="موکب‌ها"
+      >
+        <span
+          className={`flex items-center ${collapsed ? "" : "gap-2.5 px-1"}`}
         >
-          <span
-            className={`flex items-center ${collapsed ? "" : "gap-2.5 px-1"}`}
-          >
-            <NavIcon name="feedback" />
-            <span className={collapsed ? "sr-only" : undefined}>
-              انتقادات و پیشنهادات
-            </span>
-          </span>
-        </NavLink>
-      )}
+          <NavIcon name="mawkibs" />
+          <span className={collapsed ? "sr-only" : undefined}>موکب‌ها</span>
+        </span>
+      </NavLink>
     </div>
   );
 }

@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { GuestPageHeader, GuestShell } from '../components/guest/GuestShell';
+import { GuestShell } from '../components/guest/GuestShell';
 import { MawkibPublicDetail } from '../components/mawkibs/MawkibPublicDetail';
+import { MawkibCapacityViewModal } from '../components/mawkibs/MawkibCapacityViewModal';
 import { guestTheme } from '../lib/guest-theme';
 import { mawkibsApi } from '../lib/mawkibs';
 
@@ -18,6 +20,7 @@ export function GuestMawkibDetailPage() {
   const mawkibId = Number(id);
   const [searchParams] = useSearchParams();
   const trackingCode = searchParams.get('trackingCode') ?? '';
+  const [capacityOpen, setCapacityOpen] = useState(false);
 
   const { data: mawkib, isLoading, isError } = useQuery({
     queryKey: ['mawkib-public', mawkibId],
@@ -32,11 +35,23 @@ export function GuestMawkibDetailPage() {
 
   return (
     <GuestShell maxWidth="md">
-      <GuestPageHeader
-        icon={<IconMawkibs />}
-        title="جزئیات موکب"
-        subtitle="اطلاعات کامل موکب"
-      />
+      <header className="mb-8 flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3 text-right">
+          <div className={guestTheme.headerIcon}>
+            <IconMawkibs />
+          </div>
+          <div className="min-w-0">
+            <h1 className={guestTheme.headerTitle}>جزئیات موکب</h1>
+            <p className={guestTheme.headerSubtitle}>اطلاعات کامل موکب</p>
+          </div>
+        </div>
+        <Link
+          to={backHref}
+          className={`${guestTheme.btnSecondary} shrink-0 self-center px-3 py-2 text-xs sm:text-sm`}
+        >
+          {backLabel}
+        </Link>
+      </header>
 
       {isLoading && (
         <div className={`${guestTheme.card} p-8 text-center text-sm text-slate-500`}>
@@ -55,10 +70,16 @@ export function GuestMawkibDetailPage() {
 
       {mawkib && (
         <div className="space-y-4">
-          <MawkibPublicDetail mawkib={mawkib} />
-          <Link to={backHref} className={`${guestTheme.btnSecondary} w-full`}>
-            {backLabel}
-          </Link>
+          <MawkibPublicDetail
+            mawkib={mawkib}
+            onViewCapacity={() => setCapacityOpen(true)}
+          />
+          <MawkibCapacityViewModal
+            open={capacityOpen}
+            onClose={() => setCapacityOpen(false)}
+            mawkibId={mawkib.id}
+            mawkibName={mawkib.name}
+          />
         </div>
       )}
     </GuestShell>

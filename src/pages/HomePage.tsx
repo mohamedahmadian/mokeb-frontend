@@ -166,6 +166,12 @@ const quickServices = [
     iconBg: guestTheme.iconPrimary,
   },
   {
+    to: "/guest/mawkibs",
+    title: "ظرفیت موکب‌ها",
+    description: "مشاهده ظرفیت روزانه هر موکب",
+    iconBg: "bg-violet-100 text-violet-700",
+  },
+  {
     to: "/guest/track",
     title: "پیگیری رزرو",
     description: "پیگیری با کد رزرو یا موبایل",
@@ -304,7 +310,7 @@ export function HomePage() {
               میانبر به پرکاربردترین بخش‌های سامانه
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {quickServices.map((service) => (
               <Link
                 key={service.to}
