@@ -51,17 +51,19 @@ export const guestApi = {
       })
       .then((r) => r.data),
 
-  checkIn: (trackingCode: string) =>
+  checkIn: (trackingCode: string, recordedAt?: string) =>
     api
       .post<Reservation>('/reservations/guest/check-in', {
         trackingCode: trackingCode.trim(),
+        recordedAt,
       })
       .then((r) => r.data),
 
-  checkOut: (trackingCode: string) =>
+  checkOut: (trackingCode: string, recordedAt?: string) =>
     api
       .post<Reservation>('/reservations/guest/check-out', {
         trackingCode: trackingCode.trim(),
+        recordedAt,
       })
       .then((r) => r.data),
 };

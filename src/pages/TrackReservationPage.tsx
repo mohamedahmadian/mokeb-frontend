@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { GuestPageHeader, GuestShell } from '../components/guest/GuestShell';
 import { TrackModeSwitch, type TrackMode } from '../components/guest/TrackModeSwitch';
 import { ReservationCheckInOut } from '../components/reservations/ReservationCheckInOut';
+import { ReservationToolsCard } from '../components/reservations/ReservationToolsCard';
 import { ReservationDetailInfo } from '../components/reservations/ReservationDetailInfo';
 import { ReservationTrackingHeader } from '../components/reservations/ReservationTrackingHeader';
 import { formatPersianDateRange } from '../components/ui/PersianDateRangePicker';
@@ -97,6 +98,10 @@ function ReservationDetails({
         variant="guest"
         onUpdate={onReservationUpdate}
       />
+      <ReservationToolsCard
+        reservation={reservation}
+        variant="guest"
+      />
       <ReservationTrackingHeader
         trackingCode={reservation.trackingCode}
         compact
@@ -115,8 +120,10 @@ export function TrackReservationPage() {
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [mobileResults, setMobileResults] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(false);
+  const codeDetailRef = useRef<HTMLDivElement>(null);
   const mobileDetailRef = useRef<HTMLDivElement>(null);
   const shouldScrollToMobileDetailRef = useRef(false);
+  const shouldScrollToCodeDetailRef = useRef(false);
 
   const resetResults = useCallback(() => {
     setReservation(null);
@@ -136,7 +143,7 @@ export function TrackReservationPage() {
     try {
       const result = await guestApi.trackReservation(trimmed);
       setReservation(result);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      shouldScrollToCodeDetailRef.current = true;
     } catch (err) {
       toastApiError(err, 'رزروی با این کد یافت نشد');
     } finally {
@@ -171,6 +178,10 @@ export function TrackReservationPage() {
   useEffect(() => {
     if (!codeFromUrl) return;
 
+    setMode('code');
+    setTrackingCode(codeFromUrl);
+    shouldScrollToCodeDetailRef.current = true;
+
     let active = true;
     (async () => {
       setReservation(null);
@@ -180,7 +191,6 @@ export function TrackReservationPage() {
         const result = await guestApi.trackReservation(codeFromUrl);
         if (active) {
           setReservation(result);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       } catch (err) {
         if (active) {
@@ -195,6 +205,14 @@ export function TrackReservationPage() {
       active = false;
     };
   }, [codeFromUrl]);
+
+  useEffect(() => {
+    if (mode !== 'code' || !reservation || !shouldScrollToCodeDetailRef.current) return;
+    shouldScrollToCodeDetailRef.current = false;
+    requestAnimationFrame(() => {
+      codeDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [mode, reservation]);
 
   useEffect(() => {
     if (mode !== 'mobile' || !reservation || !shouldScrollToMobileDetailRef.current) return;
@@ -279,6 +297,7 @@ export function TrackReservationPage() {
         {mode === 'code' && reservation && (
           <ReservationDetails
             reservation={reservation}
+            detailRef={codeDetailRef}
             onReservationUpdate={handleReservationUpdate}
           />
         )}

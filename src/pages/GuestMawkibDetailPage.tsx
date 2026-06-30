@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { GuestShell } from '../components/guest/GuestShell';
+import { MawkibCardPrintButton } from '../components/mawkibs/MawkibCardPrintButton';
 import { MawkibPublicDetail } from '../components/mawkibs/MawkibPublicDetail';
 import { MawkibCapacityViewModal } from '../components/mawkibs/MawkibCapacityViewModal';
 import { guestTheme } from '../lib/guest-theme';
+import { mawkibToCardData } from '../lib/mawkib-card';
 import { mawkibsApi } from '../lib/mawkibs';
 
 function IconMawkibs() {
@@ -20,6 +22,7 @@ export function GuestMawkibDetailPage() {
   const mawkibId = Number(id);
   const [searchParams] = useSearchParams();
   const trackingCode = searchParams.get('trackingCode') ?? '';
+  const focusMap = searchParams.get('focus') === 'map';
   const [capacityOpen, setCapacityOpen] = useState(false);
 
   const { data: mawkib, isLoading, isError } = useQuery({
@@ -27,6 +30,17 @@ export function GuestMawkibDetailPage() {
     queryFn: () => mawkibsApi.getPublicOne(mawkibId),
     enabled: mawkibId > 0,
   });
+
+  useEffect(() => {
+    if (!focusMap || isLoading || !mawkib) return;
+    const frameId = window.requestAnimationFrame(() => {
+      document.getElementById('mawkib-map')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [focusMap, isLoading, mawkib]);
 
   const backHref = trackingCode
     ? `/guest/track?trackingCode=${encodeURIComponent(trackingCode)}`
@@ -70,15 +84,23 @@ export function GuestMawkibDetailPage() {
 
       {mawkib && (
         <div className="space-y-4">
+          <div className="flex flex-wrap justify-end gap-2">
+            <MawkibCardPrintButton
+              data={mawkibToCardData(mawkib)}
+              className={`${guestTheme.btnSecondary} w-full sm:w-auto`}
+            />
+          </div>
           <MawkibPublicDetail
             mawkib={mawkib}
             onViewCapacity={() => setCapacityOpen(true)}
+            focusMap={focusMap}
           />
           <MawkibCapacityViewModal
             open={capacityOpen}
             onClose={() => setCapacityOpen(false)}
             mawkibId={mawkib.id}
             mawkibName={mawkib.name}
+            guestReserveLinks
           />
         </div>
       )}

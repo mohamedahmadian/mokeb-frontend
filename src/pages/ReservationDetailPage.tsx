@@ -5,6 +5,7 @@ import { CancelReservationModal } from '../components/reservations/CancelReserva
 import { ReservationCheckInOut } from '../components/reservations/ReservationCheckInOut';
 import { ReservationDetailInfo, ReservationStatusBanner } from '../components/reservations/ReservationDetailInfo';
 import { ReservationReviewSection } from '../components/reservations/ReservationReviewSection';
+import { ReservationToolsCard } from '../components/reservations/ReservationToolsCard';
 import { ReservationTrackingHeader } from '../components/reservations/ReservationTrackingHeader';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useAuth } from '../contexts/AuthContext';
@@ -162,6 +163,17 @@ export function ReservationDetailPage() {
             }}
           />
         )}
+
+        <ReservationToolsCard
+          reservation={reservation}
+          reservationId={reservationId}
+          variant="panel"
+          onDeliveredItemsUpdate={(updated) => {
+            queryClient.setQueryData(['reservation', reservationId], updated);
+            queryClient.invalidateQueries({ queryKey: ['reservations-admin'] });
+            queryClient.invalidateQueries({ queryKey: ['reservations-my'] });
+          }}
+        />
 
         <ReservationReviewSection
           reservation={reservation}

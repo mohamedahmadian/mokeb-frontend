@@ -607,10 +607,7 @@ export function AdminDashboard({ fullName }: AdminDashboardProps) {
         )}
       </section>
 
-      <ReservationTrackLookup
-        lookupFn={lookupAdminReservation}
-        showCheckIn={false}
-      />
+      <ReservationTrackLookup lookupFn={lookupAdminReservation} />
 
       {reservationStats.pendingReservations > 0 && (
         <section className="overflow-hidden rounded-xl border border-amber-200 bg-gradient-to-l from-amber-50 to-white px-4 py-3 shadow-sm">

@@ -1,7 +1,15 @@
-import { useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { formatPersianDateRange } from "../ui/PersianDateRangePicker";
 import { NavIcon } from "../ui/NavIcons";
+import { ReservationDeliveredItemsButton } from "../reservations/ReservationDeliveredItemsButton";
+import { ReservationUserCardPrintButton } from "../reservations/ReservationUserCardPrintButton";
+import { MawkibCardPrintButton } from "../mawkibs/MawkibCardPrintButton";
+import { reservationMawkibToCardData } from "../../lib/mawkib-card";
+import {
+  ReservationAttendanceModal,
+  type AttendanceType,
+} from "../reservations/ReservationAttendanceModal";
 import { formatGuestCount } from "../../lib/capacity";
 import { RESERVATION_STATUS_LABELS } from "../../lib/constants";
 import { formatTimeFa, formatTimeFromIso } from "../../lib/format-time";
@@ -19,61 +27,66 @@ const statusColors: Record<string, string> = {
   Completed: "bg-slate-100 text-slate-700 ring-slate-200",
 };
 
+const dashboardActionBtn = `${btnAction} inline-flex shrink-0 items-center justify-center gap-1.5 border !min-h-8 !px-2.5 !py-1.5 !text-[11px]`;
+const dashboardSecondaryBtn = `${dashboardActionBtn} border-slate-200 bg-white text-slate-700 hover:bg-slate-50`;
+
 function StatusBadge({ status }: { status: Reservation["status"] }) {
   return (
     <span
-      className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${statusColors[status] ?? "bg-slate-100 text-slate-700"}`}
+      className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-medium ring-1 ${statusColors[status] ?? "bg-slate-100 text-slate-700"}`}
     >
       {RESERVATION_STATUS_LABELS[status]}
     </span>
   );
 }
 
-function MetaInline({
+function InfoCell({
+  icon,
   label,
   value,
   dir,
-  className = "",
   accent = false,
+  valueBold = false,
 }: {
+  icon: ReactNode;
   label: string;
   value: string;
   dir?: "ltr" | "rtl";
-  className?: string;
   accent?: boolean;
+  valueBold?: boolean;
 }) {
   return (
-    <span className={`inline-flex items-baseline gap-1 ${className}`}>
-      <span className="text-[10px] text-slate-500">{label}</span>
-      <span
-        className={`text-[11px] font-semibold ${accent ? "text-emerald-700" : "text-slate-800"} ${dir === "ltr" ? "font-mono" : ""}`}
-        dir={dir}
-      >
-        {value}
+    <div className="flex min-w-0 items-start gap-2 rounded-lg border border-slate-100 bg-slate-50/70 px-2 py-1.5">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#e8eef6] text-[#4a6fa5]">
+        {icon}
       </span>
-    </span>
-  );
-}
-
-function MetaDivider() {
-  return (
-    <span className="hidden text-slate-300 sm:inline" aria-hidden>
-      ·
-    </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] text-slate-500">{label}</p>
+        <p
+          className={`truncate ${valueBold ? "text-sm font-bold" : "text-xs font-semibold"} ${accent ? "text-emerald-700" : "text-slate-800"} ${dir === "ltr" && !valueBold ? "font-mono" : ""}`}
+          dir={dir}
+          title={value}
+        >
+          {value}
+        </p>
+      </div>
+    </div>
   );
 }
 
 function TrackResultRow({
   reservation,
-  onCheckIn,
-  checkingIn,
+  onOpenAttendance,
+  onReservationUpdate,
+  attendanceLoading,
   detailsLinkRef,
   highlightDetails = false,
   showCheckIn = true,
 }: {
   reservation: Reservation;
-  onCheckIn: (id: number) => void;
-  checkingIn: boolean;
+  onOpenAttendance: (id: number, type: AttendanceType) => void;
+  onReservationUpdate: (reservation: Reservation) => void;
+  attendanceLoading: boolean;
   detailsLinkRef?: RefObject<HTMLAnchorElement | null>;
   highlightDetails?: boolean;
   showCheckIn?: boolean;
@@ -97,84 +110,125 @@ function TrackResultRow({
   );
   const canCheckIn =
     reservation.status === "Confirmed" && !reservation.actualCheckInAt;
+  const canCheckOut =
+    reservation.status === "Confirmed" &&
+    !!reservation.actualCheckInAt &&
+    !reservation.actualCheckOutAt;
   const stayRange = formatPersianDateRange(
     reservation.reservationDate.slice(0, 10),
     endDate.slice(0, 10),
   );
 
   return (
-    <div className="border-t border-[#c5d4e8]/60 bg-gradient-to-l from-[#f0f4fa]/80 to-white">
-      <div className="flex flex-col gap-2 p-2.5 sm:flex-row sm:items-center sm:gap-3 sm:p-3">
-        <div className="min-w-0 flex-1 sm:pe-3 sm:border-e sm:border-[#c5d4e8]/60">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-              <span className="truncate text-sm font-bold text-slate-800">
-                {reservation.pilgrim.fullName}
-              </span>
-              <span className="text-slate-300" aria-hidden>
-                ·
-              </span>
-              <span className="truncate text-[11px] text-slate-500">
-                {reservation.mawkib.name}
-              </span>
-            </div>
-            <StatusBadge status={reservation.status} />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <MetaInline label="کد" value={reservation.trackingCode} dir="ltr" />
-            <MetaDivider />
-            <MetaInline
-              label="موبایل"
-              value={reservation.pilgrim.mobileNumber}
-              dir="ltr"
-            />
-            <MetaDivider />
-            <MetaInline label="اقامت" value={stayRange} />
-            <MetaDivider />
-            <MetaInline label="مهمان" value={guestCount} />
-            <MetaInline
-              label={hasActualCheckIn ? "ورود واقعی" : "ورود"}
-              value={checkInTime}
-              dir="ltr"
-              className="shrink-0"
-              accent={hasActualCheckIn}
-            />
-            <MetaInline
-              label={hasActualCheckOut ? "خروج واقعی" : "خروج"}
-              value={checkOutTime}
-              dir="ltr"
-              className="shrink-0"
-              accent={hasActualCheckOut}
-            />
+    <div className="p-3 sm:p-4">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#e8eef6] text-[#4a6fa5]">
+            <NavIcon name="pilgrims" className="h-4 w-4" strokeWidth={1.75} />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-slate-800">
+              {reservation.pilgrim.fullName}
+            </p>
+            <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-slate-500">
+              <NavIcon name="mawkibs" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+              <span className="truncate">{reservation.mawkib.name}</span>
+            </p>
           </div>
         </div>
+        <StatusBadge status={reservation.status} />
+      </div>
 
-        <div className="flex shrink-0 flex-row gap-1.5 sm:w-auto sm:flex-col sm:gap-1">
-          <Link
-            ref={detailsLinkRef}
-            to={`/reservations/${reservation.id}`}
-            className={`${btnAction} inline-flex flex-1 items-center justify-center gap-1 border !min-h-8 !px-2.5 !py-1.5 !text-[11px] sm:w-full ${
-              highlightDetails
-                ? "border-[#4a6fa5] bg-[#f0f4fa] text-[#4a6fa5] ring-2 ring-[#4a6fa5]/25 focus:outline-none focus-visible:ring-[#4a6fa5]/40"
-                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
+      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <InfoCell
+          icon={<NavIcon name="track" className="h-3.5 w-3.5" strokeWidth={1.75} />}
+          label="کد رزرو"
+          value={reservation.trackingCode}
+          dir="ltr"
+        />
+        <InfoCell
+          icon={<NavIcon name="login" className="h-3.5 w-3.5" strokeWidth={1.75} />}
+          label="موبایل"
+          value={reservation.pilgrim.mobileNumber}
+          dir="ltr"
+        />
+        <InfoCell
+          icon={<NavIcon name="reserve" className="h-3.5 w-3.5" strokeWidth={1.75} />}
+          label="تاریخ اقامت"
+          value={stayRange}
+        />
+        <InfoCell
+          icon={<NavIcon name="users" className="h-3.5 w-3.5" strokeWidth={1.75} />}
+          label="تعداد مهمان"
+          value={guestCount}
+        />
+        <InfoCell
+          icon={<NavIcon name="check" className="h-3.5 w-3.5" strokeWidth={1.75} />}
+          label={hasActualCheckIn ? "ورود واقعی" : "ساعت ورود"}
+          value={checkInTime}
+          dir="ltr"
+          accent={hasActualCheckIn}
+          valueBold
+        />
+        <InfoCell
+          icon={<NavIcon name="logout" className="h-3.5 w-3.5" strokeWidth={1.75} />}
+          label={hasActualCheckOut ? "خروج واقعی" : "ساعت خروج"}
+          value={checkOutTime}
+          dir="ltr"
+          accent={hasActualCheckOut}
+          valueBold
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+        <Link
+          ref={detailsLinkRef}
+          to={`/reservations/${reservation.id}`}
+          className={`${dashboardSecondaryBtn} ${
+            highlightDetails
+              ? "border-[#4a6fa5] bg-[#f0f4fa] text-[#4a6fa5] ring-2 ring-[#4a6fa5]/25 focus:outline-none focus-visible:ring-[#4a6fa5]/40"
+              : ""
+          }`}
+        >
+          <NavIcon name="info" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+          مشاهده جزئیات
+        </Link>
+        {showCheckIn && canCheckIn && (
+          <button
+            type="button"
+            onClick={() => onOpenAttendance(reservation.id, "check-in")}
+            disabled={attendanceLoading}
+            className={`${btnPrimary} inline-flex shrink-0 items-center justify-center gap-1.5 !min-h-8 !px-2.5 !py-1.5 !text-[11px] !bg-emerald-600 hover:!bg-emerald-700`}
           >
-            <NavIcon name="info" className="h-3.5 w-3.5" strokeWidth={1.75} />
-            مشاهده جزئیات
-          </Link>
-          {showCheckIn && canCheckIn && (
-            <button
-              type="button"
-              onClick={() => onCheckIn(reservation.id)}
-              disabled={checkingIn}
-              className={`${btnPrimary} inline-flex flex-1 items-center justify-center gap-1 !min-h-8 !px-2.5 !py-1.5 !text-[11px] sm:w-full`}
-            >
-              <NavIcon name="check" className="h-3.5 w-3.5" strokeWidth={1.75} />
-              {checkingIn ? "..." : "ثبت ساعت ورود به موکب"}
-            </button>
-          )}
-        </div>
+            <NavIcon name="login" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+            {attendanceLoading ? "..." : "ثبت ورود"}
+          </button>
+        )}
+        {showCheckIn && canCheckOut && (
+          <button
+            type="button"
+            onClick={() => onOpenAttendance(reservation.id, "check-out")}
+            disabled={attendanceLoading}
+            className={`${btnPrimary} inline-flex shrink-0 items-center justify-center gap-1.5 !min-h-8 !px-2.5 !py-1.5 !text-[11px]`}
+          >
+            <NavIcon name="logout" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+            {attendanceLoading ? "..." : "ثبت خروج"}
+          </button>
+        )}
+        <ReservationDeliveredItemsButton
+          reservation={reservation}
+          reservationId={reservation.id}
+          className={dashboardSecondaryBtn}
+          onUpdate={onReservationUpdate}
+        />
+        <ReservationUserCardPrintButton
+          reservation={reservation}
+          className={dashboardSecondaryBtn}
+        />
+        <MawkibCardPrintButton
+          data={reservationMawkibToCardData(reservation.mawkib)}
+          className={dashboardSecondaryBtn}
+        />
       </div>
     </div>
   );
@@ -199,6 +253,10 @@ export function ReservationTrackLookup({
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingInId, setCheckingInId] = useState<number | null>(null);
+  const [attendanceModal, setAttendanceModal] = useState<{
+    id: number;
+    type: AttendanceType;
+  } | null>(null);
   const [results, setResults] = useState<Reservation[]>([]);
   const [searched, setSearched] = useState(false);
 
@@ -244,19 +302,39 @@ export function ReservationTrackLookup({
     void handleSearch();
   };
 
-  const handleCheckIn = async (id: number) => {
+  const handleOpenAttendance = (id: number, type: AttendanceType) => {
+    setAttendanceModal({ id, type });
+  };
+
+  const handleConfirmAttendance = async (recordedAt: string) => {
+    if (!attendanceModal) return;
+    const { id, type } = attendanceModal;
     setCheckingInId(id);
     try {
-      const updated = await reservationsApi.checkIn(id);
+      const updated =
+        type === "check-in"
+          ? await reservationsApi.checkIn(id, recordedAt)
+          : await reservationsApi.checkOut(id, recordedAt);
       setResults((prev) =>
         prev.map((item) => (item.id === updated.id ? updated : item)),
       );
-      toast.success("ساعت ورود زائر گرامی با موفقیت در سیستم ثبت شد");
+      toast.success(
+        type === "check-in"
+          ? "ساعت ورود زائر گرامی با موفقیت در سیستم ثبت شد"
+          : "ساعت خروج زائر گرامی با موفقیت در سیستم ثبت شد",
+      );
     } catch (err) {
-      toastApiError(err, "خطا در ثبت ورود");
+      toastApiError(err, type === "check-in" ? "خطا در ثبت ورود" : "خطا در ثبت خروج");
+      throw err;
     } finally {
       setCheckingInId(null);
     }
+  };
+
+  const handleReservationUpdate = (updated: Reservation) => {
+    setResults((prev) =>
+      prev.map((item) => (item.id === updated.id ? updated : item)),
+    );
   };
 
   useEffect(() => {
@@ -272,61 +350,75 @@ export function ReservationTrackLookup({
   }, [results]);
 
   return (
-    <section className="w-full overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-2 p-2.5 sm:p-3 md:max-w-[calc(50%-0.5rem)]"
-      >
-        <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#e8eef6] text-[#4a6fa5]">
-            <NavIcon name="track" className="h-4 w-4" strokeWidth={1.75} />
-          </span>
-          <h2 className="text-sm font-semibold text-slate-800">پیگیری رزرو</h2>
-        </div>
+    <div className="space-y-3">
+      <section className="w-full overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm md:w-[346px] md:max-w-[346px]">
+        <form onSubmit={handleSubmit} className="space-y-2 p-2.5 sm:p-3">
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#e8eef6] text-[#4a6fa5]">
+              <NavIcon name="track" className="h-4 w-4" strokeWidth={1.75} />
+            </span>
+            <h2 className="text-sm font-semibold text-slate-800">پیگیری رزرو</h2>
+          </div>
 
-        <div className="flex gap-1.5">
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              if (searched) resetResults();
-            }}
-            className={`${inputClass} min-w-0 flex-1 !min-h-9 !py-2 text-right !text-sm`}
-            placeholder="شماره موبایل یا شناسه رزرو"
-            dir="rtl"
-            autoComplete="off"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className={`${btnPrimary} inline-flex shrink-0 items-center justify-center gap-1 !min-h-9 !px-3 !py-2 !text-xs sm:min-w-[5.5rem]`}
-          >
-            <NavIcon name="track" className="h-3.5 w-3.5" strokeWidth={1.75} />
-            {loading ? "..." : "جستجو"}
-          </button>
-        </div>
-      </form>
+          <div className="flex flex-col gap-1.5 sm:flex-row">
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                if (searched) resetResults();
+              }}
+              className={`${inputClass} min-w-0 flex-1 !min-h-9 !py-2 text-right !text-sm`}
+              placeholder="شماره موبایل یا شناسه رزرو"
+              dir="rtl"
+              autoComplete="off"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className={`${btnPrimary} inline-flex shrink-0 items-center justify-center gap-1 !min-h-9 !px-3 !py-2 !text-xs sm:min-w-[5.5rem]`}
+            >
+              <NavIcon name="track" className="h-3.5 w-3.5" strokeWidth={1.75} />
+              {loading ? "..." : "جستجو"}
+            </button>
+          </div>
+        </form>
 
-      {searched && !loading && results.length === 0 && (
-        <div className="flex items-center gap-2 border-t border-slate-100 px-2.5 py-2 text-[11px] text-slate-500 sm:px-3 md:max-w-[calc(50%-0.5rem)]">
-          <NavIcon name="track" className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-          <span>رزروی با این مشخصات یافت نشد.</span>
+        {searched && !loading && results.length === 0 && (
+          <div className="flex items-center gap-2 border-t border-slate-100 px-2.5 py-2 text-[11px] text-slate-500 sm:px-3">
+            <NavIcon name="track" className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+            <span>رزروی با این مشخصات یافت نشد.</span>
+          </div>
+        )}
+      </section>
+
+      {results.length > 0 && (
+        <div className="space-y-3">
+          {results.map((reservation, index) => (
+            <section
+              key={reservation.id}
+              className="w-full overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm"
+            >
+              <TrackResultRow
+                reservation={reservation}
+                onOpenAttendance={handleOpenAttendance}
+                onReservationUpdate={handleReservationUpdate}
+                attendanceLoading={checkingInId === reservation.id}
+                detailsLinkRef={index === 0 ? detailsLinkRef : undefined}
+                highlightDetails={index === 0}
+                showCheckIn={showCheckIn}
+              />
+            </section>
+          ))}
         </div>
       )}
-
-      {results.map((reservation, index) => (
-        <TrackResultRow
-          key={reservation.id}
-          reservation={reservation}
-          onCheckIn={handleCheckIn}
-          checkingIn={checkingInId === reservation.id}
-          detailsLinkRef={index === 0 ? detailsLinkRef : undefined}
-          highlightDetails={index === 0}
-          showCheckIn={showCheckIn}
-        />
-      ))}
-    </section>
+      <ReservationAttendanceModal
+        open={attendanceModal !== null}
+        type={attendanceModal?.type ?? "check-in"}
+        onClose={() => setAttendanceModal(null)}
+        onConfirm={handleConfirmAttendance}
+      />
+    </div>
   );
 }

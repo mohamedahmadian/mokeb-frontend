@@ -1,30 +1,51 @@
-import { useEffect, useState } from 'react';
-import { Modal } from '../Modal';
-import { MAWKIB_STATUS_OPTIONS } from '../../lib/constants';
-import { PersianDateInput } from '../ui/PersianDateInput';
-import { NavIcon } from '../ui/NavIcons';
-import { MawkibOwnerFilterSelect } from './MawkibOwnerFilterSelect';
+import { useEffect, useState } from "react";
+import { Modal } from "../Modal";
+import { MAWKIB_STATUS_OPTIONS } from "../../lib/constants";
+import { PersianDateInput } from "../ui/PersianDateInput";
+import { NavIcon } from "../ui/NavIcons";
+import { MawkibOwnerFilterSelect } from "./MawkibOwnerFilterSelect";
 import {
   MawkibExtraFields,
   emptyMawkibExtraFields,
   mawkibExtraFieldsFromMawkib,
   mawkibExtraFieldsToPayload,
   type MawkibExtraFormValues,
-} from './MawkibExtraFields';
-import { IconClock, IconPhone, IconPhoto, MawkibFormHero } from './mawkib-form-ui';
-import { MawkibLocationMapTrigger } from './MawkibLocationMapTrigger';
-import { MawkibCapacityViewModal } from './MawkibCapacityViewModal';
-import { FieldLabel, FormSection, MapPinIcon } from '../users/user-form-ui';
-import type { Mawkib, MawkibStatus } from '../../types';
-import type { CreateMawkibPayload, UpdateMawkibPayload } from '../../lib/mawkibs';
-import { DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME } from '../../lib/format-time';
-import { btnDanger, btnPrimary, btnSecondary, inputClass as formInputClass } from '../../lib/styles';
-import { toast } from '../../lib/toast';
+} from "./MawkibExtraFields";
+import {
+  IconClock,
+  IconPhone,
+  IconPhoto,
+  MawkibFormHero,
+} from "./mawkib-form-ui";
+import { MawkibLocationMapTrigger } from "./MawkibLocationMapTrigger";
+import { MawkibCardPrintButton } from "./MawkibCardPrintButton";
+import { MawkibRulesPrintButton } from "./MawkibRulesPrintButton";
+import { mawkibToCardData } from "../../lib/mawkib-card";
+import { buildMawkibRulesPrintDataFromForm } from "../../lib/mawkib-rules-print";
+import { FieldLabel, FormSection, MapPinIcon } from "../users/user-form-ui";
+import type { Mawkib, MawkibStatus } from "../../types";
+import type {
+  CreateMawkibPayload,
+  UpdateMawkibPayload,
+} from "../../lib/mawkibs";
+import {
+  DEFAULT_CHECK_IN_TIME,
+  DEFAULT_CHECK_OUT_TIME,
+} from "../../lib/format-time";
+import {
+  btnDanger,
+  btnPrimary,
+  btnSecondary,
+  inputClass as formInputClass,
+} from "../../lib/styles";
+import { toast } from "../../lib/toast";
 
 interface MawkibFormModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit?: (payload: CreateMawkibPayload | UpdateMawkibPayload) => Promise<void>;
+  onSubmit?: (
+    payload: CreateMawkibPayload | UpdateMawkibPayload,
+  ) => Promise<void>;
   mawkib?: Mawkib | null;
   isAdmin: boolean;
   currentUserId?: number;
@@ -49,32 +70,34 @@ interface FormState {
   status: MawkibStatus;
   defaultCheckInTime: string;
   defaultCheckOutTime: string;
+  onlineReservationEnabled: boolean;
   extra: MawkibExtraFormValues;
 }
 
 const emptyForm: FormState = {
-  name: '',
-  address: '',
-  latitude: '',
-  longitude: '',
-  phoneNumber: '',
-  description: '',
-  facilities: '',
-  services: '',
-  serviceStartDate: '',
-  serviceEndDate: '',
-  maleCapacity: '0',
-  femaleCapacity: '0',
-  imageUrl: '',
-  ownerUserId: '',
-  status: 'Approved',
+  name: "",
+  address: "",
+  latitude: "",
+  longitude: "",
+  phoneNumber: "",
+  description: "",
+  facilities: "",
+  services: "",
+  serviceStartDate: "",
+  serviceEndDate: "",
+  maleCapacity: "0",
+  femaleCapacity: "0",
+  imageUrl: "",
+  ownerUserId: "",
+  status: "Approved",
   defaultCheckInTime: DEFAULT_CHECK_IN_TIME,
   defaultCheckOutTime: DEFAULT_CHECK_OUT_TIME,
+  onlineReservationEnabled: true,
   extra: emptyMawkibExtraFields(),
 };
 
 function toDateInput(value?: string | null) {
-  if (!value) return '';
+  if (!value) return "";
   return value.slice(0, 10);
 }
 
@@ -90,11 +113,12 @@ export function MawkibFormModal({
   const isEdit = !!mawkib;
   const [form, setForm] = useState<FormState>(emptyForm);
   const [loading, setLoading] = useState(false);
-  const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | null>(null);
-  const [capacityOpen, setCapacityOpen] = useState(false);
+  const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(
+    null,
+  );
 
   const showPendingReviewActions =
-    !readOnly && isAdmin && isEdit && form.status === 'Pending';
+    !readOnly && isAdmin && isEdit && form.status === "Pending";
   const fieldProps = readOnly ? { disabled: true, readOnly: true } : {};
 
   useEffect(() => {
@@ -104,27 +128,29 @@ export function MawkibFormModal({
       setForm({
         name: mawkib.name,
         address: mawkib.address,
-        latitude: mawkib.latitude?.toString() ?? '',
-        longitude: mawkib.longitude?.toString() ?? '',
+        latitude: mawkib.latitude?.toString() ?? "",
+        longitude: mawkib.longitude?.toString() ?? "",
         phoneNumber: mawkib.phoneNumber,
-        description: mawkib.description ?? '',
-        facilities: mawkib.facilities ?? '',
-        services: mawkib.services ?? '',
+        description: mawkib.description ?? "",
+        facilities: mawkib.facilities ?? "",
+        services: mawkib.services ?? "",
         serviceStartDate: toDateInput(mawkib.serviceStartDate),
         serviceEndDate: toDateInput(mawkib.serviceEndDate),
         maleCapacity: mawkib.maleCapacity.toString(),
         femaleCapacity: mawkib.femaleCapacity.toString(),
-        imageUrl: mawkib.imageUrl ?? '',
-        ownerUserId: (mawkib.ownerUserId ?? mawkib.owner?.id ?? '').toString(),
+        imageUrl: mawkib.imageUrl ?? "",
+        ownerUserId: (mawkib.ownerUserId ?? mawkib.owner?.id ?? "").toString(),
         status: mawkib.status,
         defaultCheckInTime: mawkib.defaultCheckInTime ?? DEFAULT_CHECK_IN_TIME,
-        defaultCheckOutTime: mawkib.defaultCheckOutTime ?? DEFAULT_CHECK_OUT_TIME,
+        defaultCheckOutTime:
+          mawkib.defaultCheckOutTime ?? DEFAULT_CHECK_OUT_TIME,
+        onlineReservationEnabled: mawkib.onlineReservationEnabled !== false,
         extra: mawkibExtraFieldsFromMawkib(mawkib),
       });
     } else {
       setForm({
         ...emptyForm,
-        ownerUserId: !isAdmin && currentUserId ? currentUserId.toString() : '',
+        ownerUserId: !isAdmin && currentUserId ? currentUserId.toString() : "",
       });
     }
   }, [open, mawkib, isAdmin, currentUserId]);
@@ -135,11 +161,11 @@ export function MawkibFormModal({
     const maleCapacity = parseInt(form.maleCapacity, 10);
     const femaleCapacity = parseInt(form.femaleCapacity, 10);
     if (Number.isNaN(maleCapacity) || maleCapacity < 0) {
-      toast.error('ظرفیت آقایان باید عدد معتبر باشد');
+      toast.error("ظرفیت آقایان باید عدد معتبر باشد");
       return null;
     }
     if (Number.isNaN(femaleCapacity) || femaleCapacity < 0) {
-      toast.error('ظرفیت بانوان باید عدد معتبر باشد');
+      toast.error("ظرفیت بانوان باید عدد معتبر باشد");
       return null;
     }
 
@@ -147,7 +173,7 @@ export function MawkibFormModal({
       ? parseInt(form.extra.maxReservationDays, 10)
       : undefined;
     if (form.extra.maxReservationDays.trim() && (!maxDays || maxDays < 1)) {
-      toast.error('حداکثر بازه رزرو باید عددی بزرگ‌تر از صفر باشد');
+      toast.error("حداکثر بازه رزرو باید عددی بزرگ‌تر از صفر باشد");
       return null;
     }
 
@@ -169,6 +195,7 @@ export function MawkibFormModal({
       imageUrl: form.imageUrl || undefined,
       defaultCheckInTime: form.defaultCheckInTime || DEFAULT_CHECK_IN_TIME,
       defaultCheckOutTime: form.defaultCheckOutTime || DEFAULT_CHECK_OUT_TIME,
+      onlineReservationEnabled: form.onlineReservationEnabled,
       ...mawkibExtraFieldsToPayload(form.extra),
     };
 
@@ -182,28 +209,30 @@ export function MawkibFormModal({
     }
 
     if (!form.ownerUserId) {
-      toast.error('مسئول موکب را انتخاب کنید');
+      toast.error("مسئول موکب را انتخاب کنید");
       return null;
     }
 
     return {
       ...base,
       ownerUserId: parseInt(form.ownerUserId, 10),
-      status: isAdmin ? status : 'Pending',
+      status: isAdmin ? status : "Pending",
     };
   };
 
-  const handleReview = async (action: 'approve' | 'reject') => {
+  const handleReview = async (action: "approve" | "reject") => {
     setReviewAction(action);
     setLoading(true);
 
     try {
-      const payload = buildPayload(action === 'approve' ? 'Approved' : 'Rejected');
+      const payload = buildPayload(
+        action === "approve" ? "Approved" : "Rejected",
+      );
       if (!payload) return;
       await onSubmit?.(payload);
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'خطا در بررسی موکب');
+      toast.error(err instanceof Error ? err.message : "خطا در بررسی موکب");
     } finally {
       setLoading(false);
       setReviewAction(null);
@@ -224,7 +253,7 @@ export function MawkibFormModal({
       await onSubmit?.(payload);
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'خطا در ذخیره موکب');
+      toast.error(err instanceof Error ? err.message : "خطا در ذخیره موکب");
     } finally {
       setLoading(false);
     }
@@ -233,19 +262,17 @@ export function MawkibFormModal({
   const inputClass = formInputClass;
 
   const modalTitle = readOnly
-    ? 'جزئیات موکب'
+    ? "جزئیات موکب"
     : isEdit
-      ? 'ویرایش موکب'
-      : 'افزودن موکب';
+      ? "ویرایش موکب"
+      : "افزودن موکب";
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={modalTitle}
-      size="lg"
-    >
-      <form onSubmit={handleSubmit} className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
+    <Modal open={open} onClose={onClose} title={modalTitle} size="lg">
+      <form
+        onSubmit={handleSubmit}
+        className="max-h-[70vh] space-y-4 overflow-y-auto pr-1"
+      >
         {!readOnly && <MawkibFormHero isEdit={isEdit} />}
 
         {showPendingReviewActions && (
@@ -267,26 +294,31 @@ export function MawkibFormModal({
               <div className="flex flex-col gap-2 sm:flex-row sm:shrink-0">
                 <button
                   type="button"
-                  onClick={() => void handleReview('approve')}
+                  onClick={() => void handleReview("approve")}
                   disabled={loading}
                   className={`${btnPrimary} w-full !min-h-9 !text-xs sm:w-auto`}
                 >
-                  {reviewAction === 'approve' ? 'در حال تایید...' : 'تایید موکب'}
+                  {reviewAction === "approve"
+                    ? "در حال تایید..."
+                    : "تایید موکب"}
                 </button>
                 <button
                   type="button"
-                  onClick={() => void handleReview('reject')}
+                  onClick={() => void handleReview("reject")}
                   disabled={loading}
                   className={`${btnDanger} w-full !min-h-9 !text-xs sm:w-auto`}
                 >
-                  {reviewAction === 'reject' ? 'در حال رد...' : 'رد موکب'}
+                  {reviewAction === "reject" ? "در حال رد..." : "رد موکب"}
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        <FormSection title="اطلاعات اصلی" icon={<NavIcon name="mawkibs" className="h-4 w-4" />}>
+        <FormSection
+          title="اطلاعات اصلی"
+          icon={<NavIcon name="mawkibs" className="h-4 w-4" />}
+        >
           <label className="block">
             <FieldLabel label="نام موکب" required />
             <input
@@ -304,7 +336,7 @@ export function MawkibFormModal({
               <FieldLabel label="مسئول موکب" />
               <input
                 type="text"
-                value={mawkib?.owner?.fullName ?? '—'}
+                value={mawkib?.owner?.fullName ?? "—"}
                 className={inputClass}
                 {...fieldProps}
               />
@@ -334,7 +366,9 @@ export function MawkibFormModal({
                 type="text"
                 required={!readOnly}
                 value={form.phoneNumber}
-                onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, phoneNumber: e.target.value })
+                }
                 className={`${inputClass} pr-11`}
                 {...fieldProps}
               />
@@ -392,7 +426,9 @@ export function MawkibFormModal({
                 type="number"
                 step="any"
                 value={form.longitude}
-                onChange={(e) => setForm({ ...form, longitude: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, longitude: e.target.value })
+                }
                 className={inputClass}
                 dir="ltr"
                 {...fieldProps}
@@ -458,7 +494,10 @@ export function MawkibFormModal({
           </div>
         </FormSection>
 
-        <FormSection title="ظرفیت" icon={<NavIcon name="users" className="h-4 w-4" />}>
+        <FormSection
+          title="ظرفیت"
+          icon={<NavIcon name="users" className="h-4 w-4" />}
+        >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
               <FieldLabel label="ظرفیت آقایان" required />
@@ -467,7 +506,9 @@ export function MawkibFormModal({
                 required={!readOnly}
                 min={0}
                 value={form.maleCapacity}
-                onChange={(e) => setForm({ ...form, maleCapacity: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, maleCapacity: e.target.value })
+                }
                 className={inputClass}
                 {...fieldProps}
               />
@@ -479,7 +520,9 @@ export function MawkibFormModal({
                 required={!readOnly}
                 min={0}
                 value={form.femaleCapacity}
-                onChange={(e) => setForm({ ...form, femaleCapacity: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, femaleCapacity: e.target.value })
+                }
                 className={inputClass}
                 {...fieldProps}
               />
@@ -487,19 +530,26 @@ export function MawkibFormModal({
           </div>
         </FormSection>
 
-        <FormSection title="زمان‌بندی خدمات" icon={<NavIcon name="reserve" className="h-4 w-4" />}>
+        <FormSection
+          title="زمان‌بندی خدمات"
+          icon={<NavIcon name="reserve" className="h-4 w-4" />}
+        >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <PersianDateInput
               label="شروع خدمات"
               value={form.serviceStartDate}
-              onChange={(serviceStartDate) => setForm({ ...form, serviceStartDate })}
+              onChange={(serviceStartDate) =>
+                setForm({ ...form, serviceStartDate })
+              }
               disabled={readOnly}
               clearable={!readOnly}
             />
             <PersianDateInput
               label="پایان خدمات"
               value={form.serviceEndDate}
-              onChange={(serviceEndDate) => setForm({ ...form, serviceEndDate })}
+              onChange={(serviceEndDate) =>
+                setForm({ ...form, serviceEndDate })
+              }
               disabled={readOnly}
               clearable={!readOnly}
             />
@@ -518,7 +568,9 @@ export function MawkibFormModal({
                 <input
                   type="time"
                   value={form.defaultCheckInTime}
-                  onChange={(e) => setForm({ ...form, defaultCheckInTime: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, defaultCheckInTime: e.target.value })
+                  }
                   className={`${inputClass} pr-11`}
                   {...fieldProps}
                 />
@@ -536,21 +588,48 @@ export function MawkibFormModal({
                 <input
                   type="time"
                   value={form.defaultCheckOutTime}
-                  onChange={(e) => setForm({ ...form, defaultCheckOutTime: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, defaultCheckOutTime: e.target.value })
+                  }
                   className={`${inputClass} pr-11`}
                   {...fieldProps}
                 />
               </div>
             </label>
           </div>
+
+          <label className="mt-1 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+            <input
+              type="checkbox"
+              checked={form.onlineReservationEnabled}
+              onChange={(e) =>
+                setForm({ ...form, onlineReservationEnabled: e.target.checked })
+              }
+              disabled={readOnly}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-[#4a6fa5] focus:ring-[#4a6fa5]"
+            />
+            <span className="text-sm leading-relaxed text-slate-700">
+              <span className="font-medium">امکان رزرو آنلاین</span>
+              <span className="mt-1 block text-xs text-slate-500">
+                در صورت غیرفعال بودن، زائران و مهمانان نمی‌توانند این موکب را
+                به‌صورت آنلاین رزرو نمایند و عملیات رزرو صرفا ت وسط موکب دار
+                محترم انجام خواهد شد
+              </span>
+            </span>
+          </label>
         </FormSection>
 
-        <FormSection title="توضیحات و خدمات" icon={<NavIcon name="book" className="h-4 w-4" />}>
+        <FormSection
+          title="توضیحات و خدمات"
+          icon={<NavIcon name="book" className="h-4 w-4" />}
+        >
           <label className="block">
             <FieldLabel label="توضیحات" hint="اختیاری" />
             <textarea
               value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, description: e.target.value })
+              }
               rows={2}
               className={inputClass}
               {...fieldProps}
@@ -558,7 +637,10 @@ export function MawkibFormModal({
           </label>
 
           <label className="block">
-            <FieldLabel label="امکانات" hint="اختیاری — اسکان، پارکینگ، حمام..." />
+            <FieldLabel
+              label="امکانات"
+              hint="اختیاری — اسکان، پارکینگ، حمام..."
+            />
             <textarea
               value={form.facilities}
               onChange={(e) => setForm({ ...form, facilities: e.target.value })}
@@ -589,7 +671,10 @@ export function MawkibFormModal({
         />
 
         {isAdmin && (
-          <FormSection title="وضعیت" icon={<NavIcon name="check" className="h-4 w-4" />}>
+          <FormSection
+            title="وضعیت"
+            icon={<NavIcon name="check" className="h-4 w-4" />}
+          >
             <label className="block">
               <FieldLabel label="وضعیت تأیید موکب" />
               <select
@@ -612,6 +697,22 @@ export function MawkibFormModal({
 
         {!readOnly && (
           <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+            {isEdit && mawkib && (
+              <div className="flex w-full flex-col gap-2 sm:mr-auto sm:w-auto sm:flex-row">
+                <MawkibCardPrintButton
+                  data={mawkibToCardData(mawkib)}
+                  className={`${btnSecondary} w-full sm:w-auto`}
+                />
+                <MawkibRulesPrintButton
+                  data={buildMawkibRulesPrintDataFromForm(mawkib, {
+                    name: form.name,
+                    phoneNumber: form.phoneNumber,
+                    rules: form.extra.rules,
+                  })}
+                  className={`${btnSecondary} w-full border-[#c5d4e8] bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6] sm:w-auto`}
+                />
+              </div>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -626,45 +727,40 @@ export function MawkibFormModal({
               className={`${btnPrimary} w-full sm:w-auto`}
             >
               {loading && !reviewAction
-                ? 'در حال ذخیره...'
+                ? "در حال ذخیره..."
                 : isEdit
-                  ? 'ذخیره تغییرات'
-                  : 'افزودن موکب'}
+                  ? "ذخیره تغییرات"
+                  : "افزودن موکب"}
             </button>
           </div>
         )}
 
-        {isEdit && mawkib && (
-          <div
-            className={`flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-between ${
-              readOnly ? '' : 'mt-0'
-            }`}
-          >
+        {isEdit && mawkib && readOnly && (
+          <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
             <button
               type="button"
-              onClick={() => setCapacityOpen(true)}
-              className={`${btnSecondary} w-full border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 sm:w-auto`}
+              onClick={onClose}
+              className={`${btnSecondary} w-full sm:w-auto`}
             >
-              مشاهده ظرفیت
+              بستن
             </button>
-            {readOnly && (
-              <button type="button" onClick={onClose} className={`${btnSecondary} w-full sm:w-auto`}>
-                بستن
-              </button>
-            )}
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <MawkibCardPrintButton
+                data={mawkibToCardData(mawkib)}
+                className={`${btnPrimary} w-full sm:w-auto`}
+              />
+              <MawkibRulesPrintButton
+                data={buildMawkibRulesPrintDataFromForm(mawkib, {
+                  name: form.name,
+                  phoneNumber: form.phoneNumber,
+                  rules: form.extra.rules,
+                })}
+                className={`${btnSecondary} w-full border-[#c5d4e8] bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6] sm:w-auto`}
+              />
+            </div>
           </div>
         )}
       </form>
-
-      {mawkib && (
-        <MawkibCapacityViewModal
-          open={capacityOpen}
-          onClose={() => setCapacityOpen(false)}
-          mawkibId={mawkib.id}
-          mawkibName={mawkib.name}
-          authenticated
-        />
-      )}
     </Modal>
   );
 }

@@ -17,6 +17,7 @@ import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { MawkibsPage } from './pages/MawkibsPage';
 import { MawkibMapSearchPage } from './pages/MawkibMapSearchPage';
 import { MawkibViewDetailPage } from './pages/MawkibViewDetailPage';
+import { MawkibRulesPrintPage } from './pages/MawkibRulesPrintPage';
 import { ReservationsPage } from './pages/ReservationsPage';
 import { ReservationDetailPage } from './pages/ReservationDetailPage';
 import { NewReservationPage } from './pages/NewReservationPage';
@@ -96,6 +97,7 @@ export default function App() {
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/settings/password" element={<ChangePasswordPage />} />
                   <Route path="/mawkibs/map" element={<MawkibMapSearchPage />} />
+                  <Route path="/mawkibs/:id/rules" element={<MawkibRulesPrintPage />} />
                   <Route path="/mawkibs/:id/view" element={<MawkibViewDetailPage />} />
                   <Route
                     path="/honorary-volunteers/my"

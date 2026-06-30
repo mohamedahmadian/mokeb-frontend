@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { MawkibFeedbackDetailModal } from "../mawkib-feedback/MawkibFeedbackDetailModal";
+import { MawkibCardPrintButton } from "../mawkibs/MawkibCardPrintButton";
 import { MawkibFormModal } from "../mawkibs/MawkibFormModal";
 import { MawkibCapacityViewModal } from "../mawkibs/MawkibCapacityViewModal";
 import { MawkibCapacityPills } from "../mawkibs/MawkibInfoCard";
@@ -13,6 +14,7 @@ import { NavIcon, type NavIconName } from "../ui/NavIcons";
 import { mawkibCityLabel } from "../../lib/mawkib-locations";
 import { useAuth } from "../../contexts/AuthContext";
 import { formatGuestCount } from "../../lib/capacity";
+import { mawkibToCardData } from "../../lib/mawkib-card";
 import { getApiErrorMessage } from "../../lib/constants";
 import { dashboardApi } from "../../lib/dashboard";
 import { formatTimeFa } from "../../lib/format-time";
@@ -449,18 +451,22 @@ function MawkibQuickCard({
           <button
             type="button"
             onClick={onViewCapacity}
-            className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-[11px] font-medium text-violet-700 transition hover:bg-violet-100"
+            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2 py-1.5 text-[10px] font-medium text-violet-700 transition hover:bg-violet-100 sm:px-2.5 sm:text-[11px]"
           >
             مشاهده ظرفیت
           </button>
           <button
             type="button"
             onClick={onEdit}
-            className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50"
+            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-medium text-slate-700 transition hover:bg-slate-50 sm:px-2.5 sm:text-[11px]"
           >
-            <NavIcon name="mawkibs" className="h-3.5 w-3.5" />
+            <NavIcon name="mawkibs" className="h-3.5 w-3.5 shrink-0" />
             ویرایش موکب
           </button>
+          <MawkibCardPrintButton
+            data={mawkibToCardData(mawkib)}
+            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 rounded-lg border border-[#c5d4e8] bg-[#f0f4fa] px-2 py-1.5 text-[10px] font-medium text-[#4a6fa5] transition hover:bg-[#e8eef6] sm:px-2.5 sm:text-[11px]"
+          />
         </div>
       </div>
     </div>
@@ -587,6 +593,10 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
   const openMawkibEditor = (mawkib: Mawkib) => {
     setEditingMawkib(mawkib);
     setMawkibFormOpen(true);
+    void mawkibsApi
+      .getOne(mawkib.id)
+      .then(setEditingMawkib)
+      .catch(() => toast.error("بارگذاری جزئیات موکب ناموفق بود"));
   };
 
   const isLoading =
@@ -862,6 +872,7 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
       />
 
       <MawkibFormModal
+        key={editingMawkib?.id ?? "new"}
         open={mawkibFormOpen}
         onClose={() => {
           setMawkibFormOpen(false);

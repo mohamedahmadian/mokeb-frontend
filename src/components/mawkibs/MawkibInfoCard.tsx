@@ -7,6 +7,7 @@ import {
   mawkibAvailableMale,
 } from '../../lib/capacity';
 import { RemainingCapacityHint } from './RemainingCapacityHint';
+import { MawkibReservationTypeBadges } from './MawkibReservationTypeBadges';
 import type { Mawkib } from '../../types';
 
 export function mawkibCapacitySnapshot(mawkib: Mawkib) {
@@ -228,10 +229,12 @@ function MawkibInfoCardBody({
   mawkib,
   selectable,
   selected,
+  showOnlineReservationStatus = true,
 }: {
   mawkib: Mawkib;
   selectable: boolean;
   selected: boolean;
+  showOnlineReservationStatus?: boolean;
 }) {
   const ownerName = mawkib.owner?.fullName?.trim();
   const contactPhone = (mawkib.phoneNumber || mawkib.owner?.mobileNumber)?.trim();
@@ -247,7 +250,12 @@ function MawkibInfoCardBody({
         <div className="flex items-start gap-3">
           <CardIconBadge icon={cardIcons.mawkib} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-base font-bold text-slate-800">{mawkib.name}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="truncate text-base font-bold text-slate-800">{mawkib.name}</p>
+              {showOnlineReservationStatus && (
+                <MawkibReservationTypeBadges mawkib={mawkib} />
+              )}
+            </div>
           </div>
           {selectable && (
             <div
@@ -359,28 +367,40 @@ export function MawkibInfoCard({
   selected = false,
   onSelect,
   footer,
+  reservationBlocked = false,
+  showOnlineReservationStatus = true,
 }: {
   mawkib: Mawkib;
   selectable?: boolean;
   selected?: boolean;
   onSelect?: () => void;
   footer?: ReactNode;
+  reservationBlocked?: boolean;
+  showOnlineReservationStatus?: boolean;
 }) {
+  const canSelect = Boolean(selectable && !reservationBlocked && onSelect);
   const baseClass = 'w-full overflow-hidden rounded-2xl border-2 text-right transition-all';
-  const stateClass = selectable
+  const stateClass = canSelect
     ? selected
       ? 'border-[#4a6fa5] bg-gradient-to-b from-[#f0f4fa] to-white shadow-md shadow-[#c5d4e8]/40'
       : 'border-slate-200 bg-white hover:border-[#c5d4e8] hover:shadow-sm'
-    : 'border-slate-200 bg-white';
+    : reservationBlocked
+      ? 'cursor-not-allowed border-slate-200 bg-slate-50/80 opacity-90'
+      : 'border-slate-200 bg-white';
 
   const body = (
     <>
-      <MawkibInfoCardBody mawkib={mawkib} selectable={selectable} selected={selected} />
+      <MawkibInfoCardBody
+        mawkib={mawkib}
+        selectable={canSelect}
+        selected={selected}
+        showOnlineReservationStatus={showOnlineReservationStatus}
+      />
       {footer}
     </>
   );
 
-  if (selectable && onSelect) {
+  if (canSelect) {
     return (
       <button type="button" onClick={onSelect} className={`${baseClass} ${stateClass}`}>
         {body}
@@ -395,12 +415,20 @@ export function MawkibCard({
   mawkib,
   selected,
   onSelect,
+  reservationBlocked = false,
 }: {
   mawkib: Mawkib;
   selected: boolean;
   onSelect: () => void;
+  reservationBlocked?: boolean;
 }) {
   return (
-    <MawkibInfoCard mawkib={mawkib} selectable selected={selected} onSelect={onSelect} />
+    <MawkibInfoCard
+      mawkib={mawkib}
+      selectable
+      selected={selected}
+      onSelect={onSelect}
+      reservationBlocked={reservationBlocked}
+    />
   );
 }

@@ -24,14 +24,13 @@ export function RemainingCapacityHint({
 
   if (available <= 0) {
     return (
-      <span className={`${vazirClass} ${fullClassName}`}>(تکمیل ظرفیت)</span>
+      <span className={`${vazirClass} font-bold ${fullClassName}`}>(تکمیل ظرفیت)</span>
     );
   }
 
   return (
-    <span className={className}>
-      (<span className="font-mono tabular-nums">{formatNum(available)}</span>{' '}
-      <span className={vazirClass}>خالی</span>)
+    <span className={`${vazirClass} font-bold ${className}`}>
+      ({formatNum(available)} خالی)
     </span>
   );
 }

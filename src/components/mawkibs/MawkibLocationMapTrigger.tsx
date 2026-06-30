@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Modal } from '../Modal';
 import { getMapCenter, hasValidCoords } from '../../lib/geo';
 import type { MawkibCity, MawkibCountry } from '../../lib/mawkib-locations';
@@ -19,6 +19,7 @@ interface MawkibLocationMapTriggerProps {
   onPositionChange?: (latitude: number, longitude: number) => void;
   fallbackCountry?: MawkibCountry;
   fallbackCity?: MawkibCity | '';
+  defaultOpen?: boolean;
 }
 
 function MapPinIcon() {
@@ -58,10 +59,17 @@ export function MawkibLocationMapTrigger({
   onPositionChange,
   fallbackCountry,
   fallbackCity,
+  defaultOpen = false,
 }: MawkibLocationMapTriggerProps) {
   const [mapOpen, setMapOpen] = useState(false);
 
   const hasCoords = hasValidCoords(latitude, longitude);
+
+  useEffect(() => {
+    if (defaultOpen && hasCoords) {
+      setMapOpen(true);
+    }
+  }, [defaultOpen, hasCoords]);
   const fallback = getMapCenter({
     country: fallbackCountry,
     mawkibCity: fallbackCity,

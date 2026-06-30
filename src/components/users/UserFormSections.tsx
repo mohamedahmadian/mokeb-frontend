@@ -39,6 +39,8 @@ export interface UserFormSectionsProps {
   passwordHint?: string;
   /** inline: همه بخش‌ها باز | collapsible: موقعیت و بعد اختیاری در آکاردئون */
   extraFields?: 'inline' | 'collapsible';
+  /** نمایش استان/شهر در بخش اطلاعات اصلی (مثلاً ویرایش پروفایل) */
+  locationInPrimary?: boolean;
   descriptionLabel?: string;
   className?: string;
 }
@@ -53,6 +55,7 @@ function PrimaryFieldsSection({
   passwordPinMode,
   passwordPlaceholder,
   passwordHint,
+  locationInPrimary,
 }: Pick<
   UserFormSectionsProps,
   | 'values'
@@ -64,6 +67,7 @@ function PrimaryFieldsSection({
   | 'passwordPinMode'
   | 'passwordPlaceholder'
   | 'passwordHint'
+  | 'locationInPrimary'
 >) {
   return (
     <FormSection title="اطلاعات اصلی" icon={<NavIcon name="profile" className="h-4 w-4" />}>
@@ -101,6 +105,15 @@ function PrimaryFieldsSection({
             className={guestTheme.input}
           />
         </label>
+      )}
+
+      {locationInPrimary && (
+        <ProvinceCitySelect
+          province={values.province}
+          city={values.city}
+          onProvinceChange={(province) => onChange({ province, city: '' })}
+          onCityChange={(city) => onChange({ city })}
+        />
       )}
 
       <label className="block">
@@ -194,6 +207,7 @@ export function UserFormSections({
   passwordPlaceholder,
   passwordHint,
   extraFields = 'inline',
+  locationInPrimary = false,
   descriptionLabel,
   className = 'space-y-4',
 }: UserFormSectionsProps) {
@@ -208,12 +222,15 @@ export function UserFormSections({
       passwordPinMode={passwordPinMode}
       passwordPlaceholder={passwordPlaceholder}
       passwordHint={passwordHint}
+      locationInPrimary={locationInPrimary}
     />
   );
 
   const extras = (
     <>
-      <LocationSection values={values} onChange={onChange} />
+      {!locationInPrimary && (
+        <LocationSection values={values} onChange={onChange} />
+      )}
       <DescriptionSection
         values={values}
         onChange={onChange}

@@ -82,15 +82,15 @@ export function FormSection({
 }) {
   return (
     <section
-      className={`overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm ${className}`}
+      className={`rounded-xl border border-slate-200/80 bg-white shadow-sm ${className}`}
     >
-      <div className="flex items-center gap-2.5 border-b border-slate-100 bg-gradient-to-l from-[#f0f4fa] to-white px-3.5 py-2.5">
+      <div className="flex items-center gap-2.5 overflow-hidden rounded-t-xl border-b border-slate-100 bg-gradient-to-l from-[#f0f4fa] to-white px-3.5 py-2.5">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#e8eef6] text-[#4a6fa5]">
           {icon}
         </div>
         <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
       </div>
-      <div className="space-y-3 p-3.5">{children}</div>
+      <div className="space-y-3 overflow-visible p-3.5">{children}</div>
     </section>
   );
 }

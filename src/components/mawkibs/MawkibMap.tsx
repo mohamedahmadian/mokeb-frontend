@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import L from 'leaflet';
 import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet';
 import {
@@ -27,6 +27,8 @@ interface MawkibMapProps {
   country?: MawkibCountry | '';
   mawkibCity?: MawkibCity | '';
   detailPath?: (id: number) => string;
+  /** Remount map when container becomes visible or layout changes */
+  mountKey?: string | number;
 }
 
 function MapResizeFix() {
@@ -35,16 +37,84 @@ function MapResizeFix() {
   useEffect(() => {
     const invalidate = () => map.invalidateSize();
     const raf = requestAnimationFrame(invalidate);
-    const timer = window.setTimeout(invalidate, 100);
+    const timer = window.setTimeout(invalidate, 150);
+    const timer2 = window.setTimeout(invalidate, 400);
     window.addEventListener('resize', invalidate);
+
+    const container = map.getContainer();
+    const observer =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(invalidate)
+        : null;
+    observer?.observe(container);
+
     return () => {
       cancelAnimationFrame(raf);
       window.clearTimeout(timer);
+      window.clearTimeout(timer2);
       window.removeEventListener('resize', invalidate);
+      observer?.disconnect();
     };
   }, [map]);
 
   return null;
+}
+
+function MapReadyGate({
+  mountKey,
+  children,
+}: {
+  mountKey: string | number;
+  children: ReactNode;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setReady(false);
+    const el = containerRef.current;
+    if (!el) return;
+
+    const tryActivate = () => {
+      const { width, height } = el.getBoundingClientRect();
+      if (width > 0 && height > 0) {
+        setReady(true);
+        return true;
+      }
+      return false;
+    };
+
+    if (tryActivate()) return;
+
+    const observer =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+            if (tryActivate()) observer?.disconnect();
+          })
+        : null;
+    observer?.observe(el);
+
+    const raf = requestAnimationFrame(() => tryActivate());
+    const timer = window.setTimeout(() => tryActivate(), 200);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(timer);
+      observer?.disconnect();
+    };
+  }, [mountKey]);
+
+  return (
+    <div ref={containerRef} className="h-full w-full">
+      {ready ? (
+        children
+      ) : (
+        <div className="flex h-full min-h-[24rem] items-center justify-center bg-slate-200 sm:min-h-[28rem]">
+          <div className="h-9 w-9 animate-spin rounded-full border-4 border-slate-300 border-t-[#4a6fa5]" />
+        </div>
+      )}
+    </div>
+  );
 }
 
 function MapViewController({
@@ -181,6 +251,7 @@ export function MawkibMap({
   country,
   mawkibCity,
   detailPath,
+  mountKey = 'default',
 }: MawkibMapProps) {
   const mawkibsWithCoords = useMemo(
     () => mawkibs.filter((m) => hasValidCoords(m.latitude, m.longitude)),
@@ -201,14 +272,22 @@ export function MawkibMap({
 
   return (
     <div className="mawkib-map-root">
-      <MapContainer center={[center.lat, center.lng]} zoom={zoom} scrollWheelZoom>
-        <MawkibMapInner
-          mawkibs={mawkibs}
-          country={country}
-          mawkibCity={mawkibCity}
-          detailPath={detailPath}
-        />
-      </MapContainer>
+      <MapReadyGate mountKey={mountKey}>
+        <MapContainer
+          key={String(mountKey)}
+          center={[center.lat, center.lng]}
+          zoom={zoom}
+          scrollWheelZoom
+          className="h-full w-full"
+        >
+          <MawkibMapInner
+            mawkibs={mawkibs}
+            country={country}
+            mawkibCity={mawkibCity}
+            detailPath={detailPath}
+          />
+        </MapContainer>
+      </MapReadyGate>
 
       {withoutCoords > 0 && (
         <p className="absolute bottom-3 left-3 right-3 z-[1000] rounded-lg bg-white/90 px-3 py-1.5 text-center text-xs text-slate-600 shadow-sm backdrop-blur-sm">

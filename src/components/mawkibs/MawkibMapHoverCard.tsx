@@ -9,6 +9,7 @@ import {
 } from '../../lib/mawkib-locations';
 import type { Mawkib } from '../../types';
 import { MAWKIB_AMENITY_FIELDS } from './MawkibExtraFields';
+import { MawkibReservationTypeBadges } from './MawkibReservationTypeBadges';
 
 function SvgIcon({
   className = 'h-3.5 w-3.5',
@@ -168,6 +169,9 @@ export function MawkibMapHoverCard({
       onMouseLeave={onMouseLeave}
     >
       <InfoRow icon={icons.mawkib} label="نام موکب" value={mawkib.name} />
+      <div className="mt-1.5">
+        <MawkibReservationTypeBadges mawkib={mawkib} />
+      </div>
 
       <div className="mt-2 space-y-2">
         {locationLabel && (

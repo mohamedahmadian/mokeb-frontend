@@ -45,6 +45,7 @@ export interface CreateMawkibPayload extends MawkibExtraFields {
   status?: MawkibStatus;
   defaultCheckInTime?: string;
   defaultCheckOutTime?: string;
+  onlineReservationEnabled?: boolean;
 }
 
 export interface UpdateMawkibPayload extends MawkibExtraFields {
@@ -65,6 +66,7 @@ export interface UpdateMawkibPayload extends MawkibExtraFields {
   status?: MawkibStatus;
   defaultCheckInTime?: string;
   defaultCheckOutTime?: string;
+  onlineReservationEnabled?: boolean;
 }
 
 export interface DeleteMawkibResponse {

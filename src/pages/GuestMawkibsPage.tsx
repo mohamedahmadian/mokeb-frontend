@@ -7,10 +7,16 @@ import {
 } from "../components/guest/CapacityFilterToggle";
 import { GuestPageHeader, GuestShell } from "../components/guest/GuestShell";
 import {
+  MawkibBrowseViewToggle,
+  parseMawkibBrowseView,
+  type MawkibBrowseView,
+} from "../components/guest/MawkibBrowseViewToggle";
+import {
   MawkibGuestBrowseFooter,
   MawkibInfoCard,
 } from "../components/mawkibs/MawkibInfoCard";
 import { MawkibCapacityViewModal } from "../components/mawkibs/MawkibCapacityViewModal";
+import { MawkibMap } from "../components/mawkibs/MawkibMap";
 import { SearchableSelect } from "../components/ui/SearchableSelect";
 import { guestTheme } from "../lib/guest-theme";
 import { MAWKIB_CITIES } from "../lib/mawkib-locations";
@@ -69,12 +75,14 @@ export function GuestMawkibsPage() {
   const initialQuery = searchParams.get("q") ?? "";
   const initialCity = searchParams.get("city") ?? "";
   const initialCapacity = parseCapacityView(searchParams.get("capacity"));
+  const initialView = parseMawkibBrowseView(searchParams.get("view"));
 
   const [query, setQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [mawkibCity, setMawkibCity] = useState(initialCity);
   const [capacityView, setCapacityView] =
     useState<CapacityView>(initialCapacity);
+  const [browseView, setBrowseView] = useState<MawkibBrowseView>(initialView);
   const [capacityMawkib, setCapacityMawkib] = useState<Mawkib | null>(null);
 
   useEffect(() => {
@@ -88,8 +96,14 @@ export function GuestMawkibsPage() {
     if (trimmed) params.q = trimmed;
     if (mawkibCity) params.city = mawkibCity;
     if (capacityView !== "available") params.capacity = capacityView;
+    if (browseView === "map") params.view = "map";
     setSearchParams(params, { replace: true });
-  }, [debouncedQuery, mawkibCity, capacityView, setSearchParams]);
+  }, [debouncedQuery, mawkibCity, capacityView, browseView, setSearchParams]);
+
+  useEffect(() => {
+    const next = parseMawkibBrowseView(searchParams.get("view"));
+    setBrowseView((current) => (current === next ? current : next));
+  }, [searchParams]);
 
   const {
     data: mawkibs = [],
@@ -110,12 +124,19 @@ export function GuestMawkibsPage() {
       }),
   });
 
+  const guestMawkibDetailPath = (id: number) =>
+    `/guest/mawkibs/${id}?from=mawkibs`;
+
   return (
-    <GuestShell maxWidth="lg">
+    <GuestShell maxWidth={browseView === "map" ? "2xl" : "lg"}>
       <GuestPageHeader
         icon={<IconMawkibs />}
         title="جستجوی موکب"
-        subtitle="نام، آدرس یا شهر موکب را جستجو کنید"
+        subtitle={
+          browseView === "map"
+            ? "امکان جستجو و مشاهده موکب ها بر روی نقشه یا به صورت  لیستی"
+            : "نام، آدرس یا شهر موکب را جستجو کنید"
+        }
       />
 
       <form
@@ -149,7 +170,7 @@ export function GuestMawkibsPage() {
         </div>
       </form>
 
-      <div className="mx-auto mt-5 grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="mx-auto mt-5 grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
           <label className="mb-1.5 block text-xs font-medium text-slate-600">
             شهر موکب
@@ -163,16 +184,57 @@ export function GuestMawkibsPage() {
             className="rounded-xl border-slate-200 py-2.5"
           />
         </div>
-        <div className="justify-self-end">
+        <div>
           <CapacityFilterToggle
             value={capacityView}
             onChange={setCapacityView}
           />
         </div>
+        <div className="justify-self-end sm:justify-self-auto">
+          <MawkibBrowseViewToggle value={browseView} onChange={setBrowseView} />
+        </div>
       </div>
 
-      <div className="mx-auto mt-8 max-w-3xl">
-        {isLoading ? (
+      <div className={`mx-auto mt-8 ${browseView === "map" ? "w-full" : ""}`}>
+        {browseView === "map" ? (
+          <div className="space-y-3">
+            <div className="relative h-[24rem] w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm sm:h-[32rem]">
+              {isLoading ? (
+                <div className="flex h-full items-center justify-center">
+                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#c5d4e8] border-t-[#4a6fa5]" />
+                </div>
+              ) : isError ? (
+                <div className="flex h-full items-center justify-center p-6 text-center text-sm text-red-600">
+                  خطا در دریافت لیست موکب‌ها. لطفاً دوباره تلاش کنید.
+                </div>
+              ) : (
+                <>
+                  <MawkibMap
+                    mountKey={`guest-map-${mawkibs.length}-${mawkibCity}`}
+                    mawkibs={mawkibs}
+                    mawkibCity={(mawkibCity as MawkibCity) || ""}
+                    detailPath={guestMawkibDetailPath}
+                  />
+                  {mawkibs.length === 0 && (
+                    <div className="pointer-events-none absolute inset-x-0 top-4 z-[1000] flex justify-center px-4">
+                      <p className="rounded-lg bg-white/95 px-4 py-2 text-center text-sm text-slate-600 shadow-sm">
+                        موکبی یافت نشد — نقشه بر اساس فیلترهای فعلی نمایش داده
+                        می‌شود
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            {!isLoading && !isError && (
+              <p className="text-center text-xs text-slate-500">
+                {mawkibs.length > 0
+                  ? `${mawkibs.length.toLocaleString("fa-IR")} موکب — برای جزئیات، موس را روی آیکون نگه دارید`
+                  : "فیلترها را تغییر دهید یا جستجوی دیگری انجام دهید"}
+              </p>
+            )}
+          </div>
+        ) : isLoading ? (
           <div className="flex justify-center py-16">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#c5d4e8] border-t-[#4a6fa5]" />
           </div>
@@ -199,7 +261,7 @@ export function GuestMawkibsPage() {
                   <MawkibGuestBrowseFooter
                     onViewCapacity={() => setCapacityMawkib(mawkib)}
                     onViewDetails={() =>
-                      navigate(`/guest/mawkibs/${mawkib.id}?from=mawkibs`)
+                      navigate(guestMawkibDetailPath(mawkib.id))
                     }
                   />
                 }
@@ -214,6 +276,7 @@ export function GuestMawkibsPage() {
         onClose={() => setCapacityMawkib(null)}
         mawkibId={capacityMawkib?.id ?? 0}
         mawkibName={capacityMawkib?.name ?? ""}
+        guestReserveLinks
       />
     </GuestShell>
   );

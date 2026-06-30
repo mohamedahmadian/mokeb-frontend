@@ -84,3 +84,21 @@ export function computeBounds(points: LatLng[]): LatLngBounds | null {
 
   return { north, south, east, west };
 }
+
+export function buildStaticMapImageUrl(
+  latitude: number,
+  longitude: number,
+  size = '360x200',
+): string {
+  return `https://staticmap.openstreetmap.de/staticmap.php?center=${latitude},${longitude}&zoom=15&size=${size}&markers=${latitude},${longitude},lightblue1`;
+}
+
+export function resolveAssetUrl(path?: string | null): string {
+  const normalized = path?.trim();
+  if (!normalized) return '';
+  if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+    return normalized;
+  }
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return `${origin}${normalized.startsWith('/') ? normalized : `/${normalized}`}`;
+}

@@ -15,6 +15,10 @@ import {
   mawkibCountryLabel,
 } from "../../lib/mawkib-locations";
 import { guestTheme } from "../../lib/guest-theme";
+import {
+  ONLINE_RESERVATION_DISABLED_LABEL,
+  isMawkibOnlineReservationEnabled,
+} from "../../lib/mawkib-online-reservation";
 import type { Mawkib } from "../../types";
 import { MawkibLocationMapTrigger } from "./MawkibLocationMapTrigger";
 
@@ -397,9 +401,14 @@ function hasText(value?: string | null) {
 interface MawkibPublicDetailProps {
   mawkib: Mawkib;
   onViewCapacity?: () => void;
+  focusMap?: boolean;
 }
 
-export function MawkibPublicDetail({ mawkib, onViewCapacity }: MawkibPublicDetailProps) {
+export function MawkibPublicDetail({
+  mawkib,
+  onViewCapacity,
+  focusMap = false,
+}: MawkibPublicDetailProps) {
   const activeAmenities = MAWKIB_AMENITY_FIELDS.filter((f) => mawkib[f.key]);
   const socialLinks = MAWKIB_NOTIFY_FIELDS.filter((f) =>
     hasText(mawkib[f.key]),
@@ -407,6 +416,15 @@ export function MawkibPublicDetail({ mawkib, onViewCapacity }: MawkibPublicDetai
 
   return (
     <div className="space-y-3">
+      {!isMawkibOnlineReservationEnabled(mawkib) && (
+        <div
+          role="alert"
+          className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-7 text-slate-700"
+        >
+          {ONLINE_RESERVATION_DISABLED_LABEL} — امکان ثبت درخواست رزرو آنلاین برای این
+          موکب وجود ندارد. برای هماهنگی با موکب‌دار تماس بگیرید.
+        </div>
+      )}
       <DetailSection icon={icons.home} title="موکب">
         <PairFieldRow
           icon={icons.home}
@@ -531,12 +549,13 @@ export function MawkibPublicDetail({ mawkib, onViewCapacity }: MawkibPublicDetai
             }
           />
         )}
-        <div className="py-1">
+        <div id="mawkib-map" className="py-1 scroll-mt-24">
           <p className="mb-2 text-xs text-slate-500">موقعیت روی نقشه</p>
           <MawkibLocationMapTrigger
             latitude={mawkib.latitude}
             longitude={mawkib.longitude}
             mawkibName={mawkib.name}
+            defaultOpen={focusMap}
           />
         </div>
       </DetailSection>

@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../contexts/AuthContext";
 import { guestTheme } from "../lib/guest-theme";
+import { getPrimaryRoleHonorificLabel } from "../lib/constants";
 import { usersApi } from "../lib/users";
 import { UserAvatar } from "./users/UserAvatar";
 import { NavIcon, type NavIconName } from "./ui/NavIcons";
@@ -217,6 +218,7 @@ export function AdminLayout() {
     ? resolveFeedbackNavVariant(user.roles)
     : null;
   const portalSectionsInsertIndex = getPortalSectionsInsertIndex(visibleNav);
+  const roleHonorificLabel = getPrimaryRoleHonorificLabel(user?.roles);
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((prev) => {
@@ -363,9 +365,16 @@ export function AdminLayout() {
           imageUrl={profile?.imageUrl}
         />
         {!collapsed && (
-          <p className="min-w-0 truncate text-sm font-medium text-[#4a6fa5]">
-            {user?.fullName}
-          </p>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-[#4a6fa5]">
+              {user?.fullName}
+            </p>
+            {roleHonorificLabel && (
+              <span className="mt-1 inline-flex rounded-full bg-[#e8eef6] px-2 py-0.5 text-xs font-medium text-[#4a6fa5]">
+                {roleHonorificLabel}
+              </span>
+            )}
+          </div>
         )}
       </div>
     </div>

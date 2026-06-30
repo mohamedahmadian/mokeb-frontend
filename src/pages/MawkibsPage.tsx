@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { MawkibAmenityFilterToggles } from '../components/mawkibs/MawkibAmenityFilterToggles';
 import {
@@ -157,6 +157,15 @@ export function MawkibsPage() {
   });
 
   const canManageMawkibs = isAdmin || isMawkibOwner;
+
+  const openEditForm = (mawkib: Mawkib) => {
+    setEditingMawkib(mawkib);
+    setFormOpen(true);
+    void mawkibsApi
+      .getOne(mawkib.id)
+      .then(setEditingMawkib)
+      .catch(() => toast.error('بارگذاری جزئیات موکب ناموفق بود'));
+  };
 
   const createMutation = useMutation({
     mutationFn: (payload: CreateMawkibPayload) => mawkibsApi.create(payload),
@@ -329,14 +338,17 @@ export function MawkibsPage() {
             رزروها
           </button>
           <button
-            onClick={() => {
-              setEditingMawkib(mawkib);
-              setFormOpen(true);
-            }}
+            onClick={() => openEditForm(mawkib)}
             className={`${btnAction} bg-slate-100 text-slate-700 hover:bg-slate-200`}
           >
             ویرایش
           </button>
+          <Link
+            to={`/mawkibs/${mawkib.id}/rules`}
+            className={`${btnAction} bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6]`}
+          >
+            قوانین
+          </Link>
           {isAdmin && (
             <button
               onClick={() => setDeletingMawkib(mawkib)}
@@ -547,7 +559,17 @@ export function MawkibsPage() {
               </tr>
             ) : (
               mawkibs.map((mawkib) => (
-                <tr key={mawkib.id} className="border-t border-slate-100">
+                <tr
+                  key={mawkib.id}
+                  className={`border-t border-slate-100 ${
+                    canManageMawkibs
+                      ? 'cursor-pointer transition hover:bg-slate-50'
+                      : ''
+                  }`}
+                  onClick={
+                    canManageMawkibs ? () => openEditForm(mawkib) : undefined
+                  }
+                >
                   <td className="px-4 py-3 font-medium">{mawkib.name}</td>
                   {showOwnerColumn && (
                     <td className="px-4 py-3">{mawkib.owner?.fullName ?? '—'}</td>
@@ -557,7 +579,7 @@ export function MawkibsPage() {
                   <td className="px-4 py-3">{renderFemaleCapacity(mawkib)}</td>
                   <td className="px-4 py-3">{formatDate(mawkib.serviceStartDate)}</td>
                   <td className="px-4 py-3">{formatDate(mawkib.serviceEndDate)}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="flex flex-wrap gap-2">{renderActions(mawkib)}</div>
                   </td>
                 </tr>
@@ -568,6 +590,7 @@ export function MawkibsPage() {
       </div>
 
       <MawkibFormModal
+        key={editingMawkib?.id ?? 'new'}
         open={formOpen}
         onClose={closeEditForm}
         onSubmit={handleFormSubmit}

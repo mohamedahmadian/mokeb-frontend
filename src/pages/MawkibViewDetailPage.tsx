@@ -1,7 +1,11 @@
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { MawkibPublicDetail } from '../components/mawkibs/MawkibPublicDetail';
+import { MawkibCardPrintButton } from '../components/mawkibs/MawkibCardPrintButton';
+import { MawkibRulesPrintButton } from '../components/mawkibs/MawkibRulesPrintButton';
 import { PageHeader } from '../components/ui/PageHeader';
+import { mawkibToCardData } from '../lib/mawkib-card';
+import { mawkibToRulesPrintData } from '../lib/mawkib-rules-print';
 import { btnSecondary } from '../lib/styles';
 import { mawkibsApi } from '../lib/mawkibs';
 
@@ -37,6 +41,13 @@ export function MawkibViewDetailPage() {
 
       {mawkib && (
         <div className="space-y-4">
+          <div className="flex flex-wrap justify-end gap-2">
+            <MawkibCardPrintButton data={mawkibToCardData(mawkib)} />
+            <MawkibRulesPrintButton data={mawkibToRulesPrintData(mawkib)} />
+            <Link to={`/mawkibs/${mawkib.id}/rules`} className={btnSecondary}>
+              صفحه قوانین
+            </Link>
+          </div>
           <MawkibPublicDetail mawkib={mawkib} />
           <Link to="/mawkibs/map" className={`${btnSecondary} w-full sm:w-auto`}>
             بازگشت به جستجوی موکب ( نقشه )

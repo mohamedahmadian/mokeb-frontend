@@ -10,6 +10,7 @@ export function NewReservationPage() {
   const [searchParams] = useSearchParams();
   const initialMawkibId = searchParams.get('mawkibId');
   const initialPilgrimUserId = searchParams.get('pilgrimUserId');
+  const initialReservationDate = searchParams.get('date');
 
   const parsedMawkibId = initialMawkibId ? parseInt(initialMawkibId, 10) : null;
   const parsedPilgrimUserId = initialPilgrimUserId
@@ -33,6 +34,7 @@ export function NewReservationPage() {
       <ReservationForm
         variant="panel"
         initialMawkibId={parsedMawkibId}
+        initialReservationDate={initialReservationDate}
         initialPilgrimUserId={parsedPilgrimUserId}
         onSuccess={handleSuccess}
         onCancel={() => navigate('/reservations')}

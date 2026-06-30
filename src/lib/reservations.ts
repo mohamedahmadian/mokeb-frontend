@@ -80,11 +80,25 @@ export const reservationsApi = {
       .get<MawkibCapacitySnapshot>(`/mawkibs/${mawkibId}/capacity`, { params: { date } })
       .then((r) => r.data),
 
-  checkIn: (id: number) =>
-    api.post<Reservation>(`/reservations/${id}/check-in`).then((r) => r.data),
+  checkIn: (id: number, recordedAt?: string) =>
+    api
+      .post<Reservation>(`/reservations/${id}/check-in`, { recordedAt })
+      .then((r) => r.data),
 
-  checkOut: (id: number) =>
-    api.post<Reservation>(`/reservations/${id}/check-out`).then((r) => r.data),
+  checkOut: (id: number, recordedAt?: string) =>
+    api
+      .post<Reservation>(`/reservations/${id}/check-out`, { recordedAt })
+      .then((r) => r.data),
+
+  updateCheckIn: (id: number, recordedAt: string) =>
+    api
+      .patch<Reservation>(`/reservations/${id}/check-in`, { recordedAt })
+      .then((r) => r.data),
+
+  updateCheckOut: (id: number, recordedAt: string) =>
+    api
+      .patch<Reservation>(`/reservations/${id}/check-out`, { recordedAt })
+      .then((r) => r.data),
 
   createReview: (id: number, content: string) =>
     api.post<Reservation>(`/reservations/${id}/review`, { content }).then((r) => r.data),
@@ -95,5 +109,40 @@ export const reservationsApi = {
   replyToReview: (id: number, adminReply: string) =>
     api
       .patch<Reservation>(`/reservations/${id}/review/reply`, { adminReply })
+      .then((r) => r.data),
+
+  createDeliveredItem: (
+    id: number,
+    payload: {
+      itemName: string;
+      quantity: number;
+      description?: string;
+    },
+  ) =>
+    api
+      .post<Reservation>(`/reservations/${id}/delivered-items`, payload)
+      .then((r) => r.data),
+
+  updateDeliveredItem: (
+    id: number,
+    itemId: number,
+    payload: {
+      itemName: string;
+      quantity: number;
+      description?: string;
+    },
+  ) =>
+    api
+      .patch<Reservation>(`/reservations/${id}/delivered-items/${itemId}`, payload)
+      .then((r) => r.data),
+
+  receiveDeliveredItem: (id: number, itemId: number) =>
+    api
+      .patch<Reservation>(`/reservations/${id}/delivered-items/${itemId}/receive`)
+      .then((r) => r.data),
+
+  removeDeliveredItem: (id: number, itemId: number) =>
+    api
+      .delete<Reservation>(`/reservations/${id}/delivered-items/${itemId}`)
       .then((r) => r.data),
 };

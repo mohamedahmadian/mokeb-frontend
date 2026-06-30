@@ -247,6 +247,7 @@ export function UserFormModal({
                 : 'حداقل ۴ کاراکتر'
           }
           extraFields="inline"
+          locationInPrimary={hideRoles}
           descriptionLabel="درباره کاربر"
         />
 

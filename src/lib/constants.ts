@@ -12,6 +12,11 @@ export const RESERVATION_STATUS_LABELS: Record<string, string> = {
   Completed: 'تکمیل شده',
 };
 
+export const RESERVATION_DELIVERED_ITEM_STATUS_LABELS: Record<string, string> = {
+  DeliveredToGuest: 'تحویل داده شده',
+  ReceivedFromGuest: 'تحویل گرفته شده',
+};
+
 export const MAWKIB_STATUS_OPTIONS = [
   { value: 'Pending', label: 'در انتظار' },
   { value: 'Approved', label: 'تایید شده' },
@@ -34,7 +39,20 @@ export const ROLE_LABELS: Record<string, string> = {
   Admin: 'مدیر',
   Pilgrim: 'زائر',
   MawkibOwner: 'موکب‌دار',
+  HonoraryServant: 'خادم افتخاری',
 };
+
+const ROLE_PRIORITY = ['Admin', 'MawkibOwner', 'Pilgrim', 'HonoraryServant'] as const;
+
+export function getPrimaryRoleHonorificLabel(
+  roles: readonly string[] | undefined,
+): string | null {
+  if (!roles?.length) return null;
+  const primary = ROLE_PRIORITY.find((role) => roles.includes(role));
+  if (!primary) return null;
+  const label = ROLE_LABELS[primary];
+  return label ? `${label} محترم` : null;
+}
 
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (

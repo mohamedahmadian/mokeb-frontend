@@ -1,26 +1,32 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import DateObject from 'react-date-object';
-import persian from 'react-date-object/calendars/persian';
-import persian_fa from 'react-date-object/locales/persian_fa';
-import arabic from 'react-date-object/calendars/arabic';
-import arabic_fa from 'react-date-object/locales/arabic_fa';
-import gregorian from 'react-date-object/calendars/gregorian';
-import { Modal } from '../Modal';
-import { PersianDateInput, formatPersianDate } from '../ui/PersianDateInput';
-import { formatOccupiedFraction, formatPersianNumber } from '../../lib/capacity';
-import { RemainingCapacityHint } from './RemainingCapacityHint';
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import DateObject from "react-date-object";
+import persian from "react-date-object/calendars/persian";
+import persian_fa from "react-date-object/locales/persian_fa";
+import arabic from "react-date-object/calendars/arabic";
+import arabic_fa from "react-date-object/locales/arabic_fa";
+import gregorian from "react-date-object/calendars/gregorian";
+import { Modal } from "../Modal";
+import { PersianDateInput, formatPersianDate } from "../ui/PersianDateInput";
+import {
+  formatOccupiedFraction,
+  formatPersianNumber,
+} from "../../lib/capacity";
+import { RemainingCapacityHint } from "./RemainingCapacityHint";
 import {
   countDaysInclusive,
   defaultCapacityRange,
   isRangeWithinBounds,
   todayGregorian,
-} from '../../lib/date-range';
-import { getApiErrorMessage } from '../../lib/constants';
-import { btnPrimary, btnSecondary, filterInputClass } from '../../lib/styles';
-import { mawkibsApi, type MawkibDailyInventoryDay } from '../../lib/mawkibs';
+} from "../../lib/date-range";
+import { getApiErrorMessage } from "../../lib/constants";
+import { buildGuestReserveUrl, buildPanelReserveUrl } from "../../lib/guest-reserve";
+import { guestTheme } from "../../lib/guest-theme";
+import { btnPrimary, btnSecondary, filterInputClass } from "../../lib/styles";
+import { mawkibsApi, type MawkibDailyInventoryDay } from "../../lib/mawkibs";
 
-type DayStatus = 'available' | 'partial' | 'full';
+type DayStatus = "available" | "partial" | "full";
 
 interface MawkibCapacityViewModalProps {
   open: boolean;
@@ -29,6 +35,8 @@ interface MawkibCapacityViewModalProps {
   mawkibName: string;
   /** Use authenticated API for non-public mawkibs (admin/owner). */
   authenticated?: boolean;
+  /** Show hover «رزرو» on day cards — guest pages use public reserve URL; panel uses /reservations/new. */
+  guestReserveLinks?: boolean;
 }
 
 function persianWeekday(dateStr: string): string {
@@ -36,7 +44,7 @@ function persianWeekday(dateStr: string): string {
     persian,
     persian_fa,
   );
-  return date.format('dddd');
+  return date.format("dddd");
 }
 
 function persianDayNumber(dateStr: string): string {
@@ -44,7 +52,7 @@ function persianDayNumber(dateStr: string): string {
     persian,
     persian_fa,
   );
-  return date.format('D');
+  return date.format("D");
 }
 
 function persianMonthLabel(dateStr: string): string {
@@ -52,7 +60,7 @@ function persianMonthLabel(dateStr: string): string {
     persian,
     persian_fa,
   );
-  return date.format('MMMM');
+  return date.format("MMMM");
 }
 
 function hijriCompactLabel(dateStr: string): string {
@@ -60,15 +68,15 @@ function hijriCompactLabel(dateStr: string): string {
     arabic,
     arabic_fa,
   );
-  return `${date.format('D')} ${date.format('MMMM')}`;
+  return `${date.format("D")} ${date.format("MMMM")}`;
 }
 
 function RemainingLabelInline({ available }: { available: number }) {
   return (
     <RemainingCapacityHint
       available={available}
-      className="font-medium text-emerald-700"
-      fullClassName="text-[8px] font-semibold leading-tight text-red-600"
+      className="text-emerald-700"
+      fullClassName="text-[8px] leading-tight text-red-600"
     />
   );
 }
@@ -76,29 +84,35 @@ function RemainingLabelInline({ available }: { available: number }) {
 function getDayStatus(day: MawkibDailyInventoryDay): DayStatus {
   const maleFull = day.availableMale <= 0;
   const femaleFull = day.availableFemale <= 0;
-  if (maleFull && femaleFull) return 'full';
-  if (maleFull || femaleFull) return 'partial';
-  return 'available';
+  if (maleFull && femaleFull) return "full";
+  if (maleFull || femaleFull) return "partial";
+  return "available";
 }
 
 const statusStyles: Record<
   DayStatus,
-  { card: string; barMale: string; barFemale: string }
+  { card: string; barMale: string; barFemale: string; reserveHover: string }
 > = {
   available: {
-    card: 'border-sky-200 bg-gradient-to-b from-sky-50 to-white',
-    barMale: 'bg-sky-400',
-    barFemale: 'bg-sky-300',
+    card: "border-sky-200 bg-gradient-to-b from-sky-50 to-white",
+    barMale: "bg-sky-400",
+    barFemale: "bg-sky-300",
+    reserveHover:
+      "group-hover:border-sky-400 group-hover:shadow-lg group-hover:shadow-sky-200/70 group-hover:from-white group-hover:to-white",
   },
   partial: {
-    card: 'border-emerald-200 bg-gradient-to-b from-emerald-50 to-white',
-    barMale: 'bg-emerald-500',
-    barFemale: 'bg-emerald-400',
+    card: "border-emerald-200 bg-gradient-to-b from-emerald-50 to-white",
+    barMale: "bg-emerald-500",
+    barFemale: "bg-emerald-400",
+    reserveHover:
+      "group-hover:border-emerald-500 group-hover:shadow-lg group-hover:shadow-emerald-200/70 group-hover:from-white group-hover:to-white",
   },
   full: {
-    card: 'border-red-200 bg-gradient-to-b from-red-50 to-white',
-    barMale: 'bg-red-400',
-    barFemale: 'bg-red-300',
+    card: "border-red-200 bg-gradient-to-b from-red-50 to-white",
+    barMale: "bg-red-400",
+    barFemale: "bg-red-300",
+    reserveHover:
+      "group-hover:border-red-400 group-hover:shadow-lg group-hover:shadow-red-200/70 group-hover:from-white group-hover:to-white",
   },
 };
 
@@ -115,14 +129,14 @@ function CapacityBar({
   total: number;
   barClass: string;
 }) {
-  const occupiedRatio = total > 0 ? Math.min(1, Math.max(0, reserved / total)) : 0;
+  const occupiedRatio =
+    total > 0 ? Math.min(1, Math.max(0, reserved / total)) : 0;
 
   return (
     <div className="space-y-0.5">
       <div className="flex items-center justify-between gap-1 text-[10px]">
         <span className="text-slate-500">
-          {label}{' '}
-          <RemainingLabelInline available={available} />
+          {label} <RemainingLabelInline available={available} />
         </span>
         <span
           className="font-semibold text-slate-700"
@@ -141,16 +155,43 @@ function CapacityBar({
   );
 }
 
-function DayCapacityCard({ day }: { day: MawkibDailyInventoryDay }) {
+function IconReserve() {
+  return (
+    <svg
+      className="h-3.5 w-3.5 shrink-0"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+      aria-hidden
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
+      />
+    </svg>
+  );
+}
+
+function DayCapacityCard({
+  day,
+  onReserve,
+}: {
+  day: MawkibDailyInventoryDay;
+  onReserve?: () => void;
+}) {
   const status = getDayStatus(day);
   const styles = statusStyles[status];
   const isToday = day.date === todayGregorian();
 
   return (
     <div
-      className={`flex aspect-square flex-col justify-between rounded-xl border p-2 shadow-sm ${styles.card} ${
-        isToday ? 'ring-2 ring-[#4a6fa5]/40 ring-offset-1' : ''
-      }`}
+      className={`group relative flex aspect-square flex-col justify-between rounded-xl border p-2 shadow-sm transition-all duration-200 ${styles.card} ${
+        onReserve
+          ? `cursor-pointer ${styles.reserveHover} group-hover:border-2 group-hover:shadow-xl`
+          : ""
+      } ${isToday ? "ring-2 ring-[#4a6fa5]/40 ring-offset-1" : ""}`}
     >
       <div className="text-center">
         <p className="truncate text-[10px] font-medium text-slate-500">
@@ -183,6 +224,22 @@ function DayCapacityCard({ day }: { day: MawkibDailyInventoryDay }) {
           barClass={styles.barFemale}
         />
       </div>
+
+      {onReserve && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 opacity-100 backdrop-blur-[1px] transition-all duration-200 max-md:pointer-events-auto md:bg-transparent md:opacity-0 md:backdrop-blur-none md:group-hover:bg-white/75 md:group-hover:opacity-100 md:group-hover:backdrop-blur-[1px] md:group-hover:pointer-events-auto">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onReserve();
+            }}
+            className={`${guestTheme.btnPrimary} pointer-events-auto inline-flex cursor-pointer items-center gap-1.5 px-3 py-1.5 text-xs shadow-md`}
+          >
+            <IconReserve />
+            رزرو
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -202,15 +259,17 @@ export function MawkibCapacityViewModal({
   mawkibId,
   mawkibName,
   authenticated = false,
+  guestReserveLinks = false,
 }: MawkibCapacityViewModalProps) {
+  const navigate = useNavigate();
   const defaults = useMemo(() => defaultCapacityRange(), [open]);
   const [startDate, setStartDate] = useState(defaults.startDate);
   const [endDate, setEndDate] = useState(defaults.endDate);
   const [appliedRange, setAppliedRange] = useState(defaults);
-  const [validationError, setValidationError] = useState('');
+  const [validationError, setValidationError] = useState("");
 
   const { data: horizon } = useQuery({
-    queryKey: ['mawkib-inventory-horizon'],
+    queryKey: ["mawkib-inventory-horizon"],
     queryFn: () => mawkibsApi.getInventoryHorizon(),
     enabled: open,
     staleTime: 5 * 60_000,
@@ -222,19 +281,12 @@ export function MawkibCapacityViewModal({
     setStartDate(range.startDate);
     setEndDate(range.endDate);
     setAppliedRange(range);
-    setValidationError('');
+    setValidationError("");
   }, [open, mawkibId]);
 
-  const {
-    data,
-    isLoading,
-    isFetching,
-    isError,
-    error,
-    refetch,
-  } = useQuery({
+  const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: [
-      'mawkib-inventory',
+      "mawkib-inventory",
       mawkibId,
       appliedRange.startDate,
       appliedRange.endDate,
@@ -263,17 +315,12 @@ export function MawkibCapacityViewModal({
     }
 
     if (endDate < startDate) {
-      setValidationError('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد');
+      setValidationError("تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد");
       return;
     }
 
     if (
-      !isRangeWithinBounds(
-        startDate,
-        endDate,
-        horizon.minDate,
-        horizon.maxDate,
-      )
+      !isRangeWithinBounds(startDate, endDate, horizon.minDate, horizon.maxDate)
     ) {
       setValidationError(
         `بازه مجاز: ${formatPersianDate(horizon.minDate)} تا ${formatPersianDate(horizon.maxDate)} (${formatPersianNumber(horizon.horizonDays)} روز آینده)`,
@@ -281,16 +328,32 @@ export function MawkibCapacityViewModal({
       return;
     }
 
-    setValidationError('');
+    setValidationError("");
     setAppliedRange({ startDate, endDate });
   };
+
+  const handleDayReserve = useMemo(() => {
+    if (guestReserveLinks) {
+      return (date: string) => {
+        onClose();
+        navigate(buildGuestReserveUrl(mawkibId, date));
+      };
+    }
+    if (authenticated) {
+      return (date: string) => {
+        onClose();
+        navigate(buildPanelReserveUrl(mawkibId, date));
+      };
+    }
+    return undefined;
+  }, [authenticated, guestReserveLinks, mawkibId, navigate, onClose]);
 
   const summary = useMemo(() => {
     if (!data?.days.length) return null;
 
     const minMale = Math.min(...data.days.map((d) => d.availableMale));
     const minFemale = Math.min(...data.days.map((d) => d.availableFemale));
-    const fullDays = data.days.filter((d) => getDayStatus(d) === 'full').length;
+    const fullDays = data.days.filter((d) => getDayStatus(d) === "full").length;
 
     return { minMale, minFemale, fullDays, dayCount: data.days.length };
   }, [data]);
@@ -303,24 +366,12 @@ export function MawkibCapacityViewModal({
       size="xl"
     >
       <div className="space-y-4">
-        <p className="text-sm leading-7 text-slate-600">
-          وضعیت ظرفیت آقایان و بانوان را برای هر روز اقامت مشاهده کنید. فقط
-          رزروهای{' '}
-          <span className="font-medium text-slate-700">تاییدشده</span> در
-          محاسبه لحاظ می‌شوند.
-          <span className="mt-1 block text-xs text-slate-500">
-            تاریخ هر روز به‌صورت شمسی و قمری نمایش داده می‌شود. عدد کنار نوار ={' '}
-            <span className="font-medium text-slate-600">رزرو شده / ظرفیت کل</span>
-            {' '}— عدد داخل پرانتز = ظرفیت خالی؛ در صورت پر بودن «تکمیل ظرفیت».
-          </span>
-        </p>
-
         {horizon && (
           <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-            بازه قابل مشاهده: از امروز تا{' '}
+            بازه قابل مشاهده: از امروز تا{" "}
             <span className="font-medium text-slate-700">
               {formatPersianDate(horizon.maxDate)}
-            </span>{' '}
+            </span>{" "}
             ({formatPersianNumber(horizon.horizonDays)} روز آینده)
           </p>
         )}
@@ -355,7 +406,7 @@ export function MawkibCapacityViewModal({
 
         {isError && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-            {getApiErrorMessage(error, 'خطا در دریافت ظرفیت')}
+            {getApiErrorMessage(error, "خطا در دریافت ظرفیت")}
           </p>
         )}
 
@@ -368,13 +419,17 @@ export function MawkibCapacityViewModal({
               </p>
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-2 text-center">
-              <p className="text-[10px] text-slate-500">کمترین باقی‌مانده (آقا)</p>
+              <p className="text-[10px] text-slate-500">
+                کمترین باقی‌مانده (آقا)
+              </p>
               <p className="text-lg font-bold text-emerald-700">
                 {formatPersianNumber(summary.minMale)}
               </p>
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-2 text-center">
-              <p className="text-[10px] text-slate-500">کمترین باقی‌مانده (بانو)</p>
+              <p className="text-[10px] text-slate-500">
+                کمترین باقی‌مانده (بانو)
+              </p>
               <p className="text-lg font-bold text-emerald-700">
                 {formatPersianNumber(summary.minFemale)}
               </p>
@@ -395,6 +450,11 @@ export function MawkibCapacityViewModal({
           <span className="text-xs text-slate-400">
             — نوار پر = سهم رزرو شده
           </span>
+          {handleDayReserve && (
+            <span className="text-xs text-[#4a6fa5]">
+              — برای رزرو، روی روز مورد نظر بروید
+            </span>
+          )}
         </div>
 
         {isLoading || isFetching ? (
@@ -404,7 +464,15 @@ export function MawkibCapacityViewModal({
         ) : data?.days.length ? (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
             {data.days.map((day) => (
-              <DayCapacityCard key={day.date} day={day} />
+              <DayCapacityCard
+                key={day.date}
+                day={day}
+                onReserve={
+                  handleDayReserve
+                    ? () => handleDayReserve(day.date)
+                    : undefined
+                }
+              />
             ))}
           </div>
         ) : (
@@ -417,8 +485,11 @@ export function MawkibCapacityViewModal({
 
         {data && (
           <p className="text-center text-xs text-slate-400">
-            {formatPersianNumber(countDaysInclusive(data.startDate, data.endDate))} روز — از{' '}
-            {formatPersianDate(data.startDate)} تا {formatPersianDate(data.endDate)}
+            {formatPersianNumber(
+              countDaysInclusive(data.startDate, data.endDate),
+            )}{" "}
+            روز — از {formatPersianDate(data.startDate)} تا{" "}
+            {formatPersianDate(data.endDate)}
           </p>
         )}
 

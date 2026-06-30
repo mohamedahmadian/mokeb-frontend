@@ -1,5 +1,10 @@
 import { inputClass } from '../../lib/styles';
-import { MAWKIB_CITIES, MAWKIB_COUNTRIES } from '../../lib/mawkib-locations';
+import {
+  MAWKIB_CITIES,
+  MAWKIB_COUNTRIES,
+  mawkibCityLabel,
+  mawkibCountryLabel,
+} from '../../lib/mawkib-locations';
 import type { MawkibCity, MawkibCountry } from '../../lib/mawkib-locations';
 import type { MawkibExtraFields as MawkibExtraFieldsType } from '../../types';
 import { SearchableSelect } from '../ui/SearchableSelect';
@@ -150,33 +155,56 @@ export function MawkibExtraFields({ values, onChange, readOnly = false }: Mawkib
 
   return (
     <div className="space-y-4">
-      <FormSection title="اطلاعات تکمیلی" icon={<NavIcon name="info" className="h-4 w-4" />}>
+      <FormSection
+        title="اطلاعات تکمیلی"
+        icon={<NavIcon name="info" className="h-4 w-4" />}
+        className="overflow-visible"
+      >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block">
+          <div className="block">
             <FieldLabel label="کشور" />
-            <SearchableSelect
-              value={values.country}
-              onChange={(value) => setField('country', value as MawkibCountry)}
-              options={MAWKIB_COUNTRIES.map((c) => ({ value: c.value, label: c.label }))}
-              placeholder="انتخاب کشور"
-              searchPlaceholder="جستجوی کشور..."
-              className={inputClass}
-              clearable={false}
-              disabled={readOnly}
-            />
-          </label>
-          <label className="block">
+            {readOnly ? (
+              <input
+                type="text"
+                value={mawkibCountryLabel(values.country)}
+                className={inputClass}
+                {...fieldProps}
+              />
+            ) : (
+              <SearchableSelect
+                value={values.country}
+                onChange={(value) => setField('country', value as MawkibCountry)}
+                options={MAWKIB_COUNTRIES.map((c) => ({ value: c.value, label: c.label }))}
+                placeholder="انتخاب کشور"
+                searchPlaceholder="جستجوی کشور..."
+                className={inputClass}
+                clearable={false}
+              />
+            )}
+          </div>
+          <div className="block">
             <FieldLabel label="شهر" />
-            <SearchableSelect
-              value={values.mawkibCity}
-              onChange={(value) => setField('mawkibCity', value as MawkibCity | '')}
-              options={MAWKIB_CITIES.map((c) => ({ value: c.value, label: c.label }))}
-              placeholder="انتخاب شهر"
-              searchPlaceholder="جستجوی شهر..."
-              className={inputClass}
-              disabled={readOnly}
-            />
-          </label>
+            {readOnly ? (
+              <input
+                type="text"
+                value={values.mawkibCity ? mawkibCityLabel(values.mawkibCity) : '—'}
+                className={inputClass}
+                {...fieldProps}
+              />
+            ) : (
+              <SearchableSelect
+                value={values.mawkibCity}
+                onChange={(value) => setField('mawkibCity', value as MawkibCity | '')}
+                options={MAWKIB_CITIES.map((c) => ({ value: c.value, label: c.label }))}
+                placeholder="انتخاب شهر"
+                searchPlaceholder="جستجوی شهر..."
+                className={inputClass}
+              />
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="block">
             <FieldLabel label="حداکثر بازه زمانی رزرو (روز)" />
             <input

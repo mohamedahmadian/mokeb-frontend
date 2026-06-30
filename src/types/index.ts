@@ -58,6 +58,7 @@ export interface Mawkib extends MawkibExtraFields {
   status: MawkibStatus;
   defaultCheckInTime?: string;
   defaultCheckOutTime?: string;
+  onlineReservationEnabled?: boolean;
   ownerUserId?: number;
   availableCapacity?: number;
   owner?: {
@@ -92,12 +93,33 @@ export interface Reservation {
     id: number;
     name: string;
     address?: string;
+    phoneNumber?: string;
+    imageUrl?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
     defaultCheckInTime?: string;
     defaultCheckOutTime?: string;
+    owner?: { fullName: string; mobileNumber?: string };
   };
   pilgrim: { id: number; fullName: string; mobileNumber: string };
   reservedBy: { id: number; fullName: string; mobileNumber?: string };
   review?: ReservationReview | null;
+  deliveredItems?: ReservationDeliveredItem[];
+}
+
+export type ReservationDeliveredItemStatus = 'DeliveredToGuest' | 'ReceivedFromGuest';
+
+export interface ReservationDeliveredItem {
+  id: number;
+  reservationId: number;
+  itemName: string;
+  quantity: number;
+  description?: string | null;
+  status: ReservationDeliveredItemStatus;
+  createdAt: string;
+  receivedAt?: string | null;
+  updatedAt?: string;
+  recordedBy: { id: number; fullName: string };
 }
 
 export interface ReservationReview {

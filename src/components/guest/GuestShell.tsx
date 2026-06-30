@@ -37,7 +37,7 @@ export function GuestPageHeader({
 
 interface GuestShellProps {
   children: ReactNode;
-  maxWidth?: 'md' | 'lg' | 'xl';
+  maxWidth?: 'md' | 'lg' | 'xl' | '2xl';
   className?: string;
 }
 
@@ -45,6 +45,7 @@ const maxWidthClass = {
   md: 'max-w-xl',
   lg: 'max-w-2xl',
   xl: 'max-w-3xl',
+  '2xl': 'max-w-5xl',
 } as const;
 
 export function GuestShell({
