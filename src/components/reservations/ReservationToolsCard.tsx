@@ -4,9 +4,9 @@ import { guestTheme } from '../../lib/guest-theme';
 import { btnSecondary } from '../../lib/styles';
 import type { Reservation } from '../../types';
 import { ReservationDeliveredItemsButton } from './ReservationDeliveredItemsButton';
+import { PilgrimCardViewButton } from './PilgrimCardViewButton';
+import { PilgrimCardDownloadButton } from './PilgrimCardDownloadButton';
 import { ReservationUserCardPrintButton } from './ReservationUserCardPrintButton';
-import { MawkibCardPrintButton } from '../mawkibs/MawkibCardPrintButton';
-import { reservationMawkibToCardData } from '../../lib/mawkib-card';
 
 interface ReservationToolsCardProps {
   reservation: Reservation;
@@ -29,7 +29,15 @@ function ToolsCardShell({
 
   return (
     <section className={shellClass} aria-label="ابزارهای رزرو">
-      <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">{children}</div>
+      <div
+        className={
+          variant === 'panel'
+            ? 'flex flex-col gap-2.5'
+            : 'flex flex-col gap-2.5 sm:flex-row sm:flex-wrap'
+        }
+      >
+        {children}
+      </div>
     </section>
   );
 }
@@ -47,29 +55,42 @@ export function ReservationToolsCard({
 
   const buttonClass =
     variant === 'guest'
-      ? `${guestTheme.btnSecondary} w-full`
-      : `${btnSecondary} w-full sm:w-auto sm:min-w-[220px]`;
+      ? `${guestTheme.btnSecondary} w-full sm:w-auto`
+      : `${btnSecondary} w-full min-w-0 !px-2 !py-2 !text-xs sm:!text-sm`;
+
+  const pilgrimCardsRowClass =
+    variant === 'panel'
+      ? 'grid w-full grid-cols-3 gap-2'
+      : 'flex w-full flex-col gap-2.5 sm:flex-row sm:flex-wrap';
 
   return (
     <ToolsCardShell variant={variant}>
       {showDeliveredItems && reservationId != null && (
-        <ReservationDeliveredItemsButton
+        <div className="w-full">
+          <ReservationDeliveredItemsButton
+            reservation={reservation}
+            reservationId={reservationId}
+            onUpdate={onDeliveredItemsUpdate}
+            className={buttonClass}
+          />
+        </div>
+      )}
+      <div className={pilgrimCardsRowClass}>
+        <PilgrimCardDownloadButton
           reservation={reservation}
-          reservationId={reservationId}
-          onUpdate={onDeliveredItemsUpdate}
           className={buttonClass}
         />
-      )}
-      <ReservationUserCardPrintButton
-        reservation={reservation}
-        className={buttonClass}
-      />
-      {variant === 'panel' && (isAdmin || isMawkibOwner) && (
-        <MawkibCardPrintButton
-          data={reservationMawkibToCardData(reservation.mawkib)}
+        <PilgrimCardViewButton
+          trackingCode={reservation.trackingCode}
+          reservation={reservation}
+          presentation={variant === 'guest' ? 'link' : 'modal'}
           className={buttonClass}
         />
-      )}
+        <ReservationUserCardPrintButton
+          reservation={reservation}
+          className={buttonClass}
+        />
+      </div>
     </ToolsCardShell>
   );
 }

@@ -91,12 +91,15 @@ export function SearchableSelect({
           setOpen((prev) => !prev);
           if (open) setQuery('');
         }}
-        className={`flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right text-sm transition focus:border-[#4a6fa5] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 ${className}`}
+        className={`flex min-h-[2.875rem] items-center justify-between gap-2 text-right disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 ${className || guestTheme.input}`}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}
       >
-        <span className={selectedLabel ? 'text-slate-800' : 'text-slate-400'}>
+        <span
+          title={selectedLabel || placeholder}
+          className={`min-w-0 flex-1 truncate text-right ${selectedLabel ? 'text-slate-800' : 'text-slate-400'}`}
+        >
           {selectedLabel || placeholder}
         </span>
         <svg

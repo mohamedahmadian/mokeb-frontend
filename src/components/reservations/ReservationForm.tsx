@@ -1,12 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ProvinceCitySelect } from "../ui/ProvinceCitySelect";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PersianDateInput } from "../ui/PersianDateInput";
 import { formatPersianDate } from "../ui/PersianDateInput";
-import { formatPersianNumber } from "../../lib/capacity";
 import {
+  formatPersianNumber,
+  mawkibAvailableFemale,
+  mawkibAvailableMale,
+} from "../../lib/capacity";
+import {
+  buildReservationOccupiedDates,
+  defaultReservationEndDate,
+  effectiveDefaultReservationDays,
+  effectiveMaxReservationDays,
+  effectiveStayStartDate,
   isOnOrAfterServiceStart,
   isWithinMaxReservationDays,
+  reservationStayDayCount,
+  type StayDurationPreset,
 } from "../../lib/date-range";
 import { toast, toastApiError } from "../../lib/toast";
 import { guestApi } from "../../lib/guest";
@@ -14,6 +25,7 @@ import { mawkibsApi } from "../../lib/mawkibs";
 import { reservationsApi } from "../../lib/reservations";
 import { usersApi, type PilgrimOption } from "../../lib/users";
 import { useAuth } from "../../contexts/AuthContext";
+import type { Mawkib, UserGender } from "../../types";
 import { guestTheme } from "../../lib/guest-theme";
 import {
   DEFAULT_CHECK_IN_TIME,
@@ -36,12 +48,15 @@ import {
 } from "../../lib/mawkib-online-reservation";
 import {
   GuestCountStepper,
+  NoFemaleAcceptanceHint,
   IconCalendar,
   IconChat,
   IconHome,
   IconUser,
   IconUsers,
   MawkibCard,
+  MawkibInfoCard,
+  MawkibGuestGalleryDetailsFooter,
   SectionHeader,
   reservationFormInputClass,
   todayDateString,
@@ -50,8 +65,28 @@ import {
   hasMawkibRules,
   MawkibRulesAcceptanceModal,
 } from "./MawkibRulesAcceptanceModal";
+import { GuestReservationModeToggle } from "../guest/GuestReservationModeToggle";
+import type { GuestReservationMode } from "../guest/GuestReservationModeToggle";
+import { GuestReservationPersonalFields } from "./GuestReservationPersonalFields";
+import { PanelNewPilgrimFields, PanelNewPilgrimOptionalFields, PANEL_OPTIONAL_FIELDS_COLLAPSE_LABEL } from "./PanelNewPilgrimFields";
+import { CollapsibleSection } from "../ui/CollapsibleSection";
+import { StayDurationPicker } from "./StayDurationPicker";
+import {
+  MawkibGalleryModal,
+  mawkibGalleryUrls,
+} from "../mawkibs/MawkibGalleryModal";
+import { MawkibPublicDetailModal } from "../mawkibs/MawkibPublicDetailModal";
 
 type PilgrimMode = "select" | "new";
+
+export type GuestReservationSuccessMawkibSnapshot = {
+  id: number;
+  name: string;
+  address?: string;
+  phoneNumber?: string;
+  imageUrl?: string | null;
+  owner?: { fullName: string; mobileNumber?: string };
+};
 
 export type ReservationFormSuccess =
   | {
@@ -65,6 +100,11 @@ export type ReservationFormSuccess =
       trackingCode: string;
       mobileNumber: string;
       loginPasswordHint: string;
+      fullName: string;
+      mawkibId: number;
+      reservationId: number;
+      guestReservationMode: GuestReservationMode;
+      mawkibSnapshot?: GuestReservationSuccessMawkibSnapshot;
       companions?: string;
     }
   | {
@@ -77,9 +117,12 @@ export interface ReservationFormProps {
   initialMawkibId?: number | null;
   initialReservationDate?: string | null;
   initialPilgrimUserId?: number | null;
+  initialGuestReservationMode?: GuestReservationMode;
   onSuccess: (result: ReservationFormSuccess) => void;
   onCancel?: () => void;
-  onSelectedMawkibChange?: (mawkib: { id: number; name: string } | null) => void;
+  onSelectedMawkibChange?: (
+    mawkib: { id: number; name: string } | null,
+  ) => void;
 }
 
 function parseInitialMawkibId(value: number | null | undefined) {
@@ -99,11 +142,26 @@ function mawkibMatchesNameQuery(name: string, query: string): boolean {
   return name.includes(trimmed);
 }
 
+export function parseGuestReservationModeParam(
+  value: string | null | undefined,
+): GuestReservationMode | undefined {
+  if (value == null || value.trim() === "") return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "1" || normalized === "true" || normalized === "fast") {
+    return "fast";
+  }
+  if (normalized === "0" || normalized === "false" || normalized === "normal") {
+    return "normal";
+  }
+  return undefined;
+}
+
 export function ReservationForm({
   variant,
   initialMawkibId,
   initialReservationDate,
   initialPilgrimUserId,
+  initialGuestReservationMode,
   onSuccess,
   onCancel,
   onSelectedMawkibChange,
@@ -123,13 +181,24 @@ export function ReservationForm({
 
   const [fullName, setFullName] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
+  const [nationalId, setNationalId] = useState("");
+  const [gender, setGender] = useState<UserGender | "">("");
+  const [birthDate, setBirthDate] = useState("");
+  const [country, setCountry] = useState("");
+  const [passportNumber, setPassportNumber] = useState("");
   const [password, setPassword] = useState("");
   const [province, setProvince] = useState("");
   const [city, setCity] = useState("");
+  const [nationalIdCardImageUrl, setNationalIdCardImageUrl] = useState<
+    string | null
+  >(null);
   const today = todayDateString();
-  const initialDate = parseInitialReservationDate(initialReservationDate) ?? today;
+  const initialDate =
+    parseInitialReservationDate(initialReservationDate) ?? today;
   const [dateStart, setDateStart] = useState(initialDate);
-  const [dateEnd, setDateEnd] = useState(initialDate);
+  const [dateEnd, setDateEnd] = useState(() =>
+    defaultReservationEndDate(initialDate, 1),
+  );
   const [maleGuestCount, setMaleGuestCount] = useState(1);
   const [femaleGuestCount, setFemaleGuestCount] = useState(0);
   const [selectedMawkibId, setSelectedMawkibId] = useState<number | null>(() =>
@@ -139,6 +208,7 @@ export function ReservationForm({
     () => createEmptyCompanionsForm(1, 0),
   );
   const [description, setDescription] = useState("");
+  const [travelOrigin, setTravelOrigin] = useState("");
   const [plannedCheckInTime, setPlannedCheckInTime] = useState(
     DEFAULT_CHECK_IN_TIME,
   );
@@ -149,24 +219,34 @@ export function ReservationForm({
   const [rulesModalOpen, setRulesModalOpen] = useState(false);
   const [skipCapacityCheck, setSkipCapacityCheck] = useState(false);
   const [mawkibSearchQuery, setMawkibSearchQuery] = useState("");
+  const [galleryMawkib, setGalleryMawkib] = useState<Mawkib | null>(null);
+  const [detailMawkib, setDetailMawkib] = useState<Mawkib | null>(null);
+  const [guestReservationMode, setGuestReservationMode] =
+    useState<GuestReservationMode>(initialGuestReservationMode ?? "fast");
 
-  const [pilgrimMode, setPilgrimMode] = useState<PilgrimMode>("select");
+  const isGuestFastMode =
+    variant === "guest" && guestReservationMode === "fast";
+
+  const showStayDurationPicker = isPanel || !isGuestFastMode;
+
+  const [pilgrimMode, setPilgrimMode] = useState<PilgrimMode>(() =>
+    initialPilgrimUserId ? "select" : "new",
+  );
   const [selectedPilgrim, setSelectedPilgrim] = useState<PilgrimOption | null>(
     null,
   );
+  const preselectedMawkibId = useMemo(
+    () => parseInitialMawkibId(initialMawkibId ?? null),
+    [initialMawkibId],
+  );
+  const preselectedDatesBootstrappedRef = useRef(false);
+  const guestFastDatesBootstrappedRef = useRef(false);
 
   useEffect(() => {
     if (initialMawkibId != null) {
       setSelectedMawkibId(parseInitialMawkibId(initialMawkibId));
     }
   }, [initialMawkibId]);
-
-  useEffect(() => {
-    const parsed = parseInitialReservationDate(initialReservationDate);
-    if (!parsed) return;
-    setDateStart(parsed);
-    setDateEnd(parsed);
-  }, [initialReservationDate]);
 
   useEffect(() => {
     setMawkibSearchQuery("");
@@ -202,7 +282,27 @@ export function ReservationForm({
   }, [initialPilgrimUserId, isPilgrim, user]);
 
   const canBypassCapacity = isPanel && (isAdmin || isMawkibOwner);
-  const restrictedOnlineReserver = isRestrictedOnlineReserver(isPanel, user?.roles);
+  const restrictedOnlineReserver = isRestrictedOnlineReserver(
+    isPanel,
+    user?.roles,
+  );
+
+  const { data: preselectedMawkibDetail } = useQuery({
+    queryKey: ["mawkib", "preselected", preselectedMawkibId, variant],
+    queryFn: () =>
+      variant === "guest"
+        ? mawkibsApi.getPublicOne(preselectedMawkibId!)
+        : mawkibsApi.getOne(preselectedMawkibId!),
+    enabled: preselectedMawkibId != null && preselectedMawkibId > 0,
+  });
+
+  const effectiveFemaleGuestCountForFilter = useMemo(() => {
+    if (preselectedMawkibId != null) {
+      if (!preselectedMawkibDetail) return 0;
+      if (preselectedMawkibDetail.femaleCapacity <= 0) return 0;
+    }
+    return femaleGuestCount;
+  }, [preselectedMawkibId, preselectedMawkibDetail, femaleGuestCount]);
 
   const mawkibFilters =
     canBypassCapacity && skipCapacityCheck
@@ -215,15 +315,13 @@ export function ReservationForm({
           reservationDateTo: dateEnd,
           hasAvailability: true,
           minAvailableMaleCapacity: maleGuestCount,
-          minAvailableFemaleCapacity: femaleGuestCount,
+          minAvailableFemaleCapacity: effectiveFemaleGuestCountForFilter,
         };
 
   const mawkibQueryKey = isPanel
     ? isMawkibOwner
       ? "mawkibs-my-reservation-form"
-      : isAdmin
-        ? "mawkibs-public-reservation-form"
-        : "mawkibs-public-reservation-form"
+      : "mawkibs-public-reservation-form"
     : "guest-mawkibs-reservation-form";
 
   const {
@@ -236,7 +334,7 @@ export function ReservationForm({
       dateStart,
       dateEnd,
       maleGuestCount,
-      femaleGuestCount,
+      effectiveFemaleGuestCountForFilter,
       skipCapacityCheck,
       isMawkibOwner ? user?.id : null,
     ],
@@ -248,8 +346,62 @@ export function ReservationForm({
       }
       return mawkibsApi.getPublicList(mawkibFilters);
     },
-    enabled: !!dateStart && !!dateEnd && maleGuestCount + femaleGuestCount >= 1,
+    enabled:
+      !!dateStart &&
+      !!dateEnd &&
+      maleGuestCount + effectiveFemaleGuestCountForFilter >= 1,
   });
+
+  const { data: selectedMawkibDetail } = useQuery({
+    queryKey: ["mawkib", selectedMawkibId, variant],
+    queryFn: () =>
+      variant === "guest"
+        ? mawkibsApi.getPublicOne(selectedMawkibId!)
+        : mawkibsApi.getOne(selectedMawkibId!),
+    enabled:
+      !!selectedMawkibId &&
+      selectedMawkibId > 0 &&
+      selectedMawkibId !== preselectedMawkibId,
+  });
+
+  const showFemaleGuestCount = useMemo(() => {
+    if (preselectedMawkibId != null) {
+      if (!preselectedMawkibDetail) return false;
+      return preselectedMawkibDetail.femaleCapacity > 0;
+    }
+    if (selectedMawkibId != null) {
+      const mawkib =
+        mawkibs.find((m) => m.id === selectedMawkibId) ??
+        (selectedMawkibDetail?.id === selectedMawkibId
+          ? selectedMawkibDetail
+          : null);
+      if (mawkib) return mawkib.femaleCapacity > 0;
+    }
+    return true;
+  }, [
+    preselectedMawkibId,
+    preselectedMawkibDetail,
+    selectedMawkibId,
+    mawkibs,
+    selectedMawkibDetail,
+  ]);
+
+  const effectiveFemaleGuestCount = showFemaleGuestCount ? femaleGuestCount : 0;
+
+  const guestCountGridClass = "grid grid-cols-1 gap-4 sm:grid-cols-2";
+
+  useEffect(() => {
+    if (!showFemaleGuestCount) {
+      setFemaleGuestCount(0);
+    }
+  }, [showFemaleGuestCount]);
+
+  useEffect(() => {
+    if (!isGuestFastMode) return;
+    setCompanionsForm(
+      createEmptyCompanionsForm(maleGuestCount, effectiveFemaleGuestCount),
+    );
+  }, [isGuestFastMode, maleGuestCount, effectiveFemaleGuestCount]);
 
   const reservableMawkibs = restrictedOnlineReserver
     ? mawkibs.filter((m) => isMawkibOnlineReservationEnabled(m))
@@ -260,31 +412,202 @@ export function ReservationForm({
 
   const displayedMawkibs = useMemo(() => {
     if (!mawkibSearchQuery.trim()) return mawkibs;
-    return mawkibs.filter((m) => mawkibMatchesNameQuery(m.name, mawkibSearchQuery));
+    return mawkibs.filter((m) =>
+      mawkibMatchesNameQuery(m.name, mawkibSearchQuery),
+    );
   }, [mawkibs, mawkibSearchQuery]);
+
+  const guestPreselectedMawkib =
+    variant === "guest" && preselectedMawkibId && preselectedMawkibDetail
+      ? preselectedMawkibDetail
+      : null;
+
+  const mawkibsForSelection = useMemo(() => {
+    if (guestPreselectedMawkib) {
+      const inList = mawkibs.find((m) => m.id === guestPreselectedMawkib.id);
+      return inList ? [inList] : [guestPreselectedMawkib];
+    }
+    return displayedMawkibs;
+  }, [guestPreselectedMawkib, mawkibs, displayedMawkibs]);
+
+  const hideMawkibPicker = Boolean(guestPreselectedMawkib);
 
   const mawkibSectionSubtitle = useMemo(() => {
     if (skipCapacityCheck && canBypassCapacity) {
       return "همه موکب‌های در دسترس نمایش داده می‌شوند؛ ظرفیت در این حالت بررسی نمی‌شود";
     }
-    const guestTotal = maleGuestCount + femaleGuestCount;
     const startLabel = dateStart ? formatPersianDate(dateStart) : "—";
     const endLabel = dateEnd ? formatPersianDate(dateEnd) : "—";
-    return `از تاریخ ${startLabel} الی تاریخ ${endLabel} برای ${formatPersianNumber(guestTotal)} نفر`;
+    return `از تاریخ ${startLabel} الی تاریخ ${endLabel} برای ${formatPersianNumber(maleGuestCount + effectiveFemaleGuestCount)} نفر`;
   }, [
     skipCapacityCheck,
     canBypassCapacity,
     dateStart,
     dateEnd,
     maleGuestCount,
-    femaleGuestCount,
+    effectiveFemaleGuestCount,
   ]);
 
-  const selectedMawkib = mawkibs.find((m) => m.id === selectedMawkibId);
+  const staySectionSubtitle = useMemo(() => {
+    const startLabel = dateStart ? formatPersianDate(dateStart) : "—";
+    const endLabel = dateEnd ? formatPersianDate(dateEnd) : "—";
+    const guestTotal = maleGuestCount + effectiveFemaleGuestCount;
+    return `از تاریخ ${startLabel} الی ${endLabel} برای ${formatPersianNumber(guestTotal)} نفر`;
+  }, [dateStart, dateEnd, maleGuestCount, effectiveFemaleGuestCount]);
+
+  const selectedMawkib = useMemo(() => {
+    if (!selectedMawkibId) return undefined;
+    const fromList = mawkibs.find((m) => m.id === selectedMawkibId);
+    if (fromList) return fromList;
+    if (guestPreselectedMawkib?.id === selectedMawkibId) {
+      return guestPreselectedMawkib;
+    }
+    if (preselectedMawkibDetail?.id === selectedMawkibId) {
+      return preselectedMawkibDetail;
+    }
+    if (selectedMawkibDetail?.id === selectedMawkibId) {
+      return selectedMawkibDetail;
+    }
+    return undefined;
+  }, [
+    selectedMawkibId,
+    mawkibs,
+    guestPreselectedMawkib,
+    preselectedMawkibDetail,
+    selectedMawkibDetail,
+  ]);
+
+  useEffect(() => {
+    if (!isGuestFastMode) return;
+    if (guestFastDatesBootstrappedRef.current) return;
+    if (preselectedMawkibId && !preselectedMawkibDetail) return;
+
+    const start = today;
+    const mawkib =
+      selectedMawkib ??
+      (preselectedMawkibId ? preselectedMawkibDetail : undefined);
+
+    setDateStart(start);
+    setDateEnd(
+      defaultReservationEndDate(start, mawkib?.defaultReservationDays ?? 1),
+    );
+    guestFastDatesBootstrappedRef.current = true;
+  }, [
+    isGuestFastMode,
+    today,
+    selectedMawkib,
+    preselectedMawkibId,
+    preselectedMawkibDetail,
+  ]);
+
+  const activeMawkibIdForCapacity = preselectedMawkibId ?? selectedMawkibId;
+
+  const stayDateRange = useMemo(() => {
+    if (!dateStart || !dateEnd || dateEnd < dateStart) return [];
+    return buildReservationOccupiedDates(dateStart, dateEnd);
+  }, [dateStart, dateEnd]);
+
+  const capacityCheckEnabled = !(canBypassCapacity && skipCapacityCheck);
+
+  const shouldFetchStayCapacity =
+    capacityCheckEnabled &&
+    activeMawkibIdForCapacity != null &&
+    activeMawkibIdForCapacity > 0 &&
+    stayDateRange.length > 0;
+
+  const stayCapacityQueries = useQueries({
+    queries: stayDateRange.map((date) => ({
+      queryKey: [
+        "mawkib-capacity",
+        "reservation-form",
+        activeMawkibIdForCapacity,
+        date,
+      ],
+      queryFn: () =>
+        reservationsApi.getCapacity(activeMawkibIdForCapacity!, date),
+      enabled: shouldFetchStayCapacity,
+    })),
+  });
+
+  const stayCapacityReady =
+    shouldFetchStayCapacity &&
+    stayCapacityQueries.length > 0 &&
+    stayCapacityQueries.every((query) => query.data != null);
+
+  const capacityMawkibMeta =
+    selectedMawkib ?? preselectedMawkibDetail ?? guestPreselectedMawkib;
+
+  const listMawkibForCapacity = activeMawkibIdForCapacity
+    ? mawkibs.find((m) => m.id === activeMawkibIdForCapacity)
+    : undefined;
+
+  const rangeAvailableMale = stayCapacityReady
+    ? Math.min(...stayCapacityQueries.map((query) => query.data!.availableMale))
+    : listMawkibForCapacity
+      ? mawkibAvailableMale(listMawkibForCapacity)
+      : undefined;
+
+  const rangeAvailableFemale = stayCapacityReady
+    ? Math.min(
+        ...stayCapacityQueries.map((query) => query.data!.availableFemale),
+      )
+    : listMawkibForCapacity
+      ? mawkibAvailableFemale(listMawkibForCapacity)
+      : undefined;
+
+  const isMaleCapacityFull =
+    capacityCheckEnabled &&
+    !!capacityMawkibMeta &&
+    capacityMawkibMeta.maleCapacity > 0 &&
+    rangeAvailableMale !== undefined &&
+    rangeAvailableMale <= 0;
+
+  const isFemaleCapacityFull =
+    capacityCheckEnabled &&
+    !!capacityMawkibMeta &&
+    capacityMawkibMeta.femaleCapacity > 0 &&
+    rangeAvailableFemale !== undefined &&
+    rangeAvailableFemale <= 0;
+
+  useEffect(() => {
+    if (isMaleCapacityFull) {
+      setMaleGuestCount(0);
+    }
+  }, [isMaleCapacityFull]);
+
+  useEffect(() => {
+    if (isFemaleCapacityFull) {
+      setFemaleGuestCount(0);
+    }
+  }, [isFemaleCapacityFull]);
+
   const selectedMawkibBlocked =
     !!selectedMawkib &&
     restrictedOnlineReserver &&
     !isMawkibOnlineReservationEnabled(selectedMawkib);
+
+  useEffect(() => {
+    if (!preselectedMawkibId || !preselectedMawkibDetail) return;
+    if (preselectedMawkibDetail.id !== preselectedMawkibId) return;
+    if (preselectedDatesBootstrappedRef.current) return;
+
+    const startDate =
+      parseInitialReservationDate(initialReservationDate) ?? today;
+
+    setDateStart(startDate);
+    setDateEnd(
+      defaultReservationEndDate(
+        startDate,
+        preselectedMawkibDetail.defaultReservationDays,
+      ),
+    );
+    preselectedDatesBootstrappedRef.current = true;
+  }, [
+    preselectedMawkibId,
+    preselectedMawkibDetail,
+    initialReservationDate,
+    today,
+  ]);
 
   useEffect(() => {
     if (mawkibsLoading || mawkibsError) return;
@@ -301,20 +624,31 @@ export function ReservationForm({
     }
 
     setSelectedMawkibId((current) => {
+      if (preselectedMawkibId) return preselectedMawkibId;
       if (current && !pool.some((m) => m.id === current)) return null;
       return current;
     });
   }, [mawkibs, mawkibsLoading, mawkibsError, restrictedOnlineReserver]);
 
   useEffect(() => {
-    if (!selectedMawkibId) return;
-    const mawkib = mawkibs.find((m) => m.id === selectedMawkibId);
-    if (!mawkib) return;
-    setPlannedCheckInTime(mawkib.defaultCheckInTime ?? DEFAULT_CHECK_IN_TIME);
-    setPlannedCheckOutTime(
-      mawkib.defaultCheckOutTime ?? DEFAULT_CHECK_OUT_TIME,
+    const mawkibDetail =
+      selectedMawkibId === preselectedMawkibId
+        ? preselectedMawkibDetail
+        : selectedMawkibDetail;
+    if (!selectedMawkibId || !mawkibDetail) return;
+
+    setPlannedCheckInTime(
+      mawkibDetail.defaultCheckInTime ?? DEFAULT_CHECK_IN_TIME,
     );
-  }, [selectedMawkibId, mawkibs]);
+    setPlannedCheckOutTime(
+      mawkibDetail.defaultCheckOutTime ?? DEFAULT_CHECK_OUT_TIME,
+    );
+  }, [
+    selectedMawkibId,
+    preselectedMawkibId,
+    preselectedMawkibDetail,
+    selectedMawkibDetail,
+  ]);
 
   useEffect(() => {
     setRulesModalOpen(false);
@@ -333,11 +667,11 @@ export function ReservationForm({
       ...prev,
       members: buildCompanionMembers(
         maleGuestCount,
-        femaleGuestCount,
+        effectiveFemaleGuestCount,
         prev.members,
       ),
     }));
-  }, [maleGuestCount, femaleGuestCount]);
+  }, [maleGuestCount, effectiveFemaleGuestCount]);
 
   const togglePilgrimMode = () => {
     setPilgrimMode((mode) => (mode === "select" ? "new" : "select"));
@@ -389,8 +723,15 @@ export function ReservationForm({
       firstName,
       lastName,
       mobileNumber: mobileNumber.trim(),
+      nationalId: nationalId.trim() || undefined,
       province: province.trim() || undefined,
       city: city.trim() || undefined,
+      gender: gender || undefined,
+      birthDate: birthDate || undefined,
+      country: country.trim() || undefined,
+      passportNumber: passportNumber.trim() || undefined,
+      nationalIdCardImageUrl: nationalIdCardImageUrl ?? undefined,
+      password: password.trim() || undefined,
     });
 
     return {
@@ -410,27 +751,51 @@ export function ReservationForm({
           trimmedPassword || trimmedMobile.replace(/\D/g, "").slice(-4);
         const { firstName, lastName } = splitFullName(fullName);
 
-        const companionsPayload = serializeCompanions(companionsForm);
+        const companionsPayload = isGuestFastMode
+          ? undefined
+          : serializeCompanions(companionsForm);
 
         const result = await guestApi.createReservation({
           firstName,
           lastName,
           mobileNumber: trimmedMobile,
-          password: trimmedPassword || undefined,
-          province: province.trim() || undefined,
-          city: city.trim() || undefined,
+          password: isGuestFastMode ? undefined : trimmedPassword || undefined,
+          province: isGuestFastMode ? undefined : province.trim() || undefined,
+          city: isGuestFastMode ? undefined : city.trim() || undefined,
+          nationalId: isGuestFastMode
+            ? undefined
+            : nationalId.trim() || undefined,
+          nationalIdCardImageUrl: isGuestFastMode
+            ? undefined
+            : (nationalIdCardImageUrl ?? undefined),
+          gender: isGuestFastMode ? undefined : gender || undefined,
+          birthDate: isGuestFastMode ? undefined : birthDate || undefined,
+          country: isGuestFastMode ? undefined : country.trim() || undefined,
+          passportNumber: isGuestFastMode
+            ? undefined
+            : passportNumber.trim() || undefined,
           mawkibId: selectedMawkibId!,
           reservationDate: dateStart,
           reservationEndDate: dateEnd,
           maleGuestCount,
-          femaleGuestCount,
+          femaleGuestCount: effectiveFemaleGuestCount,
           companions: companionsPayload,
-          description: description.trim() || undefined,
-          plannedCheckInTime: plannedCheckInTime || undefined,
-          plannedCheckOutTime: plannedCheckOutTime || undefined,
+          description: isGuestFastMode
+            ? undefined
+            : description.trim() || undefined,
+          travelOrigin: isGuestFastMode
+            ? undefined
+            : travelOrigin.trim() || undefined,
+          plannedCheckInTime: isGuestFastMode
+            ? undefined
+            : plannedCheckInTime || undefined,
+          plannedCheckOutTime: isGuestFastMode
+            ? undefined
+            : plannedCheckOutTime || undefined,
         });
 
         setRulesModalOpen(false);
+        const mawkibForSnapshot = selectedMawkib;
         onSuccess({
           variant: "guest",
           message: result.message,
@@ -442,6 +807,25 @@ export function ReservationForm({
           trackingCode: result.trackingCode,
           mobileNumber: trimmedMobile,
           loginPasswordHint,
+          fullName: fullName.trim(),
+          mawkibId: selectedMawkibId!,
+          reservationId: result.reservationId,
+          guestReservationMode,
+          mawkibSnapshot: mawkibForSnapshot
+            ? {
+                id: mawkibForSnapshot.id,
+                name: mawkibForSnapshot.name,
+                address: mawkibForSnapshot.address,
+                phoneNumber: mawkibForSnapshot.phoneNumber,
+                imageUrl: mawkibForSnapshot.imageUrl,
+                owner: mawkibForSnapshot.owner
+                  ? {
+                      fullName: mawkibForSnapshot.owner.fullName,
+                      mobileNumber: mawkibForSnapshot.owner.mobileNumber,
+                    }
+                  : undefined,
+              }
+            : undefined,
           companions: companionsPayload,
         });
         return;
@@ -455,7 +839,7 @@ export function ReservationForm({
         reservationDate: dateStart,
         reservationEndDate: dateEnd,
         maleGuestCount,
-        femaleGuestCount,
+        femaleGuestCount: effectiveFemaleGuestCount,
         pilgrimMobile: pilgrim.pilgrimMobile,
         pilgrimUserId: pilgrim.pilgrimUserId,
         description: description.trim() || undefined,
@@ -487,7 +871,7 @@ export function ReservationForm({
       return;
     }
 
-    const mawkibForSubmit = mawkibs.find((m) => m.id === selectedMawkibId);
+    const mawkibForSubmit = selectedMawkib;
     if (
       mawkibForSubmit?.serviceStartDate &&
       !isOnOrAfterServiceStart(dateStart, mawkibForSubmit.serviceStartDate)
@@ -498,21 +882,29 @@ export function ReservationForm({
       return;
     }
 
-    if (
-      mawkibForSubmit?.maxReservationDays &&
-      !isWithinMaxReservationDays(
-        dateStart,
-        dateEnd,
-        mawkibForSubmit.maxReservationDays,
-      )
-    ) {
-      toast.error(
-        `حداکثر بازه رزرو برای این موکب ${mawkibForSubmit.maxReservationDays} روز است`,
+    if (mawkibForSubmit) {
+      const minReservationDays = effectiveDefaultReservationDays(
+        mawkibForSubmit.defaultReservationDays,
       );
-      return;
+      const maxReservationDays = effectiveMaxReservationDays(
+        mawkibForSubmit.maxReservationDays,
+      );
+      const stayDays = reservationStayDayCount(dateStart, dateEnd);
+      if (stayDays < minReservationDays) {
+        toast.error(
+          `حداقل بازه رزرو برای این موکب ${minReservationDays} روز است`,
+        );
+        return;
+      }
+      if (!isWithinMaxReservationDays(dateStart, dateEnd, maxReservationDays)) {
+        toast.error(
+          `حداکثر بازه رزرو برای این موکب ${maxReservationDays} روز است`,
+        );
+        return;
+      }
     }
 
-    if (maleGuestCount + femaleGuestCount < 1) {
+    if (maleGuestCount + effectiveFemaleGuestCount < 1) {
       toast.error("حداقل یک نفر (آقا یا بانو) باید وارد شود");
       return;
     }
@@ -547,9 +939,11 @@ export function ReservationForm({
   const handleDateStartChange = (start: string) => {
     setDateStart(start);
     if (start && dateEnd && dateEnd < start) {
-      setDateEnd(start);
+      setDateEnd(defaultReservationEndDate(start, 1));
     }
-    setSelectedMawkibId(null);
+    if (!preselectedMawkibId) {
+      setSelectedMawkibId(null);
+    }
   };
 
   const handleDateEndChange = (end: string) => {
@@ -559,7 +953,24 @@ export function ReservationForm({
     } else {
       setDateEnd(end);
     }
-    setSelectedMawkibId(null);
+    if (!preselectedMawkibId) {
+      setSelectedMawkibId(null);
+    }
+  };
+
+  const handleStayDurationSelect = (days: StayDurationPreset) => {
+    const mawkibMeta =
+      selectedMawkib ?? preselectedMawkibDetail ?? guestPreselectedMawkib;
+    const start = effectiveStayStartDate(today, mawkibMeta?.serviceStartDate);
+    setDateStart(start);
+    setDateEnd(defaultReservationEndDate(start, days));
+  };
+
+  const scrollToStaySection = () => {
+    document.getElementById("guest-reservation-stay")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   };
 
   const personalSectionTitle = isPanel
@@ -575,449 +986,543 @@ export function ReservationForm({
 
   return (
     <>
-    <form onSubmit={handleSubmit} className={`${guestTheme.cardLg} space-y-6`}>
-      <section>
-        <SectionHeader
-          icon={<IconUser />}
-          title={personalSectionTitle}
-          action={
-            canManagePilgrim ? (
-              <button
-                type="button"
-                onClick={togglePilgrimMode}
-                className="shrink-0 rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 transition hover:bg-slate-50"
-              >
-                {pilgrimMode === "select" ? "زائر جدید" : "انتخاب زائر"}
-              </button>
-            ) : undefined
-          }
-        />
-
-        {isPilgrim ? (
-          <PilgrimInfoCard
-            fullName={user?.fullName ?? ""}
-            mobileNumber={user?.mobileNumber ?? ""}
-          />
-        ) : canManagePilgrim && pilgrimMode === "select" ? (
-          <div className="space-y-3">
-            <PilgrimSearchSelect
-              value={selectedPilgrim}
-              onChange={setSelectedPilgrim}
-            />
-            {selectedPilgrim && (
-              <PilgrimInfoCard
-                fullName={selectedPilgrim.fullName}
-                mobileNumber={selectedPilgrim.mobileNumber}
-                city={selectedPilgrim.city}
-              />
-            )}
-          </div>
-        ) : showGuestPersonalFields ? (
-          <div className="space-y-3">
-            <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-600">
-                نام و نام خانوادگی *
-              </span>
-              <input
-                type="text"
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className={reservationFormInputClass}
-                placeholder="مثلاً علی محمدی"
-              />
-            </label>
-            {variant === "guest" ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="block">
-                  <span className="mb-1.5 block text-sm text-slate-600">
-                    شماره موبایل *
-                  </span>
-                  <input
-                    type="tel"
-                    required
-                    value={mobileNumber}
-                    onChange={(e) => setMobileNumber(e.target.value)}
-                    className={reservationFormInputClass}
-                    placeholder="09121234567"
-                    dir="ltr"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-1.5 block text-sm text-slate-600">
-                    رمز عبور
-                  </span>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className={reservationFormInputClass}
-                    minLength={4}
-                    autoComplete="new-password"
-                  />
-                </label>
-              </div>
-            ) : (
-              <label className="block">
-                <span className="mb-1.5 block text-sm text-slate-600">
-                  شماره موبایل *
-                </span>
-                <input
-                  type="tel"
-                  required
-                  value={mobileNumber}
-                  onChange={(e) => setMobileNumber(e.target.value)}
-                  className={reservationFormInputClass}
-                  placeholder="09121234567"
-                  dir="ltr"
-                />
-                <p className="mt-1 text-xs text-slate-400">
-                  اگر این شماره قبلاً ثبت شده باشد، همان کاربر برای رزرو استفاده
-                  می‌شود. رمز عبور زائر جدید: ۴ رقم آخر موبایل.
-                </p>
-              </label>
-            )}
-            {variant === "guest" && (
-              <p className="rounded-xl border border-amber-100 bg-amber-50/80 px-3 py-2.5 text-xs leading-relaxed text-amber-800">
-                در صورت عدم ورود رمز عبور، چهار رقم آخر شماره موبایل به‌عنوان
-                رمز در نظر گرفته می‌شود.
-              </p>
-            )}
-            <ProvinceCitySelect
-              province={province}
-              city={city}
-              onProvinceChange={(value) => {
-                setProvince(value);
-                setCity("");
-              }}
-              onCityChange={setCity}
-            />
-          </div>
-        ) : null}
-      </section>
-
-      <hr className="border-slate-100" />
-
-      <section>
-        <SectionHeader
-          icon={<IconCalendar />}
-          title="تاریخ اقامت"
-          subtitle="تاریخ شروع و پایان اقامت و تعداد آقایان و بانوان را مشخص کنید"
-        />
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <PersianDateInput
-              label="تاریخ شروع اقامت *"
-              value={dateStart}
-              onChange={handleDateStartChange}
-              placeholder="انتخاب تاریخ ورود"
-              minDate={today}
-              inputClassName={reservationFormInputClass}
-              clearable={false}
-            />
-            <PersianDateInput
-              label="تاریخ پایان اقامت *"
-              value={dateEnd}
-              onChange={handleDateEndChange}
-              placeholder="انتخاب تاریخ خروج"
-              minDate={dateStart || today}
-              inputClassName={reservationFormInputClass}
-              clearable={false}
-            />
-          </div>
-          <p className="text-xs text-slate-500">
-            تاریخ پایان، آخرین روزی است که مهمان در موکب حضور دارد (شامل همان
-            روز).
-          </p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-600">
-                ساعت ورود :
-              </span>
-              <input
-                type="time"
-                value={plannedCheckInTime}
-                onChange={(e) => setPlannedCheckInTime(e.target.value)}
-                className={reservationFormInputClass}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-600">
-                ساعت خروج :
-              </span>
-              <input
-                type="time"
-                value={plannedCheckOutTime}
-                onChange={(e) => setPlannedCheckOutTime(e.target.value)}
-                className={reservationFormInputClass}
-              />
-            </label>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <GuestCountStepper
-              label="تعداد آقایان *"
-              value={maleGuestCount}
-              onChange={(n) => {
-                setMaleGuestCount(n);
-                setSelectedMawkibId(null);
-              }}
-            />
-            <GuestCountStepper
-              label="تعداد بانوان *"
-              value={femaleGuestCount}
-              onChange={(n) => {
-                setFemaleGuestCount(n);
-                setSelectedMawkibId(null);
-              }}
-            />
-          </div>
-
-          <p className="rounded-xl border border-amber-100 bg-amber-50/80 px-3 py-2.5 text-xs leading-relaxed text-amber-800">
-            این ساعات تقریبی هستند و امکان هماهنگی با مدیر موکب پس از تایید رزرو
-            وجود دارد
-          </p>
-        </div>
-      </section>
-
-      <hr className="border-slate-100" />
-
-      <section>
-        <details className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-          <summary className="flex cursor-pointer list-none items-center gap-3 p-4 sm:p-5 marker:content-none [&::-webkit-details-marker]:hidden">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e8eef6] text-[#4a6fa5]">
-              <IconUsers />
-            </div>
-            <h2 className="flex-1 text-base font-semibold text-slate-800 sm:text-lg">
-              مشخصات همراهان (اختیاری)
-            </h2>
-            <svg
-              className="h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-              aria-hidden
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </summary>
-          <div className="border-t border-slate-100 px-4 pb-4 pt-2 sm:px-5">
-            <CompanionsTable value={companionsForm} onChange={setCompanionsForm} />
-          </div>
-        </details>
-      </section>
-
-      <hr className="border-slate-100" />
-
-      <section>
-        <SectionHeader
-          icon={<IconHome />}
-          title="انتخاب موکب"
-          subtitle={mawkibSectionSubtitle}
-        />
-
-        {canBypassCapacity && (
-          <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3">
-            <input
-              type="checkbox"
-              checked={skipCapacityCheck}
-              onChange={(e) => {
-                setSkipCapacityCheck(e.target.checked);
-                setSelectedMawkibId(null);
-              }}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-            />
-            <span className="text-sm leading-relaxed text-amber-900">
-              <span className="font-medium">ثبت بدون بررسی ظرفیت</span>
-              <span className="mt-1 block text-xs text-amber-800">
-                با انتخاب این گزینه، ظرفیت موکب بررسی نخواهد شد و مسئولیت بر
-                عهده موکب دار محترم خواهد بود
-              </span>
-            </span>
-          </label>
-        )}
-
-        {mawkibsError ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-600">
-            خطا در دریافت لیست موکب‌ها. لطفاً صفحه را رفرش کنید.
-          </div>
-        ) : mawkibsLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#c5d4e8] border-t-[#4a6fa5]" />
-          </div>
-        ) : mawkibs.length === 0 ? (
-          <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-600">
-              <IconUsers />
-            </div>
-            {skipCapacityCheck && canBypassCapacity ? (
-              <>
-                <p className="font-medium text-amber-900">
-                  موکبی برای انتخاب یافت نشد
-                </p>
-                <p className="mt-2 text-sm text-amber-700">
-                  ممکن است تاریخ انتخابی قبل از شروع خدمات موکب باشد یا موکب
-                  تاییدشده‌ای در دسترس نباشد.
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="font-medium text-amber-900">
-                  متأسفانه چون ظرفیت خالی نداریم نمی‌توانیم در خدمتتان باشیم
-                </p>
-                <p className="mt-2 text-sm text-amber-700">
-                  لطفاً تاریخ دیگری انتخاب کنید یا بعداً دوباره مراجعه فرمایید.
-                </p>
-                <p className="mt-2 text-xs text-amber-600">
-                  ممکن است تاریخ انتخابی شما قبل از شروع خدمات برخی موکب‌ها باشد
-                  یا از حداکثر بازه رزرو آن‌ها بیشتر باشد.
-                </p>
-                {canBypassCapacity && (
-                  <p className="mt-3 text-xs font-medium text-amber-800">
-                    در صورت نیاز می‌توانید گزینه «ثبت بدون بررسی ظرفیت» را فعال
-                    کنید.
-                  </p>
-                )}
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {restrictedOnlineReserver && reservableMawkibs.length === 0 && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                موکب‌های موجود در این بازه امکان رزرو آنلاین ندارند.
-              </div>
-            )}
-            <label className="block">
-              <span className="mb-1.5 block text-sm text-slate-600">
-                جستجوی نام موکب
-              </span>
-              <input
-                type="search"
-                value={mawkibSearchQuery}
-                onChange={(e) => setMawkibSearchQuery(e.target.value)}
-                placeholder="بخشی از نام موکب را وارد کنید..."
-                className={reservationFormInputClass}
-                autoComplete="off"
-              />
-            </label>
-            {displayedMawkibs.length === 0 ? (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-600">
-                موکبی با نام «{mawkibSearchQuery.trim()}» در این لیست یافت نشد.
-              </div>
-            ) : (
-              displayedMawkibs.map((mawkib) => {
-                const reservationBlocked =
-                  restrictedOnlineReserver &&
-                  !isMawkibOnlineReservationEnabled(mawkib);
-                return (
-                  <MawkibCard
-                    key={mawkib.id}
-                    mawkib={mawkib}
-                    selected={selectedMawkibId === mawkib.id}
-                    onSelect={() => setSelectedMawkibId(mawkib.id)}
-                    reservationBlocked={reservationBlocked}
-                  />
-                );
-              })
-            )}
-          </div>
-        )}
-      </section>
-
-      <hr className="border-slate-100" />
-
-      <section>
-        <SectionHeader
-          icon={<IconChat />}
-          title="توضیحات (اختیاری)"
-          subtitle="اگر نکته‌ای برای مدیریت دارید بنویسید"
-        />
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={3}
-          className={`${reservationFormInputClass} resize-none`}
-          placeholder="مثلاً نیاز به دسترسی ویلچر، زمان تقریبی ورود و..."
-        />
-      </section>
-
-      {(isPanel && isAdmin) || !isPanel ? (
-        <div
-          role="alert"
-          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-sm leading-7 text-amber-900 shadow-sm ring-1 ring-amber-100"
-        >
-          <p>
-            {isPanel && isAdmin
-              ? "رزروهای ثبت‌شده توسط مدیر به‌صورت خودکار تایید می‌شوند."
-              : "زائر گرامی، ثبت درخواست رزرو به منزله پذیرش کلیه قوانین تعریف شده توسط موکب‌دار گرامی می‌باشد. دقت نمایید درخواست شما در وضعیت غیرقطعی قرار دارد و پس از تایید مدیریت محترم موکب، قطعی شده و به اطلاع شما خواهد رسید."}
-          </p>
-        </div>
-      ) : null}
-
-      <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:flex-wrap">
-        {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            className={`${btnSecondary} sm:min-w-[120px]`}
-          >
-            انصراف
-          </button>
-        )}
-        <button
-          type="submit"
-          disabled={
-            submitting ||
-            capacityBlocksSubmit ||
-            selectedMawkibBlocked ||
-            mawkibsLoading ||
-            !selectedMawkibId ||
-            maleGuestCount + femaleGuestCount < 1
-          }
-          className={`${guestTheme.btnPrimaryLg} flex-1 py-3.5 sm:min-w-[200px]`}
-        >
-          {submitting ? (
-            <>
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              در حال ثبت...
-            </>
-          ) : (
-            <>
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
-                />
-              </svg>
-              {isPanel ? "ثبت رزرو" : "ثبت درخواست رزرو"}
-            </>
-          )}
-        </button>
-      </div>
-    </form>
-
-    {variant === "guest" &&
-      selectedMawkib &&
-      hasMawkibRules(selectedMawkib.rules) && (
-        <MawkibRulesAcceptanceModal
-          open={rulesModalOpen}
-          onClose={() => {
-            if (!submitting) setRulesModalOpen(false);
-          }}
-          mawkibName={selectedMawkib.name}
-          rules={selectedMawkib.rules}
-          submitting={submitting}
-          onConfirm={handleRulesConfirm}
+      {guestPreselectedMawkib && (
+        <MawkibInfoCard
+          mawkib={guestPreselectedMawkib}
+          showThumbnail
+          variant="guest-browse"
         />
       )}
-  </>
+      <form
+        onSubmit={handleSubmit}
+        className={`${guestTheme.cardLg} space-y-6 ${guestPreselectedMawkib ? "mt-4" : ""}`}
+      >
+        {variant === "guest" && (
+          <div className="flex justify-end">
+            <GuestReservationModeToggle
+              value={guestReservationMode}
+              onChange={setGuestReservationMode}
+            />
+          </div>
+        )}
+
+        <section>
+          <SectionHeader
+            icon={<IconUser />}
+            title={personalSectionTitle}
+            action={
+              canManagePilgrim ? (
+                <button
+                  type="button"
+                  onClick={togglePilgrimMode}
+                  className="shrink-0 rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 transition hover:bg-slate-50"
+                >
+                  {pilgrimMode === "select" ? "زائر جدید" : "انتخاب زائر"}
+                </button>
+              ) : undefined
+            }
+          />
+
+          {isPilgrim ? (
+            <PilgrimInfoCard
+              fullName={user?.fullName ?? ""}
+              mobileNumber={user?.mobileNumber ?? ""}
+            />
+          ) : canManagePilgrim && pilgrimMode === "select" ? (
+            <div className="space-y-3">
+              <PilgrimSearchSelect
+                value={selectedPilgrim}
+                onChange={setSelectedPilgrim}
+              />
+              {selectedPilgrim && (
+                <PilgrimInfoCard
+                  fullName={selectedPilgrim.fullName}
+                  mobileNumber={selectedPilgrim.mobileNumber}
+                  city={selectedPilgrim.city}
+                />
+              )}
+            </div>
+          ) : showGuestPersonalFields ? (
+            variant === "guest" ? (
+              <GuestReservationPersonalFields
+                mode={guestReservationMode}
+                fullName={fullName}
+                mobileNumber={mobileNumber}
+                nationalId={nationalId}
+                gender={gender}
+                birthDate={birthDate}
+                country={country}
+                passportNumber={passportNumber}
+                password={password}
+                province={province}
+                city={city}
+                nationalIdCardImageUrl={nationalIdCardImageUrl}
+                submitting={submitting}
+                onFullNameChange={setFullName}
+                onMobileNumberChange={setMobileNumber}
+                onNationalIdChange={setNationalId}
+                onGenderChange={setGender}
+                onBirthDateChange={setBirthDate}
+                onCountryChange={setCountry}
+                onPassportNumberChange={setPassportNumber}
+                onPasswordChange={setPassword}
+                onProvinceChange={setProvince}
+                onCityChange={setCity}
+                onNationalIdCardImageUrlChange={setNationalIdCardImageUrl}
+                onPasswordEnter={scrollToStaySection}
+              />
+            ) : (
+              <PanelNewPilgrimFields
+                fullName={fullName}
+                mobileNumber={mobileNumber}
+                nationalId={nationalId}
+                gender={gender}
+                birthDate={birthDate}
+                country={country}
+                passportNumber={passportNumber}
+                province={province}
+                city={city}
+                nationalIdCardImageUrl={nationalIdCardImageUrl}
+                submitting={submitting}
+                mobileLabel="تلفن همراه"
+                optionalFields="hidden"
+                onFullNameChange={setFullName}
+                onMobileNumberChange={setMobileNumber}
+                onNationalIdChange={setNationalId}
+                onGenderChange={setGender}
+                onBirthDateChange={setBirthDate}
+                onCountryChange={setCountry}
+                onPassportNumberChange={setPassportNumber}
+                onProvinceChange={setProvince}
+                onCityChange={setCity}
+                onNationalIdCardImageUrlChange={setNationalIdCardImageUrl}
+              />
+            )
+          ) : null}
+        </section>
+
+        <hr className="border-slate-100" />
+
+        <section id="guest-reservation-stay" className="scroll-mt-24">
+          <SectionHeader
+            icon={<IconCalendar />}
+            title="تاریخ اقامت"
+            subtitle={staySectionSubtitle}
+          />
+          <div className="space-y-4">
+            {showStayDurationPicker && (
+              <StayDurationPicker
+                today={today}
+                dateStart={dateStart}
+                dateEnd={dateEnd}
+                serviceStartDate={
+                  selectedMawkib?.serviceStartDate ??
+                  preselectedMawkibDetail?.serviceStartDate ??
+                  guestPreselectedMawkib?.serviceStartDate
+                }
+                defaultReservationDays={
+                  selectedMawkib?.defaultReservationDays ??
+                  preselectedMawkibDetail?.defaultReservationDays ??
+                  guestPreselectedMawkib?.defaultReservationDays
+                }
+                maxReservationDays={
+                  selectedMawkib?.maxReservationDays ??
+                  preselectedMawkibDetail?.maxReservationDays ??
+                  guestPreselectedMawkib?.maxReservationDays
+                }
+                mawkibSelected={selectedMawkibId != null}
+                onSelect={handleStayDurationSelect}
+              />
+            )}
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <PersianDateInput
+                label="تاریخ شروع اقامت *"
+                value={dateStart}
+                onChange={handleDateStartChange}
+                placeholder="انتخاب تاریخ ورود"
+                minDate={today}
+                inputClassName={reservationFormInputClass}
+                clearable={false}
+              />
+              <PersianDateInput
+                label="تاریخ پایان اقامت *"
+                value={dateEnd}
+                onChange={handleDateEndChange}
+                placeholder="انتخاب تاریخ خروج"
+                minDate={dateStart || today}
+                inputClassName={reservationFormInputClass}
+                clearable={false}
+              />
+            </div>
+
+            <div className={guestCountGridClass}>
+              <GuestCountStepper
+                label="تعداد آقایان *"
+                value={maleGuestCount}
+                disabled={isMaleCapacityFull}
+                onChange={(n) => {
+                  setMaleGuestCount(n);
+                  if (!preselectedMawkibId) setSelectedMawkibId(null);
+                }}
+              />
+              {showFemaleGuestCount ? (
+                <GuestCountStepper
+                  label="تعداد بانوان *"
+                  value={femaleGuestCount}
+                  disabled={isFemaleCapacityFull}
+                  onChange={(n) => {
+                    setFemaleGuestCount(n);
+                    if (!preselectedMawkibId) setSelectedMawkibId(null);
+                  }}
+                />
+              ) : (
+                <NoFemaleAcceptanceHint />
+              )}
+            </div>
+          </div>
+        </section>
+
+        {!hideMawkibPicker && (
+          <section>
+            <SectionHeader
+              icon={<IconHome />}
+              title="انتخاب موکب"
+              subtitle={mawkibSectionSubtitle}
+            />
+
+            {canBypassCapacity && (
+              <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={skipCapacityCheck}
+                  onChange={(e) => {
+                    setSkipCapacityCheck(e.target.checked);
+                    setSelectedMawkibId(null);
+                  }}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                />
+                <span className="text-sm leading-relaxed text-amber-900">
+                  <span className="font-medium">ثبت بدون بررسی ظرفیت</span>
+                  <span className="mt-1 block text-xs text-amber-800">
+                    با انتخاب این گزینه، ظرفیت موکب بررسی نخواهد شد و مسئولیت بر
+                    عهده موکب دار محترم خواهد بود
+                  </span>
+                </span>
+              </label>
+            )}
+
+            {mawkibsError ? (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-600">
+                خطا در دریافت لیست موکب‌ها. لطفاً صفحه را رفرش کنید.
+              </div>
+            ) : mawkibsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#c5d4e8] border-t-[#4a6fa5]" />
+              </div>
+            ) : mawkibs.length === 0 ? (
+              <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 text-center">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                  <IconUsers />
+                </div>
+                {skipCapacityCheck && canBypassCapacity ? (
+                  <>
+                    <p className="font-medium text-amber-900">
+                      موکبی برای انتخاب یافت نشد
+                    </p>
+                    <p className="mt-2 text-sm text-amber-700">
+                      ممکن است تاریخ انتخابی قبل از شروع خدمات موکب باشد یا موکب
+                      تاییدشده‌ای در دسترس نباشد.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-medium text-amber-900">
+                      متأسفانه چون ظرفیت خالی نداریم نمی‌توانیم در خدمتتان باشیم
+                    </p>
+                    <p className="mt-2 text-sm text-amber-700">
+                      لطفاً تاریخ دیگری انتخاب کنید یا بعداً دوباره مراجعه
+                      فرمایید.
+                    </p>
+                    <p className="mt-2 text-xs text-amber-600">
+                      ممکن است تاریخ انتخابی شما قبل از شروع خدمات برخی موکب‌ها
+                      باشد یا از حداکثر بازه رزرو آن‌ها بیشتر باشد.
+                    </p>
+                    {canBypassCapacity && (
+                      <p className="mt-3 text-xs font-medium text-amber-800">
+                        در صورت نیاز می‌توانید گزینه «ثبت بدون بررسی ظرفیت» را
+                        فعال کنید.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {restrictedOnlineReserver && reservableMawkibs.length === 0 && (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                    موکب‌های موجود در این بازه امکان رزرو آنلاین ندارند.
+                  </div>
+                )}
+                {!guestPreselectedMawkib && (
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm text-slate-600">
+                      جستجوی نام موکب
+                    </span>
+                    <input
+                      type="search"
+                      value={mawkibSearchQuery}
+                      onChange={(e) => setMawkibSearchQuery(e.target.value)}
+                      placeholder="بخشی از نام موکب را وارد کنید..."
+                      className={reservationFormInputClass}
+                      autoComplete="off"
+                    />
+                  </label>
+                )}
+                {mawkibsForSelection.length === 0 ? (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-600">
+                    {guestPreselectedMawkib
+                      ? "این موکب در بازه و ظرفیت انتخاب‌شده در دسترس نیست. تاریخ یا تعداد نفرات را تغییر دهید."
+                      : `موکبی با نام «${mawkibSearchQuery.trim()}» در این لیست یافت نشد.`}
+                  </div>
+                ) : (
+                  mawkibsForSelection.map((mawkib) => {
+                    const reservationBlocked =
+                      restrictedOnlineReserver &&
+                      !isMawkibOnlineReservationEnabled(mawkib);
+                    const galleryUrls = mawkibGalleryUrls(mawkib);
+                    return (
+                      <MawkibCard
+                        key={mawkib.id}
+                        mawkib={mawkib}
+                        selected={selectedMawkibId === mawkib.id}
+                        onSelect={() => setSelectedMawkibId(mawkib.id)}
+                        reservationBlocked={reservationBlocked}
+                        showThumbnail
+                        variant={
+                          variant === "guest" ? "guest-browse" : "default"
+                        }
+                        footer={
+                          <MawkibGuestGalleryDetailsFooter
+                            showGallery={galleryUrls.length > 0}
+                            onViewGallery={() => setGalleryMawkib(mawkib)}
+                            onViewDetails={() => setDetailMawkib(mawkib)}
+                          />
+                        }
+                      />
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </section>
+        )}
+
+        {variant === "panel" &&
+          canManagePilgrim &&
+          pilgrimMode === "new" &&
+          !isGuestFastMode && (
+            <>
+              <hr className="border-slate-100" />
+
+              <section>
+                <CollapsibleSection
+                  variant="card"
+                  summary={PANEL_OPTIONAL_FIELDS_COLLAPSE_LABEL}
+                  summaryIcon={<IconUser />}
+                >
+                  <PanelNewPilgrimOptionalFields
+                    nationalId={nationalId}
+                    gender={gender}
+                    birthDate={birthDate}
+                    country={country}
+                    passportNumber={passportNumber}
+                    nationalIdCardImageUrl={nationalIdCardImageUrl}
+                    submitting={submitting}
+                    password={password}
+                    province={province}
+                    city={city}
+                    onNationalIdChange={setNationalId}
+                    onGenderChange={setGender}
+                    onBirthDateChange={setBirthDate}
+                    onCountryChange={setCountry}
+                    onPassportNumberChange={setPassportNumber}
+                    onNationalIdCardImageUrlChange={setNationalIdCardImageUrl}
+                    onPasswordChange={setPassword}
+                    onProvinceChange={setProvince}
+                    onCityChange={setCity}
+                  />
+                </CollapsibleSection>
+              </section>
+            </>
+          )}
+
+        {!isGuestFastMode && (
+          <>
+            {variant === "guest" && (
+              <>
+                <hr className="border-slate-100" />
+
+                <section>
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm text-slate-600">
+                      مبدا سفر (اختیاری)
+                    </span>
+                    <input
+                      type="text"
+                      value={travelOrigin}
+                      onChange={(e) => setTravelOrigin(e.target.value)}
+                      className={reservationFormInputClass}
+                      placeholder="مثلاً تهران، مشهد، اصفهان"
+                    />
+                  </label>
+                </section>
+              </>
+            )}
+
+            <hr className="border-slate-100" />
+
+            <section>
+              <details className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+                <summary className="flex cursor-pointer list-none items-center gap-3 p-4 sm:p-5 marker:content-none [&::-webkit-details-marker]:hidden">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e8eef6] text-[#4a6fa5]">
+                    <IconUsers />
+                  </div>
+                  <h2 className="flex-1 text-base font-semibold text-slate-800 sm:text-lg">
+                    مشخصات همراهان (اختیاری)
+                  </h2>
+                  <svg
+                    className="h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </summary>
+                <div className="border-t border-slate-100 px-4 pb-4 pt-2 sm:px-5">
+                  <CompanionsTable
+                    value={companionsForm}
+                    onChange={setCompanionsForm}
+                  />
+                </div>
+              </details>
+            </section>
+
+            <hr className="border-slate-100" />
+
+            <section>
+              <SectionHeader
+                icon={<IconChat />}
+                title="توضیحات (اختیاری)"
+                subtitle="اگر نکته ای هست که می تونه کمک کننده باشه لطفا اینجا بنویسین"
+              />
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                className={`${reservationFormInputClass} resize-none`}
+                placeholder="مثلاً نیاز به دسترسی ویلچر، زمان تقریبی ورود و..."
+              />
+            </section>
+          </>
+        )}
+
+        {(isPanel && isAdmin) || !isPanel ? (
+          <div
+            role="alert"
+            className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-sm leading-7 text-amber-900 shadow-sm ring-1 ring-amber-100"
+          >
+            <p>
+              {isPanel && isAdmin
+                ? "رزروهای ثبت‌شده توسط مدیر به‌صورت خودکار تایید می‌شوند."
+                : "درخواست رزرو شما در لیست انتظار قرار می‌گیرد و پس از بررسی و تایید مدیریت محترم موکب، قطعی خواهد شد."}
+            </p>
+          </div>
+        ) : null}
+
+        <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:flex-wrap">
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className={`${btnSecondary} sm:min-w-[120px]`}
+            >
+              انصراف
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={
+              submitting ||
+              capacityBlocksSubmit ||
+              selectedMawkibBlocked ||
+              mawkibsLoading ||
+              !selectedMawkibId ||
+              maleGuestCount + effectiveFemaleGuestCount < 1
+            }
+            className={`${guestTheme.btnPrimaryLg} flex-1 py-3.5 sm:min-w-[200px]`}
+          >
+            {submitting ? (
+              <>
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                در حال ثبت...
+              </>
+            ) : (
+              <>
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
+                  />
+                </svg>
+                {isPanel ? "ثبت رزرو" : "ثبت درخواست رزرو"}
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+
+      {variant === "guest" &&
+        selectedMawkib &&
+        hasMawkibRules(selectedMawkib.rules) && (
+          <MawkibRulesAcceptanceModal
+            open={rulesModalOpen}
+            onClose={() => {
+              if (!submitting) setRulesModalOpen(false);
+            }}
+            mawkibName={selectedMawkib.name}
+            rules={selectedMawkib.rules}
+            submitting={submitting}
+            onConfirm={handleRulesConfirm}
+          />
+        )}
+
+      <MawkibGalleryModal
+        open={!!galleryMawkib}
+        onClose={() => setGalleryMawkib(null)}
+        mawkibName={galleryMawkib?.name ?? ""}
+        imageUrls={galleryMawkib ? mawkibGalleryUrls(galleryMawkib) : []}
+      />
+
+      <MawkibPublicDetailModal
+        open={!!detailMawkib}
+        onClose={() => setDetailMawkib(null)}
+        mawkib={detailMawkib}
+      />
+    </>
   );
 }

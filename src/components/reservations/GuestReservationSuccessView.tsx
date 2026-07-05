@@ -1,16 +1,22 @@
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { GuestPageHeader, GuestShell } from "../guest/GuestShell";
-import { formatPersianDateRange } from "../ui/PersianDateRangePicker";
-import { IconCalendar, IconHome, IconUsers } from "./reservation-form-ui";
 import { ReservationTrackingHeader } from "./ReservationTrackingHeader";
-import { CompanionsDisplay } from "./CompanionsDisplay";
-import { formatGuestCount } from "../../lib/capacity";
+import { PilgrimCardScreenView } from "./PilgrimCardScreenView";
+import { guestApi } from "../../lib/guest";
+import { buildReservationFromGuestSuccess } from "../../lib/guest-success-reservation";
 import { guestDetailTheme, guestTheme } from "../../lib/guest-theme";
-import { buildReservationTrackUrl } from "../../lib/reservation-track";
+import {
+  pilgrimCardPath,
+  reservationTrackPath,
+} from "../../lib/reservation-track";
+import type { Reservation } from "../../types";
 import type { ReservationFormSuccess } from "./ReservationForm";
 
 type GuestSuccess = Extract<ReservationFormSuccess, { variant: "guest" }>;
+
+const FAST_MODE_CARD_HINT =
+  "لطفاً از این کارت عکس تهیه فرمایید و همراه خود داشته باشید.";
 
 function SuccessIcon() {
   return (
@@ -48,41 +54,58 @@ function IconKey() {
   );
 }
 
-function SummaryTile({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: ReactNode;
-}) {
-  return (
-    <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-gradient-to-br from-slate-50/80 to-white p-3.5">
-      <div className={guestDetailTheme.fieldIcon}>{icon}</div>
-      <div className="min-w-0 flex-1 text-right">
-        <p className="text-xs font-medium text-slate-500">{label}</p>
-        <div className="mt-1 text-sm font-semibold text-slate-800">{value}</div>
-      </div>
-    </div>
-  );
-}
-
 export function GuestReservationSuccessView({
   success,
 }: {
   success: GuestSuccess;
 }) {
   const passwordHint = success.loginPasswordHint;
-  const trackUrl = buildReservationTrackUrl(success.trackingCode);
+  const isFastMode = success.guestReservationMode === "fast";
+  const initialReservation = useMemo(
+    () => (isFastMode ? buildReservationFromGuestSuccess(success) : null),
+    [isFastMode, success],
+  );
+  const [reservation, setReservation] = useState<Reservation | null>(
+    initialReservation,
+  );
+  const [cardLoading, setCardLoading] = useState(!isFastMode);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (isFastMode) {
+      setReservation(buildReservationFromGuestSuccess(success));
+      setCardLoading(false);
+    } else {
+      setCardLoading(true);
+      setReservation(null);
+    }
+
+    void guestApi
+      .trackReservation(success.trackingCode)
+      .then((result) => {
+        if (!cancelled) setReservation(result);
+      })
+      .catch(() => {
+        if (!cancelled && !isFastMode) setReservation(null);
+      })
+      .finally(() => {
+        if (!cancelled && !isFastMode) setCardLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isFastMode, success]);
+
+  const actionButtonClass = `${guestTheme.btnSecondary} w-full sm:w-auto`;
 
   return (
     <GuestShell maxWidth="lg">
       <GuestPageHeader
         align="center"
         icon={<SuccessIcon />}
-        title="رزرو اولیه با موفقیت ثبت شد"
-        subtitle="پس از بررسی موکب‌دار، رزرو شما قطعی می‌شود. شناسه رزرو را نگه دارید."
+        title="رزرو موقت انجام شد"
       />
 
       <div className="space-y-4">
@@ -108,7 +131,8 @@ export function GuestReservationSuccessView({
                 در انتظار تایید موکب‌دار
               </p>
               <p className="mt-0.5 text-xs leading-relaxed text-amber-800/80">
-                تا زمان تایید، رزرو شما در وضعیت «در انتظار» باقی می‌ماند.
+                تا زمان تایید توسط موکب دار محترم، رزرو شما در وضعیت «در انتظار»
+                باقی می‌ماند.
               </p>
             </div>
             <span className="hidden shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200 sm:inline">
@@ -117,73 +141,42 @@ export function GuestReservationSuccessView({
           </div>
         </div>
 
-        <ReservationTrackingHeader
-          trackingCode={success.trackingCode}
-          compact
-          variant="guest"
-        />
-
-        <div className={`${guestTheme.cardLg} space-y-4`}>
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
-            <h3 className="text-base font-semibold text-slate-800">
-              خلاصه رزرو
+        {isFastMode && reservation && (
+          <div className={`${guestTheme.cardLg} space-y-1`}>
+            <h3 className="text-center text-base font-semibold text-slate-800">
+              زائر کارت
             </h3>
-            <span className="rounded-lg bg-[#f0f4fa] px-2.5 py-1 text-xs font-medium text-[#4a6fa5] ring-1 ring-[#c5d4e8]">
-              رزرو اولیه
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <SummaryTile
-              icon={<IconHome />}
-              label="موکب"
-              value={success.mawkibName}
-            />
-            <SummaryTile
-              icon={<IconUsers />}
-              label="تعداد نفرات"
-              value={formatGuestCount(
-                success.maleGuestCount,
-                success.femaleGuestCount,
-              )}
-            />
-            <SummaryTile
-              icon={<IconCalendar />}
-              label="بازه اقامت"
-              value={
-                <span className="font-medium">
-                  {formatPersianDateRange(
-                    success.reservationDate,
-                    success.reservationEndDate,
-                  )}
-                </span>
-              }
-            />
-            <SummaryTile
-              icon={<IconKey />}
-              label="موبایل ثبت‌شده"
-              value={
-                <span className="font-mono tracking-wide" dir="ltr">
-                  {success.mobileNumber}
-                </span>
-              }
+            <PilgrimCardScreenView
+              reservation={reservation}
+              showPrintButton
+              showDownloadButton
+              hintMessage={FAST_MODE_CARD_HINT}
+              printButtonClassName={actionButtonClass}
+              downloadButtonClassName={actionButtonClass}
             />
           </div>
+        )}
 
-          {success.companions && (
-            <div className="space-y-2 border-t border-slate-100 pt-4">
-              <div className="flex items-center gap-2">
-                <div className={guestDetailTheme.fieldIcon}>
-                  <IconUsers />
-                </div>
-                <h4 className="text-sm font-semibold text-slate-800">
-                  مشخصات همراهان
-                </h4>
-              </div>
-              <CompanionsDisplay companions={success.companions} compact />
-            </div>
-          )}
-        </div>
+        {!isFastMode && cardLoading && (
+          <p className="text-center text-sm text-slate-500">
+            در حال آماده‌سازی زائر کارت...
+          </p>
+        )}
+
+        {!isFastMode && reservation && (
+          <PilgrimCardScreenView
+            reservation={reservation}
+            printButtonClassName={actionButtonClass}
+          />
+        )}
+
+        {!isFastMode && !cardLoading && !reservation && (
+          <ReservationTrackingHeader
+            trackingCode={success.trackingCode}
+            compact
+            variant="guest"
+          />
+        )}
 
         <div className="rounded-2xl border border-[#c5d4e8] bg-[#f0f4fa]/60 p-4 sm:p-5">
           <div className="flex items-start gap-3">
@@ -211,11 +204,19 @@ export function GuestReservationSuccessView({
             ورود به پنل کاربری
           </Link>
           <Link
-            to={trackUrl}
+            to={reservationTrackPath(success.trackingCode)}
             className={`${guestTheme.btnSecondary} sm:min-w-[180px]`}
           >
             پیگیری رزرو
           </Link>
+          {!isFastMode && !reservation && (
+            <Link
+              to={pilgrimCardPath(success.trackingCode)}
+              className={`${guestTheme.btnSecondary} sm:min-w-[180px]`}
+            >
+              مشاهده زائر کارت
+            </Link>
+          )}
         </div>
       </div>
     </GuestShell>

@@ -8,8 +8,9 @@ import {
   IconHome,
   IconUsers,
 } from "../reservations/reservation-form-ui";
+import { ActiveReservationCardActions } from "../reservations/ActiveReservationCardActions";
+import { GuestCountBadges } from "../reservations/GuestCountBadges";
 import { formatTimeFa } from "../../lib/format-time";
-import { formatGuestCount } from "../../lib/capacity";
 import { dashboardApi } from "../../lib/dashboard";
 import { reservationsApi } from "../../lib/reservations";
 import { RESERVATION_STATUS_LABELS } from "../../lib/constants";
@@ -271,11 +272,13 @@ function ActiveReservationCard({ reservation }: { reservation: Reservation }) {
           <InfoField
             compact
             icon={<IconUsers />}
-            label="تعداد مهمان"
-            value={formatGuestCount(
-              reservation.maleGuestCount,
-              reservation.femaleGuestCount,
-            )}
+            label="تعداد"
+            value={
+              <GuestCountBadges
+                male={reservation.maleGuestCount}
+                female={reservation.femaleGuestCount}
+              />
+            }
           />
           <InfoField
             compact
@@ -292,19 +295,7 @@ function ActiveReservationCard({ reservation }: { reservation: Reservation }) {
           />
         </div>
 
-        <div className="flex justify-end pt-0.5">
-          <Link
-            to={`/reservations/${reservation.id}`}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[#4a6fa5] px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#3d5d8a] sm:text-sm"
-          >
-            مشاهده جزئیات رزرو
-            <NavIcon
-              name="chevron"
-              className="h-3.5 w-3.5 -rotate-90"
-              strokeWidth={2}
-            />
-          </Link>
-        </div>
+        <ActiveReservationCardActions reservation={reservation} />
       </div>
     </section>
   );
@@ -453,14 +444,6 @@ export function PilgrimDashboard({ fullName }: PilgrimDashboardProps) {
             icon="feedback"
             iconBg="bg-violet-100"
             iconColor="text-violet-700"
-          />
-          <QuickAction
-            to="/guest/honorary-volunteer/register"
-            label="ثبت درخواست خدمت"
-            description=" آمادگی برای خدمت در موکب"
-            icon="honoraryRegister"
-            iconBg="bg-emerald-100"
-            iconColor="text-emerald-700"
           />
           <QuickAction
             to="/settings/password"

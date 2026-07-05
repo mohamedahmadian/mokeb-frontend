@@ -14,8 +14,21 @@ function todayLocalDateString(): string {
   return `${y}-${m}-${d}`;
 }
 
+function reservationStartDate(reservation: Reservation): string {
+  return reservation.reservationDate.slice(0, 10);
+}
+
 function reservationEndDate(reservation: Reservation): string {
   return (reservation.reservationEndDate ?? reservation.reservationDate).slice(0, 10);
+}
+
+export function reservationIncludesDate(
+  reservation: Reservation,
+  date = todayLocalDateString(),
+): boolean {
+  const start = reservationStartDate(reservation);
+  const end = reservationEndDate(reservation);
+  return start <= date && date <= end;
 }
 
 export function isActiveReservation(reservation: Reservation): boolean {
@@ -23,17 +36,52 @@ export function isActiveReservation(reservation: Reservation): boolean {
   return reservationEndDate(reservation) >= todayLocalDateString();
 }
 
+function compareFeaturedReservations(a: Reservation, b: Reservation): number {
+  if (a.status !== b.status) {
+    if (a.status === 'Confirmed') return -1;
+    if (b.status === 'Confirmed') return 1;
+  }
+
+  const startCompare = reservationStartDate(a).localeCompare(
+    reservationStartDate(b),
+  );
+  if (startCompare !== 0) return startCompare;
+
+  return reservationEndDate(a).localeCompare(reservationEndDate(b));
+}
+
+/**
+ * رزرو برجسته داشبورد زائر:
+ * ۱) رزروی که امروز در بازه اقامت آن باشد
+ * ۲) در غیر این صورت نزدیک‌ترین رزرو آینده (بر اساس تاریخ شروع)
+ */
 export function findLatestActiveReservation(
   reservations: Reservation[],
 ): Reservation | null {
-  const active = reservations.filter(isActiveReservation);
-  if (active.length === 0) return null;
+  const today = todayLocalDateString();
+  const candidates = reservations.filter((reservation) =>
+    ACTIVE_STATUSES.has(reservation.status),
+  );
+  if (candidates.length === 0) return null;
 
-  return [...active].sort((a, b) => {
-    const aTime = new Date(a.createdAt ?? a.reservationDate).getTime();
-    const bTime = new Date(b.createdAt ?? b.reservationDate).getTime();
-    return bTime - aTime;
-  })[0];
+  const includesToday = candidates.filter((reservation) =>
+    reservationIncludesDate(reservation, today),
+  );
+  if (includesToday.length > 0) {
+    return [...includesToday].sort(compareFeaturedReservations)[0];
+  }
+
+  const upcoming = candidates
+    .filter((reservation) => reservationStartDate(reservation) > today)
+    .sort((a, b) => {
+      const startDiff = reservationStartDate(a).localeCompare(
+        reservationStartDate(b),
+      );
+      if (startDiff !== 0) return startDiff;
+      return compareFeaturedReservations(a, b);
+    });
+
+  return upcoming[0] ?? null;
 }
 
 export function getReservationCheckInAt(reservation: Reservation): Date {

@@ -1,9 +1,12 @@
-export type RoleName = 'Admin' | 'Pilgrim' | 'MawkibOwner' | 'HonoraryServant';
+export type RoleName = "Admin" | "Pilgrim" | "MawkibOwner" | "HonoraryServant";
+
+export type UserGender = "Male" | "Female";
 
 export interface User {
   id: number;
   fullName: string;
   mobileNumber: string;
+  imageUrl?: string | null;
   roles: RoleName[];
 }
 
@@ -12,12 +15,14 @@ export interface AuthResponse {
   user: User;
 }
 
-export type MawkibStatus = 'Pending' | 'Approved' | 'Rejected';
+export type MawkibStatus = "Pending" | "Approved" | "Rejected";
 
-import type { MawkibCity, MawkibCountry } from '../lib/mawkib-locations';
+import type { MawkibCity, MawkibCountry } from "../lib/mawkib-locations";
 
 export interface MawkibExtraFields {
   distanceToShrine?: string | null;
+  distanceToBusStation?: string | null;
+  distanceToMetro?: string | null;
   lunchReception?: boolean;
   breakfastReception?: boolean;
   dinnerReception?: boolean;
@@ -26,7 +31,10 @@ export interface MawkibExtraFields {
   parking?: boolean;
   internet?: boolean;
   familyFriendly?: boolean;
+  elevator?: boolean;
+  stairs?: boolean;
   maxReservationDays?: number | null;
+  defaultReservationDays?: number | null;
   country?: MawkibCountry;
   mawkibCity?: MawkibCity | null;
   rules?: string | null;
@@ -35,6 +43,14 @@ export interface MawkibExtraFields {
   bale?: string | null;
   eitaa?: string | null;
   websiteUrl?: string | null;
+}
+
+export interface MawkibImage {
+  id: number;
+  mawkibId: number;
+  url: string;
+  sortOrder: number;
+  createdAt?: string;
 }
 
 export interface Mawkib extends MawkibExtraFields {
@@ -55,10 +71,14 @@ export interface Mawkib extends MawkibExtraFields {
   availableFemaleCapacity?: number;
   capacity?: number;
   imageUrl?: string | null;
+  images?: MawkibImage[];
   status: MawkibStatus;
   defaultCheckInTime?: string;
   defaultCheckOutTime?: string;
   onlineReservationEnabled?: boolean;
+  autoApprovePilgrimReservations?: boolean;
+  recordCheckInOnReservationConfirm?: boolean;
+  skipCapacityCheckEnabled?: boolean;
   ownerUserId?: number;
   availableCapacity?: number;
   owner?: {
@@ -85,10 +105,12 @@ export interface Reservation {
   actualCheckInAt?: string | null;
   actualCheckOutAt?: string | null;
   description?: string | null;
+  travelOrigin?: string | null;
   companions?: string | null;
   cancellationNote?: string | null;
-  status: 'Pending' | 'Confirmed' | 'Cancelled' | 'Completed';
+  status: "Pending" | "Confirmed" | "Cancelled" | "Completed";
   createdAt?: string;
+  lastStatusUpdatedAt?: string | null;
   mawkib: {
     id: number;
     name: string;
@@ -99,15 +121,20 @@ export interface Reservation {
     longitude?: number | null;
     defaultCheckInTime?: string;
     defaultCheckOutTime?: string;
+    defaultReservationDays?: number | null;
+    maxReservationDays?: number | null;
     owner?: { fullName: string; mobileNumber?: string };
   };
   pilgrim: { id: number; fullName: string; mobileNumber: string };
   reservedBy: { id: number; fullName: string; mobileNumber?: string };
+  lastStatusUpdatedBy?: { id: number; fullName: string } | null;
   review?: ReservationReview | null;
   deliveredItems?: ReservationDeliveredItem[];
 }
 
-export type ReservationDeliveredItemStatus = 'DeliveredToGuest' | 'ReceivedFromGuest';
+export type ReservationDeliveredItemStatus =
+  | "DeliveredToGuest"
+  | "ReceivedFromGuest";
 
 export interface ReservationDeliveredItem {
   id: number;
@@ -141,14 +168,18 @@ export interface RegistrationRequest {
   mawkibName: string;
   address: string;
   capacity: number;
-  status: 'Pending' | 'Approved' | 'Rejected';
+  status: "Pending" | "Approved" | "Rejected";
   createdAt: string;
   owner?: { id: number; fullName: string; mobileNumber: string };
 }
 
-export type HonoraryVolunteerApplicationStatus = 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
+export type HonoraryVolunteerApplicationStatus =
+  | "Pending"
+  | "Approved"
+  | "Rejected"
+  | "Cancelled";
 
-export type HonoraryVolunteerApplicantType = 'Volunteer' | 'MawkibOwner';
+export type HonoraryVolunteerApplicantType = "Volunteer" | "MawkibOwner";
 
 export interface HonoraryVolunteerApplication {
   id: number;
@@ -216,11 +247,18 @@ export interface AdminUser extends UserSocialFields {
   id: number;
   fullName: string;
   mobileNumber: string;
+  nationalId?: string | null;
+  nationalIdCardImageUrl?: string | null;
+  gender?: UserGender | null;
+  birthDate?: string | null;
+  country?: string | null;
+  passportNumber?: string | null;
   province?: string;
   city?: string;
   description?: string;
   imageUrl?: string | null;
   isActive: boolean;
+  createdAt?: string;
   roles: { role: { name: RoleName } }[];
   ownedMawkibs?: { id: number; name: string; status: MawkibStatus }[];
 }

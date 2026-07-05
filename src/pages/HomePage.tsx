@@ -168,7 +168,7 @@ const quickServices = [
   {
     to: "/guest/mawkibs",
     title: "ظرفیت موکب‌ها",
-    description: "مشاهده ظرفیت روزانه هر موکب",
+    description: "تقویم ظرفیت روزانه هر موکب",
     iconBg: "bg-violet-100 text-violet-700",
   },
   {

@@ -56,6 +56,7 @@ interface UserSocialFieldsProps {
   compact?: boolean;
   variant?: 'default' | 'section';
   inputClassName?: string;
+  hideOptionalLabel?: boolean;
 }
 
 const socialIcons: Record<string, React.ReactNode> = {
@@ -92,6 +93,7 @@ export function UserSocialFields({
   compact = false,
   variant = 'default',
   inputClassName = inputClass,
+  hideOptionalLabel = false,
 }: UserSocialFieldsProps) {
   const setField = (key: keyof UserSocialFormValues, value: string) => {
     onChange({ ...values, [key]: value });
@@ -133,7 +135,7 @@ export function UserSocialFields({
           </div>
           <div>
             <h3 className="text-sm font-semibold text-slate-800">شبکه‌های اجتماعی</h3>
-            <p className="text-xs text-slate-500">اختیاری</p>
+            {!hideOptionalLabel && <p className="text-xs text-slate-500">اختیاری</p>}
           </div>
         </div>
         <div className="p-3.5">{fieldsGrid}</div>
@@ -146,8 +148,11 @@ export function UserSocialFields({
       {!compact && (
         <legend className="px-1 text-sm font-medium text-slate-700">شبکه‌های اجتماعی</legend>
       )}
-      {compact && (
+      {compact && !hideOptionalLabel && (
         <p className="mb-2 text-sm font-medium text-slate-700">شبکه‌های اجتماعی (اختیاری)</p>
+      )}
+      {compact && hideOptionalLabel && (
+        <p className="mb-2 text-sm font-medium text-slate-700">شبکه‌های اجتماعی</p>
       )}
       {fieldsGrid}
     </fieldset>

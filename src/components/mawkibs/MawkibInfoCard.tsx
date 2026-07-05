@@ -1,14 +1,15 @@
-import type { ReactNode } from 'react';
-import { MAWKIB_AMENITY_FIELDS } from './MawkibExtraFields';
-import { formatPersianDate } from '../ui/PersianDateInput';
+import type { ReactNode } from "react";
+import { MAWKIB_AMENITY_FIELDS } from "./MawkibExtraFields";
+import { formatPersianDate } from "../ui/PersianDateInput";
 import {
   formatCapacityFractionLatin,
   mawkibAvailableFemale,
   mawkibAvailableMale,
-} from '../../lib/capacity';
-import { RemainingCapacityHint } from './RemainingCapacityHint';
-import { MawkibReservationTypeBadges } from './MawkibReservationTypeBadges';
-import type { Mawkib } from '../../types';
+} from "../../lib/capacity";
+import { RemainingCapacityHint } from "./RemainingCapacityHint";
+import { MawkibReservationTypeBadges } from "./MawkibReservationTypeBadges";
+import { MawkibThumbnail } from "./MawkibThumbnail";
+import type { Mawkib } from "../../types";
 
 export function mawkibCapacitySnapshot(mawkib: Mawkib) {
   return {
@@ -20,7 +21,7 @@ export function mawkibCapacitySnapshot(mawkib: Mawkib) {
 }
 
 function CardSvgIcon({
-  className = 'h-3.5 w-3.5',
+  className = "h-3.5 w-3.5",
   children,
 }: {
   className?: string;
@@ -88,7 +89,11 @@ const cardIcons = {
   ),
   address: (
     <CardSvgIcon>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+      />
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -114,6 +119,42 @@ const cardIcons = {
       />
     </CardSvgIcon>
   ),
+  capacity: (
+    <CardSvgIcon className="h-3.5 w-3.5">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
+      />
+    </CardSvgIcon>
+  ),
+  gallery: (
+    <CardSvgIcon className="h-3.5 w-3.5">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"
+      />
+    </CardSvgIcon>
+  ),
+  details: (
+    <CardSvgIcon className="h-3.5 w-3.5">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+      />
+    </CardSvgIcon>
+  ),
+  reserve: (
+    <CardSvgIcon className="h-3.5 w-3.5">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"
+      />
+    </CardSvgIcon>
+  ),
 };
 
 function CapacityPill({
@@ -122,39 +163,70 @@ function CapacityPill({
   available,
   total,
   tone,
+  compact = false,
+  noCapacityMessage,
+  className = "",
 }: {
   icon: ReactNode;
   label: string;
   available: number;
   total: number;
-  tone: 'male' | 'female';
+  tone: "male" | "female";
+  compact?: boolean;
+  noCapacityMessage?: string;
+  className?: string;
 }) {
   const hasAvailability = available > 0;
+  const showNoCapacityMessage = total === 0 && noCapacityMessage;
   const toneClass =
-    tone === 'male'
-      ? 'bg-sky-50 text-sky-700 ring-sky-100'
-      : 'bg-rose-50 text-rose-700 ring-rose-100';
+    tone === "male"
+      ? "bg-sky-50 text-sky-700 ring-sky-100"
+      : showNoCapacityMessage
+        ? "bg-pink-50 text-pink-500 ring-pink-100"
+        : "bg-rose-50 text-rose-700 ring-rose-100";
 
   return (
     <span
-      className={`inline-flex min-w-[8.5rem] flex-col gap-0.5 rounded-lg px-2.5 py-1.5 text-xs ring-1 ${toneClass}`}
+      className={`inline-flex flex-col gap-0.5 rounded-lg ring-1 ${toneClass} ${
+        compact
+          ? "min-w-[6.5rem] px-2 py-1 text-[10px]"
+          : "min-w-[8.5rem] px-2.5 py-1.5 text-xs"
+      } ${className}`}
     >
-      <span className="text-[10px] font-medium opacity-80">{label}</span>
-      <span className="inline-flex flex-wrap items-center gap-x-1 gap-y-0.5">
-        <span className="opacity-80">{icon}</span>
-        <span
-          className={`font-mono font-bold tabular-nums ${hasAvailability ? '' : 'opacity-70'}`}
-          title="رزرو شده / ظرفیت کل"
-        >
-          {formatCapacityFractionLatin(available, total)}
-        </span>
-        <RemainingCapacityHint
-          available={available}
-          numerals="latin"
-          className="opacity-90"
-          fullClassName="text-[10px] font-semibold text-red-600"
-        />
+      <span
+        className={`font-medium opacity-80 ${compact ? "text-[9px]" : "text-[10px]"}`}
+      >
+        {label}
       </span>
+      {showNoCapacityMessage ? (
+        <span
+          className={`font-semibold leading-snug text-pink-400 ${
+            compact ? "text-[9px]" : "text-[10px]"
+          }`}
+        >
+          {noCapacityMessage}
+        </span>
+      ) : (
+        <span className="inline-flex flex-wrap items-center gap-x-1 gap-y-0.5">
+          <span className="opacity-80">{icon}</span>
+          <span
+            className={`font-mono font-bold tabular-nums ${hasAvailability ? "" : "opacity-70"}`}
+            title="رزرو شده / ظرفیت کل"
+          >
+            {formatCapacityFractionLatin(available, total)}
+          </span>
+          <RemainingCapacityHint
+            available={available}
+            numerals="latin"
+            className="opacity-90"
+            fullClassName={
+              compact
+                ? "text-[9px] font-semibold text-red-600"
+                : "text-[10px] font-semibold text-red-600"
+            }
+          />
+        </span>
+      )}
     </span>
   );
 }
@@ -167,24 +239,55 @@ function CardIconBadge({ icon }: { icon: ReactNode }) {
   );
 }
 
-export function MawkibCapacityPills({ mawkib }: { mawkib: Mawkib }) {
+export function MawkibCapacityPills({
+  mawkib,
+  compact = false,
+  stacked = false,
+  fitContent = false,
+  maleClassName = "",
+  femaleClassName = "",
+}: {
+  mawkib: Mawkib;
+  compact?: boolean;
+  stacked?: boolean;
+  fitContent?: boolean;
+  maleClassName?: string;
+  femaleClassName?: string;
+}) {
   const capacity = mawkibCapacitySnapshot(mawkib);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div
+      className={`flex gap-1.5 ${
+        stacked
+          ? "flex-col items-stretch"
+          : compact
+            ? fitContent
+              ? "w-fit flex-row flex-wrap items-stretch"
+              : "flex-row items-stretch [&>span]:min-w-0 [&>span]:flex-1"
+            : "flex-wrap items-center"
+      }`}
+    >
       <CapacityPill
+        compact={compact}
         icon={cardIcons.male}
         label="ظرفیت آقایان"
         available={capacity.availableMale}
         total={capacity.maleCapacity}
         tone="male"
+        className={maleClassName}
       />
       <CapacityPill
+        compact={compact}
         icon={cardIcons.female}
         label="ظرفیت بانوان"
         available={capacity.availableFemale}
         total={capacity.femaleCapacity}
         tone="female"
+        className={femaleClassName}
+        noCapacityMessage={
+          capacity.femaleCapacity === 0 ? "عدم پذیرش بانوان" : undefined
+        }
       />
     </div>
   );
@@ -195,12 +298,12 @@ function MawkibCardLabeledRow({
   label,
   children,
   dir,
-  className = '',
+  className = "",
 }: {
   icon: ReactNode;
   label: string;
   children: ReactNode;
-  dir?: 'ltr' | 'rtl';
+  dir?: "ltr" | "rtl";
   className?: string;
 }) {
   return (
@@ -208,7 +311,10 @@ function MawkibCardLabeledRow({
       <CardIconBadge icon={icon} />
       <div className="min-w-0 flex-1">
         <p className="text-[10px] font-medium text-slate-400">{label}</p>
-        <div className="text-xs font-medium leading-relaxed text-slate-700" dir={dir}>
+        <div
+          className="text-xs font-medium leading-relaxed text-slate-700"
+          dir={dir}
+        >
           {children}
         </div>
       </div>
@@ -225,19 +331,58 @@ function formatServiceDate(value?: string | null) {
   return formatPersianDate(value.slice(0, 10));
 }
 
-function MawkibInfoCardBody({
+function MawkibCardCompactCell({
+  icon,
+  label,
+  children,
+  dir,
+  className = "",
+  multiline = false,
+}: {
+  icon: ReactNode;
+  label: string;
+  children: ReactNode;
+  dir?: "ltr" | "rtl";
+  className?: string;
+  multiline?: boolean;
+}) {
+  return (
+    <div className={`flex min-w-0 items-center gap-1.5 ${className}`}>
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#f0f4fa] text-[#4a6fa5] [&_svg]:h-3 [&_svg]:w-3">
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <p className="text-[9px] font-medium text-slate-400">{label}</p>
+        <div
+          className={`text-xs font-medium text-slate-700 ${
+            multiline ? "whitespace-normal leading-relaxed" : "truncate"
+          }`}
+          dir={dir}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MawkibGuestBrowseCardBody({
   mawkib,
   selectable,
   selected,
   showOnlineReservationStatus = true,
+  showThumbnail = false,
 }: {
   mawkib: Mawkib;
   selectable: boolean;
   selected: boolean;
   showOnlineReservationStatus?: boolean;
+  showThumbnail?: boolean;
 }) {
   const ownerName = mawkib.owner?.fullName?.trim();
-  const contactPhone = (mawkib.phoneNumber || mawkib.owner?.mobileNumber)?.trim();
+  const contactPhone = (
+    mawkib.phoneNumber || mawkib.owner?.mobileNumber
+  )?.trim();
   const serviceStart = formatServiceDate(mawkib.serviceStartDate);
   const serviceEnd = formatServiceDate(mawkib.serviceEndDate);
   const showServiceDates = Boolean(serviceStart && serviceEnd);
@@ -246,12 +391,22 @@ function MawkibInfoCardBody({
 
   return (
     <>
-      <div className="p-4">
+      <div className="p-3.5">
         <div className="flex items-start gap-3">
-          <CardIconBadge icon={cardIcons.mawkib} />
+          {showThumbnail ? (
+            <MawkibThumbnail
+              imageUrl={mawkib.imageUrl}
+              name={mawkib.name}
+              className="h-12 w-12 rounded-xl shadow-md shadow-slate-200/60 ring-1 ring-white"
+            />
+          ) : (
+            <CardIconBadge icon={cardIcons.mawkib} />
+          )}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="truncate text-base font-bold text-slate-800">{mawkib.name}</p>
+              <p className="truncate text-base font-bold text-slate-800">
+                {mawkib.name}
+              </p>
               {showOnlineReservationStatus && (
                 <MawkibReservationTypeBadges mawkib={mawkib} />
               )}
@@ -260,7 +415,9 @@ function MawkibInfoCardBody({
           {selectable && (
             <div
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition ${
-                selected ? 'border-[#4a6fa5] bg-[#4a6fa5]' : 'border-slate-300 bg-white'
+                selected
+                  ? "border-[#4a6fa5] bg-[#4a6fa5]"
+                  : "border-slate-300 bg-white"
               }`}
               aria-hidden
             >
@@ -272,7 +429,174 @@ function MawkibInfoCardBody({
                   stroke="currentColor"
                   strokeWidth={3}
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4.5 12.75l6 6 9-13.5"
+                  />
+                </svg>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-2.5 space-y-2 border-t border-slate-100 pt-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {ownerName && (
+              <MawkibCardCompactCell
+                icon={cardIcons.owner}
+                label="مسئول موکب"
+                className="min-w-0 flex-1"
+              >
+                {ownerName}
+              </MawkibCardCompactCell>
+            )}
+            <MawkibCapacityPills
+              mawkib={mawkib}
+              compact
+              fitContent
+              maleClassName="min-w-[8.25rem]"
+            />
+          </div>
+
+          {(contactPhone || showServiceDates) && (
+            <div
+              className={`grid gap-2 ${
+                contactPhone && showServiceDates ? "grid-cols-2" : "grid-cols-1"
+              }`}
+            >
+              {contactPhone && (
+                <MawkibCardCompactCell
+                  icon={cardIcons.phone}
+                  label="شماره تماس"
+                  dir="ltr"
+                >
+                  <span className="font-mono">{contactPhone}</span>
+                </MawkibCardCompactCell>
+              )}
+              {showServiceDates && (
+                <MawkibCardCompactCell
+                  icon={cardIcons.calendar}
+                  label="بازه خدمات"
+                >
+                  {serviceStart} — {serviceEnd}
+                </MawkibCardCompactCell>
+              )}
+            </div>
+          )}
+
+          {address && (
+            <MawkibCardCompactCell
+              icon={cardIcons.address}
+              label="آدرس موکب"
+              className="items-start"
+              multiline
+            >
+              {address}
+            </MawkibCardCompactCell>
+          )}
+        </div>
+      </div>
+
+      {amenities.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 border-t border-slate-100 px-3.5 py-2">
+          {amenities.map(({ key, label }) => (
+            <span
+              key={key}
+              className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600 ring-1 ring-slate-200/80"
+            >
+              <span className="text-[#4a6fa5]">{cardIcons.amenity}</span>
+              {label}
+            </span>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+function MawkibInfoCardBody({
+  mawkib,
+  selectable,
+  selected,
+  showOnlineReservationStatus = true,
+  showThumbnail = false,
+  variant = "default",
+}: {
+  mawkib: Mawkib;
+  selectable: boolean;
+  selected: boolean;
+  showOnlineReservationStatus?: boolean;
+  showThumbnail?: boolean;
+  variant?: "default" | "guest-browse";
+}) {
+  if (variant === "guest-browse") {
+    return (
+      <MawkibGuestBrowseCardBody
+        mawkib={mawkib}
+        selectable={selectable}
+        selected={selected}
+        showOnlineReservationStatus={showOnlineReservationStatus}
+        showThumbnail={showThumbnail}
+      />
+    );
+  }
+
+  const ownerName = mawkib.owner?.fullName?.trim();
+  const contactPhone = (
+    mawkib.phoneNumber || mawkib.owner?.mobileNumber
+  )?.trim();
+  const serviceStart = formatServiceDate(mawkib.serviceStartDate);
+  const serviceEnd = formatServiceDate(mawkib.serviceEndDate);
+  const showServiceDates = Boolean(serviceStart && serviceEnd);
+  const amenities = getActiveAmenities(mawkib);
+  const address = mawkib.address?.trim();
+
+  return (
+    <>
+      <div className="p-4">
+        <div className="flex items-start gap-3">
+          {showThumbnail ? (
+            <MawkibThumbnail
+              imageUrl={mawkib.imageUrl}
+              name={mawkib.name}
+              className="h-14 w-14 rounded-xl shadow-md shadow-slate-200/60 ring-1 ring-white"
+            />
+          ) : (
+            <CardIconBadge icon={cardIcons.mawkib} />
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="truncate text-base font-bold text-slate-800">
+                {mawkib.name}
+              </p>
+              {showOnlineReservationStatus && (
+                <MawkibReservationTypeBadges mawkib={mawkib} />
+              )}
+            </div>
+          </div>
+          {selectable && (
+            <div
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition ${
+                selected
+                  ? "border-[#4a6fa5] bg-[#4a6fa5]"
+                  : "border-slate-300 bg-white"
+              }`}
+              aria-hidden
+            >
+              {selected && (
+                <svg
+                  className="h-3.5 w-3.5 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4.5 12.75l6 6 9-13.5"
+                  />
                 </svg>
               )}
             </div>
@@ -286,11 +610,15 @@ function MawkibInfoCardBody({
         {showServiceDates && (
           <div className="mt-3 flex items-center gap-2 rounded-xl bg-[#f8fafc] px-3 py-2 ring-1 ring-slate-100">
             <span className="text-[#4a6fa5]">{cardIcons.calendar}</span>
-            <span className="text-xs font-medium text-slate-700">{serviceStart}</span>
+            <span className="text-xs font-medium text-slate-700">
+              {serviceStart}
+            </span>
             <span className="text-slate-300" aria-hidden>
               ←
             </span>
-            <span className="text-xs font-medium text-slate-700">{serviceEnd}</span>
+            <span className="text-xs font-medium text-slate-700">
+              {serviceEnd}
+            </span>
           </div>
         )}
       </div>
@@ -304,13 +632,21 @@ function MawkibInfoCardBody({
               </MawkibCardLabeledRow>
             )}
             {contactPhone && (
-              <MawkibCardLabeledRow icon={cardIcons.phone} label="شماره تماس" dir="ltr">
+              <MawkibCardLabeledRow
+                icon={cardIcons.phone}
+                label="شماره تماس"
+                dir="ltr"
+              >
                 <span className="font-mono">{contactPhone}</span>
               </MawkibCardLabeledRow>
             )}
           </div>
           {address && (
-            <MawkibCardLabeledRow icon={cardIcons.address} label="آدرس موکب" className="mt-2">
+            <MawkibCardLabeledRow
+              icon={cardIcons.address}
+              label="آدرس موکب"
+              className="mt-2"
+            >
               <p className="whitespace-pre-wrap">{address}</p>
             </MawkibCardLabeledRow>
           )}
@@ -334,27 +670,97 @@ function MawkibInfoCardBody({
   );
 }
 
-export function MawkibGuestBrowseFooter({
-  onViewCapacity,
+const guestBrowseActionBtn =
+  "inline-flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 rounded-lg border border-[#c5d4e8] bg-[#f0f4fa] px-2.5 py-2 text-xs font-medium text-[#4a6fa5] transition hover:bg-[#e8eef6]";
+
+export function MawkibGuestGalleryDetailsFooter({
+  onViewGallery,
   onViewDetails,
+  showGallery = true,
 }: {
-  onViewCapacity: () => void;
+  onViewGallery: () => void;
   onViewDetails: () => void;
+  showGallery?: boolean;
 }) {
   return (
-    <div className="flex gap-2 border-t border-slate-100 px-4 py-2.5">
-      <button
-        type="button"
-        onClick={onViewCapacity}
-        className="flex-1 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-medium text-violet-700 hover:bg-violet-100"
-      >
-        مشاهده ظرفیت
-      </button>
+    <div className="flex flex-wrap gap-2 border-t border-slate-100 px-3.5 py-2">
+      {showGallery && (
+        <button
+          type="button"
+          onClick={onViewGallery}
+          className={guestBrowseActionBtn}
+        >
+          {cardIcons.gallery}
+          گالری تصاویر
+        </button>
+      )}
       <button
         type="button"
         onClick={onViewDetails}
-        className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+        className={guestBrowseActionBtn}
       >
+        {cardIcons.details}
+        جزئیات
+      </button>
+    </div>
+  );
+}
+
+export function MawkibGuestBrowseFooter({
+  onViewCapacity,
+  onViewDetails,
+  onViewGallery,
+  onReserve,
+  showGallery = false,
+  showReserve = false,
+  showCapacity = true,
+}: {
+  onViewCapacity?: () => void;
+  onViewDetails: () => void;
+  onViewGallery?: () => void;
+  onReserve?: () => void;
+  showGallery?: boolean;
+  showReserve?: boolean;
+  showCapacity?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2 border-t border-slate-100 px-3.5 py-2">
+      {showReserve && onReserve && (
+        <button
+          type="button"
+          onClick={onReserve}
+          className={guestBrowseActionBtn}
+        >
+          {cardIcons.reserve}
+          رزرو
+        </button>
+      )}
+      {showCapacity && onViewCapacity && (
+        <button
+          type="button"
+          onClick={onViewCapacity}
+          className={guestBrowseActionBtn}
+        >
+          {cardIcons.capacity}
+          تقویم ظرفیت
+        </button>
+      )}
+      {showGallery && onViewGallery && (
+        <button
+          type="button"
+          onClick={onViewGallery}
+          className={guestBrowseActionBtn}
+        >
+          {cardIcons.gallery}
+          گالری تصویر
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onViewDetails}
+        className={guestBrowseActionBtn}
+      >
+        {cardIcons.details}
         جزئیات موکب
       </button>
     </div>
@@ -369,6 +775,8 @@ export function MawkibInfoCard({
   footer,
   reservationBlocked = false,
   showOnlineReservationStatus = true,
+  showThumbnail = false,
+  variant = "default",
 }: {
   mawkib: Mawkib;
   selectable?: boolean;
@@ -377,16 +785,19 @@ export function MawkibInfoCard({
   footer?: ReactNode;
   reservationBlocked?: boolean;
   showOnlineReservationStatus?: boolean;
+  showThumbnail?: boolean;
+  variant?: "default" | "guest-browse";
 }) {
   const canSelect = Boolean(selectable && !reservationBlocked && onSelect);
-  const baseClass = 'w-full overflow-hidden rounded-2xl border-2 text-right transition-all';
+  const baseClass =
+    "w-full overflow-hidden rounded-2xl border-2 text-right transition-all";
   const stateClass = canSelect
     ? selected
-      ? 'border-[#4a6fa5] bg-gradient-to-b from-[#f0f4fa] to-white shadow-md shadow-[#c5d4e8]/40'
-      : 'border-slate-200 bg-white hover:border-[#c5d4e8] hover:shadow-sm'
+      ? "cursor-pointer border-[#4a6fa5] bg-gradient-to-b from-[#f0f4fa] to-white shadow-md shadow-[#c5d4e8]/40"
+      : "cursor-pointer border-slate-200 bg-white hover:border-[#c5d4e8] hover:shadow-sm"
     : reservationBlocked
-      ? 'cursor-not-allowed border-slate-200 bg-slate-50/80 opacity-90'
-      : 'border-slate-200 bg-white';
+      ? "cursor-not-allowed border-slate-200 bg-slate-50/80 opacity-90"
+      : "border-slate-200 bg-white";
 
   const body = (
     <>
@@ -395,14 +806,42 @@ export function MawkibInfoCard({
         selectable={canSelect}
         selected={selected}
         showOnlineReservationStatus={showOnlineReservationStatus}
+        showThumbnail={showThumbnail}
+        variant={variant}
       />
       {footer}
     </>
   );
 
   if (canSelect) {
+    if (footer) {
+      return (
+        <div className={`${baseClass} ${stateClass}`}>
+          <button
+            type="button"
+            onClick={onSelect}
+            className="w-full cursor-pointer text-right"
+          >
+            <MawkibInfoCardBody
+              mawkib={mawkib}
+              selectable={canSelect}
+              selected={selected}
+              showOnlineReservationStatus={showOnlineReservationStatus}
+              showThumbnail={showThumbnail}
+              variant={variant}
+            />
+          </button>
+          {footer}
+        </div>
+      );
+    }
+
     return (
-      <button type="button" onClick={onSelect} className={`${baseClass} ${stateClass}`}>
+      <button
+        type="button"
+        onClick={onSelect}
+        className={`${baseClass} ${stateClass}`}
+      >
         {body}
       </button>
     );
@@ -416,11 +855,17 @@ export function MawkibCard({
   selected,
   onSelect,
   reservationBlocked = false,
+  showThumbnail = false,
+  variant = "default",
+  footer,
 }: {
   mawkib: Mawkib;
   selected: boolean;
   onSelect: () => void;
   reservationBlocked?: boolean;
+  showThumbnail?: boolean;
+  variant?: "default" | "guest-browse";
+  footer?: ReactNode;
 }) {
   return (
     <MawkibInfoCard
@@ -429,6 +874,9 @@ export function MawkibCard({
       selected={selected}
       onSelect={onSelect}
       reservationBlocked={reservationBlocked}
+      showThumbnail={showThumbnail}
+      variant={variant}
+      footer={footer}
     />
   );
 }

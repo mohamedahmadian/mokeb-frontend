@@ -16,13 +16,22 @@ import {
   PIN_PASSWORD_HINT,
   PIN_PASSWORD_LENGTH,
 } from '../../lib/pin-password';
+import type { UserGender } from '../../types';
 import { guestTheme } from '../../lib/guest-theme';
 import { toast } from '../../lib/toast';
+import { DEFAULT_USER_COUNTRY } from '../../lib/countries';
+import { NationalIdCardUpload } from '../ui/NationalIdCardUpload';
 
 export interface PilgrimRegistrationPayload {
   firstName: string;
   lastName: string;
   mobileNumber: string;
+  nationalId?: string;
+  nationalIdCardImageUrl?: string;
+  gender?: UserGender;
+  birthDate?: string;
+  country?: string;
+  passportNumber?: string;
   password: string;
   province?: string;
   city?: string;
@@ -37,6 +46,8 @@ export interface PilgrimRegistrationPayload {
 export interface MawkibOwnerRegistrationPayload {
   fullName: string;
   mobileNumber: string;
+  nationalId?: string;
+  gender?: UserGender;
   password: string;
   province?: string;
   city?: string;
@@ -69,6 +80,11 @@ const emptyForm = (): UserFormFieldValues => ({
   firstName: '',
   lastName: '',
   mobileNumber: '',
+  nationalId: '',
+  gender: '' as UserGender | '',
+  birthDate: '',
+  country: DEFAULT_USER_COUNTRY,
+  passportNumber: '',
   password: '',
   province: '',
   city: '',
@@ -78,12 +94,14 @@ const emptyForm = (): UserFormFieldValues => ({
 
 export function PublicRegistrationForm(props: PublicRegistrationFormProps) {
   const [form, setForm] = useState<UserFormFieldValues>(emptyForm);
+  const [nationalIdCardImageUrl, setNationalIdCardImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const isPilgrim = props.variant === 'pilgrim';
   const role = isPilgrim ? 'Pilgrim' : 'MawkibOwner';
 
-  const optionalPayload = {
+  const sharedOptionalPayload = {
+    nationalId: form.nationalId.trim() || undefined,
     province: form.province.trim() || undefined,
     city: form.city.trim() || undefined,
     description: form.description.trim() || undefined,
@@ -111,14 +129,20 @@ export function PublicRegistrationForm(props: PublicRegistrationFormProps) {
           lastName: form.lastName.trim(),
           mobileNumber: form.mobileNumber.trim(),
           password: form.password,
-          ...optionalPayload,
+          gender: form.gender || undefined,
+          birthDate: form.birthDate || undefined,
+          country: form.country.trim() || DEFAULT_USER_COUNTRY,
+          passportNumber: form.passportNumber || undefined,
+          ...sharedOptionalPayload,
+          nationalIdCardImageUrl: nationalIdCardImageUrl ?? undefined,
         });
       } else {
         await props.onSubmit({
           fullName: form.fullName.trim(),
           mobileNumber: form.mobileNumber.trim(),
           password: form.password,
-          ...optionalPayload,
+          gender: form.gender || undefined,
+          ...sharedOptionalPayload,
         });
       }
     } catch (err) {
@@ -145,7 +169,17 @@ export function PublicRegistrationForm(props: PublicRegistrationFormProps) {
         passwordMinLength={PIN_PASSWORD_LENGTH}
         passwordHint={PIN_PASSWORD_HINT}
         extraFields="collapsible"
+        showGender
+        showBirthDate={isPilgrim}
       />
+
+      {isPilgrim && (
+        <NationalIdCardUpload
+          value={nationalIdCardImageUrl}
+          onChange={setNationalIdCardImageUrl}
+          disabled={loading}
+        />
+      )}
 
       <button type="submit" disabled={loading} className={`${guestTheme.btnPrimaryLg} w-full`}>
         <NavIcon name="register" className="h-4 w-4" />

@@ -1,45 +1,48 @@
-import type { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
-import { GuestPageHeader } from '../components/guest/GuestShell';
-import { NavIcon } from '../components/ui/NavIcons';
-import { guestTheme } from '../lib/guest-theme';
+import type { FormEvent } from "react";
+import { Link } from "react-router-dom";
+import { GuestPageHeader } from "../components/guest/GuestShell";
+import { NavIcon } from "../components/ui/NavIcons";
+import { guestTheme } from "../lib/guest-theme";
 
 const contactChannels = [
   {
-    icon: 'mail' as const,
-    title: 'ایمیل',
-    value: 'info@mokeb.local',
-    hint: 'پاسخ در کمتر از ۲۴ ساعت',
-    href: 'mailto:info@mokeb.local',
+    icon: "mail" as const,
+    title: "ایمیل",
+    value: "info@mookebyab.ir",
+    hint: "پاسخ در کمتر از ۲۴ ساعت",
+    href: "mailto:info@mookebyab.ir",
   },
   {
-    icon: 'info' as const,
-    title: 'تلفن پشتیبانی',
-    value: '۰۲۱-۱۲۳۴۵۶۷۸',
-    hint: 'شنبه تا پنج‌شنبه، ۸ تا ۱۷',
-    href: 'tel:+982112345678',
+    icon: "info" as const,
+    title: "تلفن پشتیبانی",
+    value: "09159103070",
+    hint: "شنبه تا پنج‌شنبه، ۸ تا ۱۷",
+    href: "tel:+989159103070",
   },
   {
-    icon: 'mawkibs' as const,
-    title: 'آدرس دفتر',
-    value: 'تهران، خیابان نمونه، پلاک ۱۲۳',
-    hint: 'مراجعه با هماهنگی قبلی',
+    icon: "mawkibs" as const,
+    title: "آدرس دفتر",
+    value: "مشهد امام رضا علیه السلام",
+    hint: "00.] m",
     href: undefined,
   },
 ];
 
 const faqItems = [
   {
-    question: 'چطور می‌توانم رزرو موکب ثبت کنم؟',
-    answer: 'از بخش «رزرو موکب» در منوی اصلی، موکب مورد نظر را انتخاب و درخواست خود را ثبت کنید.',
+    question: "چطور می‌توانم رزرو موکب ثبت کنم؟",
+    answer:
+      "از بخش «رزرو موکب» در منوی اصلی، موکب مورد نظر را انتخاب و درخواست خود را ثبت کنید.",
   },
   {
-    question: 'موکب‌داران چگونه ثبت‌نام می‌کنند؟',
-    answer: 'از مسیر «ثبت‌نام موکب‌دار» فرم مربوطه را تکمیل کرده و پس از تأیید به پنل دسترسی خواهید داشت.',
+    question: "موکب‌داران چگونه ثبت‌نام می‌کنند؟",
+    answer:
+      "از مسیر «ثبت‌نام موکب‌دار» فرم مربوطه را تکمیل کرده و پس از تأیید به پنل دسترسی خواهید داشت.",
   },
   {
-    question: 'آیا امکان پیگیری رزرو بدون ورود وجود دارد؟',
-    answer: 'بله، با کد رزرو یا شماره موبایل در بخش «پیگیری رزرو» می‌توانید وضعیت را مشاهده کنید.',
+    question: "آیا امکان پیگیری رزرو بدون ورود وجود دارد؟",
+    answer:
+      "بله، با کد رزرو یا شماره موبایل در بخش «پیگیری رزرو» می‌توانید وضعیت را مشاهده کنید.",
   },
 ];
 
@@ -66,7 +69,9 @@ export function ContactPage() {
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e8eef6] text-[#4a6fa5]">
                 <NavIcon name={channel.icon} className="h-5 w-5" />
               </span>
-              <h3 className="mt-3 text-sm font-semibold text-slate-800">{channel.title}</h3>
+              <h3 className="mt-3 text-sm font-semibold text-slate-800">
+                {channel.title}
+              </h3>
               {channel.href ? (
                 <a
                   href={channel.href}
@@ -90,12 +95,15 @@ export function ContactPage() {
           >
             <h2 className="text-base font-bold text-slate-800">فرم تماس</h2>
             <p className="mt-1 text-xs text-slate-400">
-              این فرم به‌زودی فعال می‌شود. فعلاً از راه‌های تماس بالا استفاده کنید.
+              این فرم به‌زودی فعال می‌شود. فعلاً از راه‌های تماس بالا استفاده
+              کنید.
             </p>
 
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="block text-sm">
-                <span className="mb-1.5 block text-slate-600">نام و نام خانوادگی</span>
+                <span className="mb-1.5 block text-slate-600">
+                  نام و نام خانوادگی
+                </span>
                 <input
                   type="text"
                   className={guestTheme.input}
@@ -104,7 +112,9 @@ export function ContactPage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="mb-1.5 block text-slate-600">شماره موبایل</span>
+                <span className="mb-1.5 block text-slate-600">
+                  شماره موبایل
+                </span>
                 <input
                   type="tel"
                   className={guestTheme.input}
@@ -135,7 +145,10 @@ export function ContactPage() {
             </label>
 
             <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Link to="/guest/about" className={`${guestTheme.btnSecondary} w-full sm:w-auto`}>
+              <Link
+                to="/guest/about"
+                className={`${guestTheme.btnSecondary} w-full sm:w-auto`}
+              >
                 درباره ما
               </Link>
               <button
@@ -150,12 +163,21 @@ export function ContactPage() {
 
           <div className="lg:col-span-2">
             <div className={`${guestTheme.cardLg} h-full`}>
-              <h2 className="text-base font-bold text-slate-800">سؤالات متداول</h2>
+              <h2 className="text-base font-bold text-slate-800">
+                سؤالات متداول
+              </h2>
               <ul className="mt-4 space-y-4">
                 {faqItems.map((item) => (
-                  <li key={item.question} className="border-b border-slate-100 pb-4 last:border-0 last:pb-0">
-                    <h3 className="text-sm font-medium text-slate-800">{item.question}</h3>
-                    <p className="mt-1.5 text-xs leading-7 text-slate-500 sm:text-sm">{item.answer}</p>
+                  <li
+                    key={item.question}
+                    className="border-b border-slate-100 pb-4 last:border-0 last:pb-0"
+                  >
+                    <h3 className="text-sm font-medium text-slate-800">
+                      {item.question}
+                    </h3>
+                    <p className="mt-1.5 text-xs leading-7 text-slate-500 sm:text-sm">
+                      {item.answer}
+                    </p>
                   </li>
                 ))}
               </ul>

@@ -3,8 +3,7 @@ import { reservationsApi } from './reservations';
 import {
   computeReservationStats,
   getPendingReservations,
-  isMobileLookupQuery,
-  normalizeLookupQuery,
+  lookupReservationList,
 } from './mawkib-owner-dashboard';
 import type { Mawkib, Reservation } from '../types';
 
@@ -20,34 +19,9 @@ export async function lookupAdminReservation(query: string): Promise<{
   reservation: Reservation | null;
   alternatives: Reservation[];
 }> {
-  const trimmed = normalizeLookupQuery(query);
-  if (!trimmed) {
-    return { reservation: null, alternatives: [] };
-  }
-
-  if (isMobileLookupQuery(trimmed)) {
-    const results = await reservationsApi.getAdminList({ pilgrimMobile: trimmed });
-    if (results.length === 0) {
-      return { reservation: null, alternatives: [] };
-    }
-    const [first, ...rest] = results;
-    return { reservation: first, alternatives: rest };
-  }
-
-  const results = await reservationsApi.getAdminList({ trackingCode: trimmed });
-  const exact =
-    results.find(
-      (item) => item.trackingCode.toLowerCase() === trimmed.toLowerCase(),
-    ) ?? results[0] ?? null;
-
-  if (!exact) {
-    return { reservation: null, alternatives: [] };
-  }
-
-  return {
-    reservation: exact,
-    alternatives: results.filter((item) => item.id !== exact.id),
-  };
+  return lookupReservationList(query, (filters) =>
+    reservationsApi.getAdminList(filters),
+  );
 }
 
 export async function fetchPendingMawkibs(limit = 5): Promise<Mawkib[]> {

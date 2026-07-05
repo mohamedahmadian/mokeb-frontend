@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, type KeyboardEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { UserFormModal } from '../components/users/UserFormModal';
+import { UserAvatar, UserNameWithAvatar } from '../components/users/UserAvatar';
 import { DataCard } from '../components/ui/DataCard';
 import { FilterPanel } from '../components/ui/FilterPanel';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -63,6 +64,17 @@ export function MawkibOwnersPage() {
       return;
     }
     setAppliedFilters(next);
+  };
+
+  const openEditUser = (owner: AdminUser) => {
+    setEditingUser(owner);
+    setFormOpen(true);
+  };
+
+  const handleFilterEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    applyFilters();
   };
 
   const resetFilters = () => {
@@ -134,10 +146,7 @@ export function MawkibOwnersPage() {
       </Link>
       {renderReserveButtons(owner)}
       <button
-        onClick={() => {
-          setEditingUser(owner);
-          setFormOpen(true);
-        }}
+        onClick={() => openEditUser(owner)}
         className={`${btnAction} bg-slate-100 text-slate-700 hover:bg-slate-200`}
       >
         ویرایش
@@ -192,6 +201,7 @@ export function MawkibOwnersPage() {
             placeholder="نام"
             value={filters.fullName}
             onChange={(e) => setFilters({ ...filters, fullName: e.target.value })}
+            onKeyDown={handleFilterEnter}
             className={filterInputClass}
           />
           <input
@@ -199,6 +209,7 @@ export function MawkibOwnersPage() {
             placeholder="موبایل"
             value={filters.mobileNumber}
             onChange={(e) => setFilters({ ...filters, mobileNumber: e.target.value })}
+            onKeyDown={handleFilterEnter}
             className={filterInputClass}
           />
           <div className="sm:col-span-2">
@@ -233,8 +244,13 @@ export function MawkibOwnersPage() {
           owners.map((owner) => (
             <DataCard
               key={owner.id}
+              leading={
+                <UserAvatar fullName={owner.fullName} imageUrl={owner.imageUrl} size="sm" />
+              }
               title={owner.fullName}
               subtitle={owner.mobileNumber}
+              className="cursor-pointer transition hover:border-slate-200 hover:bg-slate-50/80"
+              onClick={() => openEditUser(owner)}
               badge={
                 <span
                   className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
@@ -279,8 +295,18 @@ export function MawkibOwnersPage() {
               </tr>
             ) : (
               owners.map((owner) => (
-                <tr key={owner.id} className="border-t border-slate-100">
-                  <td className="px-4 py-3 font-medium">{owner.fullName}</td>
+                <tr
+                  key={owner.id}
+                  className="cursor-pointer border-t border-slate-100 transition hover:bg-slate-50/80"
+                  onClick={() => openEditUser(owner)}
+                >
+                  <td className="px-4 py-3">
+                    <UserNameWithAvatar
+                      fullName={owner.fullName}
+                      imageUrl={owner.imageUrl}
+                      avatarSize="sm"
+                    />
+                  </td>
                   <td className="px-4 py-3 font-mono">{owner.mobileNumber}</td>
                   <td className="px-4 py-3">{owner.province ?? '—'}</td>
                   <td className="px-4 py-3">{owner.city ?? '—'}</td>
@@ -296,7 +322,7 @@ export function MawkibOwnersPage() {
                       {owner.isActive ? 'فعال' : 'غیرفعال'}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="flex flex-wrap gap-2">{renderActions(owner)}</div>
                   </td>
                 </tr>

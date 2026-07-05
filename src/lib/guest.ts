@@ -1,5 +1,5 @@
 import api from './api';
-import type { Reservation } from '../types';
+import type { Reservation, UserGender } from '../types';
 
 export interface CreateGuestReservationPayload {
   firstName: string;
@@ -14,9 +14,16 @@ export interface CreateGuestReservationPayload {
   maleGuestCount: number;
   femaleGuestCount: number;
   description?: string;
+  travelOrigin?: string;
   companions?: string;
   plannedCheckInTime?: string;
   plannedCheckOutTime?: string;
+  nationalId?: string;
+  nationalIdCardImageUrl?: string;
+  gender?: UserGender;
+  birthDate?: string;
+  country?: string;
+  passportNumber?: string;
 }
 
 export interface GuestReservationResponse {
@@ -44,9 +51,9 @@ export const guestApi = {
       })
       .then((r) => r.data),
 
-  trackReservationsByMobile: (mobileNumber: string) =>
+  trackReservationsByExactMobile: (mobileNumber: string) =>
     api
-      .get<Reservation[]>('/reservations/guest/track-by-mobile', {
+      .get<Reservation[]>('/reservations/guest/track-by-exact-mobile', {
         params: { mobileNumber: mobileNumber.trim() },
       })
       .then((r) => r.data),

@@ -1,49 +1,68 @@
-import { useEffect, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ConfirmDialog } from '../components/ConfirmDialog';
-import { MawkibAmenityFilterToggles } from '../components/mawkibs/MawkibAmenityFilterToggles';
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { MawkibAmenityFilterToggles } from "../components/mawkibs/MawkibAmenityFilterToggles";
 import {
   emptyMawkibAmenityFilters,
   type MawkibAmenityKey,
-} from '../components/mawkibs/MawkibExtraFields';
-import { MawkibFormModal } from '../components/mawkibs/MawkibFormModal';
-import { MawkibCapacityViewModal } from '../components/mawkibs/MawkibCapacityViewModal';
-import { MawkibLocationFilterSelects } from '../components/mawkibs/MawkibLocationFilterSelects';
-import { MawkibOwnerFilterSelect } from '../components/mawkibs/MawkibOwnerFilterSelect';
-import { DataCard } from '../components/ui/DataCard';
-import { FilterPanel } from '../components/ui/FilterPanel';
-import { PageHeader } from '../components/ui/PageHeader';
-import { PersianDateInput, formatPersianDate } from '../components/ui/PersianDateInput';
-import { useAuth } from '../contexts/AuthContext';
-import { getApiErrorMessage, MAWKIB_STATUS_LABELS, MAWKIB_STATUS_OPTIONS } from '../lib/constants';
-import { toast, toastApiError } from '../lib/toast';
+} from "../components/mawkibs/MawkibExtraFields";
+import { MawkibListDownloadButton } from "../components/mawkibs/MawkibListDownloadButton";
+import { MawkibListPrintButton } from "../components/mawkibs/MawkibListPrintButton";
+import { MawkibFormModal } from "../components/mawkibs/MawkibFormModal";
+import { PaginationBar } from "../components/ui/PaginationBar";
+import { MawkibCapacityViewModal } from "../components/mawkibs/MawkibCapacityViewModal";
+import { MawkibLocationFilterSelects } from "../components/mawkibs/MawkibLocationFilterSelects";
+import { MawkibOwnerFilterSelect } from "../components/mawkibs/MawkibOwnerFilterSelect";
+import { DataCard } from "../components/ui/DataCard";
+import { FilterPanel } from "../components/ui/FilterPanel";
+import { PageHeader } from "../components/ui/PageHeader";
+import { NavIcon } from "../components/ui/NavIcons";
+import {
+  PersianDateInput,
+  formatPersianDate,
+} from "../components/ui/PersianDateInput";
+import { useAuth } from "../contexts/AuthContext";
+import {
+  getApiErrorMessage,
+  MAWKIB_STATUS_LABELS,
+  MAWKIB_STATUS_OPTIONS,
+} from "../lib/constants";
+import { toast, toastApiError } from "../lib/toast";
 import {
   MawkibFemaleCapacityDisplay,
   MawkibMaleCapacityDisplay,
-} from '../components/mawkibs/MawkibCapacityDisplay';
-import { btnPrimary, btnAction, filterInputClass } from '../lib/styles';
+} from "../components/mawkibs/MawkibCapacityDisplay";
+import { btnPrimary, filterInputClass } from "../lib/styles";
+import {
+  mawkibActionBtnDanger,
+  mawkibActionBtnNeutral,
+  mawkibActionBtnPrimary,
+  mawkibActionBtnViolet,
+  mawkibActionIconClass,
+} from "../lib/mawkib-action-buttons";
 import {
   mawkibsApi,
+  DEFAULT_MAWKIBS_PAGE_SIZE,
   type CreateMawkibPayload,
   type MawkibCapacityFilter,
   type MawkibFilters,
   type UpdateMawkibPayload,
-} from '../lib/mawkibs';
-import { usersApi } from '../lib/users';
-import type { Mawkib } from '../types';
+} from "../lib/mawkibs";
+import { usersApi } from "../lib/users";
+import type { Mawkib } from "../types";
 
 const emptyFilters: MawkibFilters = {
   ...emptyMawkibAmenityFilters(),
-  name: '',
-  ownerName: '',
-  phoneNumber: '',
+  name: "",
+  ownerName: "",
+  phoneNumber: "",
   ownerUserId: undefined,
   status: undefined,
   country: undefined,
   mawkibCity: undefined,
-  serviceStartFrom: '',
-  serviceEndTo: '',
+  serviceStartFrom: "",
+  serviceEndTo: "",
 };
 
 function buildOwnerFilter(ownerUserId: string): MawkibFilters {
@@ -54,14 +73,15 @@ function buildOwnerFilter(ownerUserId: string): MawkibFilters {
 
 export function MawkibsPage() {
   const { user } = useAuth();
-  const isAdmin = user?.roles.includes('Admin') ?? false;
-  const isMawkibOwner = user?.roles.includes('MawkibOwner') ?? false;
-  const isPilgrim = (user?.roles.includes('Pilgrim') ?? false) && !isAdmin && !isMawkibOwner;
+  const isAdmin = user?.roles.includes("Admin") ?? false;
+  const isMawkibOwner = user?.roles.includes("MawkibOwner") ?? false;
+  const isPilgrim =
+    (user?.roles.includes("Pilgrim") ?? false) && !isAdmin && !isMawkibOwner;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
-  const initialOwnerUserId = searchParams.get('ownerUserId') ?? '';
-  const editIdParam = searchParams.get('editId') ?? '';
+  const initialOwnerUserId = searchParams.get("ownerUserId") ?? "";
+  const editIdParam = searchParams.get("editId") ?? "";
 
   const [filters, setFilters] = useState<MawkibFilters>(() => ({
     ...emptyFilters,
@@ -70,6 +90,7 @@ export function MawkibsPage() {
   const [appliedFilters, setAppliedFilters] = useState<MawkibFilters>(() =>
     buildOwnerFilter(initialOwnerUserId),
   );
+  const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [editingMawkib, setEditingMawkib] = useState<Mawkib | null>(null);
   const [viewingMawkib, setViewingMawkib] = useState<Mawkib | null>(null);
@@ -77,7 +98,7 @@ export function MawkibsPage() {
   const [capacityMawkib, setCapacityMawkib] = useState<Mawkib | null>(null);
 
   const { data: selectedOwner } = useQuery({
-    queryKey: ['mawkib-owner-applied', appliedFilters.ownerUserId],
+    queryKey: ["mawkib-owner-applied", appliedFilters.ownerUserId],
     queryFn: () => usersApi.getOne(appliedFilters.ownerUserId!),
     enabled: !!appliedFilters.ownerUserId,
   });
@@ -88,6 +109,7 @@ export function MawkibsPage() {
     if (!ownerFilter.ownerUserId) return;
     setFilters((prev) => ({ ...prev, ownerUserId: ownerFilter.ownerUserId }));
     setAppliedFilters(ownerFilter);
+    setPage(1);
   }, [initialOwnerUserId]);
 
   useEffect(() => {
@@ -104,11 +126,14 @@ export function MawkibsPage() {
       })
       .catch(() => {
         if (cancelled) return;
-        toast.error('موکب یافت نشد');
+        toast.error("موکب یافت نشد");
         const next = new URLSearchParams(searchParams);
-        next.delete('editId');
+        next.delete("editId");
         navigate(
-          { pathname: '/mawkibs', search: next.toString() ? `?${next.toString()}` : '' },
+          {
+            pathname: "/mawkibs",
+            search: next.toString() ? `?${next.toString()}` : "",
+          },
           { replace: true },
         );
       });
@@ -123,38 +148,71 @@ export function MawkibsPage() {
     setEditingMawkib(null);
     if (editIdParam) {
       const next = new URLSearchParams(searchParams);
-      next.delete('editId');
+      next.delete("editId");
       navigate(
-        { pathname: '/mawkibs', search: next.toString() ? `?${next.toString()}` : '' },
+        {
+          pathname: "/mawkibs",
+          search: next.toString() ? `?${next.toString()}` : "",
+        },
         { replace: true },
       );
     }
   };
 
   const capacityFilter =
-    appliedFilters.capacityFilter === 'all' || !appliedFilters.capacityFilter
+    appliedFilters.capacityFilter === "all" || !appliedFilters.capacityFilter
       ? undefined
       : appliedFilters.capacityFilter;
 
   const queryKey = isAdmin
-    ? ['mawkibs-admin', appliedFilters]
+    ? ["mawkibs-admin", appliedFilters]
     : isPilgrim
-      ? ['mawkibs-public', appliedFilters]
-      : ['mawkibs-my', appliedFilters];
+      ? ["mawkibs-public", appliedFilters]
+      : ["mawkibs-my", appliedFilters];
 
-  const { data: mawkibs = [], isLoading, refetch } = useQuery({
-    queryKey,
+  const listFilters = {
+    ...appliedFilters,
+    capacityFilter,
+    page,
+    pageSize: DEFAULT_MAWKIBS_PAGE_SIZE,
+  };
+
+  const exportFilters = { ...appliedFilters, capacityFilter };
+
+  const {
+    data: mawkibsPage,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: [...queryKey, page],
     queryFn: () => {
       if (isAdmin) {
-        return mawkibsApi.getAdminList({ ...appliedFilters, capacityFilter });
+        return mawkibsApi.getAdminListPaginated(listFilters);
       }
       if (isPilgrim) {
-        const { phoneNumber, status, ownerUserId, ...publicFilters } = appliedFilters;
-        return mawkibsApi.getPublicList({ ...publicFilters, capacityFilter });
+        const { phoneNumber, status, ownerUserId, ...publicFilters } =
+          listFilters;
+        return mawkibsApi.getPublicListPaginated(publicFilters);
       }
-      return mawkibsApi.getMyList({ ...appliedFilters, capacityFilter });
+      return mawkibsApi.getMyListPaginated(listFilters);
     },
   });
+
+  const mawkibs = mawkibsPage?.items ?? [];
+  const totalMawkibs = mawkibsPage?.total ?? 0;
+  const totalPages = mawkibsPage?.totalPages ?? 1;
+
+  const loadMawkibsForExport = () => {
+    if (isAdmin) {
+      return mawkibsApi.getAdminListForExport(exportFilters);
+    }
+    if (isPilgrim) {
+      const { phoneNumber, status, ownerUserId, ...publicFilters } =
+        exportFilters;
+      return mawkibsApi.getPublicListForExport(publicFilters);
+    }
+    return mawkibsApi.getMyListForExport(exportFilters);
+  };
 
   const canManageMawkibs = isAdmin || isMawkibOwner;
 
@@ -164,37 +222,42 @@ export function MawkibsPage() {
     void mawkibsApi
       .getOne(mawkib.id)
       .then(setEditingMawkib)
-      .catch(() => toast.error('بارگذاری جزئیات موکب ناموفق بود'));
+      .catch(() => toast.error("بارگذاری جزئیات موکب ناموفق بود"));
   };
 
   const createMutation = useMutation({
     mutationFn: (payload: CreateMawkibPayload) => mawkibsApi.create(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['mawkibs-admin'] });
-      queryClient.invalidateQueries({ queryKey: ['mawkibs-my'] });
+      queryClient.invalidateQueries({ queryKey: ["mawkibs-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["mawkibs-my"] });
       toast.success(
         isMawkibOwner && !isAdmin
-          ? 'موکب ثبت شد و پس از تأیید مدیریت منتشر می‌شود'
-          : 'موکب با موفقیت ایجاد شد',
+          ? "موکب ثبت شد و پس از تأیید مدیریت منتشر می‌شود"
+          : "موکب با موفقیت ایجاد شد",
       );
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: UpdateMawkibPayload }) =>
-      mawkibsApi.update(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: number;
+      payload: UpdateMawkibPayload;
+    }) => mawkibsApi.update(id, payload),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['mawkibs-admin'] });
-      queryClient.invalidateQueries({ queryKey: ['mawkibs-my'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-      const wasPending = editingMawkib?.status === 'Pending';
+      queryClient.invalidateQueries({ queryKey: ["mawkibs-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["mawkibs-my"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      const wasPending = editingMawkib?.status === "Pending";
       const newStatus = variables.payload.status;
-      if (wasPending && newStatus === 'Approved') {
-        toast.success('موکب با موفقیت تایید شد');
-      } else if (wasPending && newStatus === 'Rejected') {
-        toast.success('موکب رد شد');
+      if (wasPending && newStatus === "Approved") {
+        toast.success("موکب با موفقیت تایید شد");
+      } else if (wasPending && newStatus === "Rejected") {
+        toast.success("موکب رد شد");
       } else {
-        toast.success('موکب با موفقیت ویرایش شد');
+        toast.success("موکب با موفقیت ویرایش شد");
       }
     },
   });
@@ -202,23 +265,23 @@ export function MawkibsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => mawkibsApi.remove(id),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['mawkibs-admin'] });
+      queryClient.invalidateQueries({ queryKey: ["mawkibs-admin"] });
       setDeletingMawkib(null);
       toast.success(result.message);
     },
     onError: (error) => {
-      toastApiError(error, 'خطا در حذف موکب');
+      toastApiError(error, "خطا در حذف موکب");
     },
   });
 
   const applyFilters = () => {
     const cleaned: MawkibFilters = {};
     Object.entries(filters).forEach(([key, value]) => {
-      if (typeof value === 'boolean') {
+      if (typeof value === "boolean") {
         if (value) cleaned[key as keyof MawkibFilters] = true as never;
         return;
       }
-      if (value !== undefined && value !== '') {
+      if (value !== undefined && value !== "") {
         cleaned[key as keyof MawkibFilters] = value as never;
       }
     });
@@ -226,11 +289,13 @@ export function MawkibsPage() {
       void refetch();
       return;
     }
+    setPage(1);
     setAppliedFilters(cleaned);
   };
 
   const resetFilters = () => {
     setFilters(emptyFilters);
+    setPage(1);
     if (Object.keys(appliedFilters).length === 0) {
       void refetch();
       return;
@@ -251,15 +316,39 @@ export function MawkibsPage() {
         await createMutation.mutateAsync(payload as CreateMawkibPayload);
       }
     } catch (error) {
-      throw new Error(getApiErrorMessage(error, 'خطا در ذخیره موکب'));
+      throw new Error(getApiErrorMessage(error, "خطا در ذخیره موکب"));
     }
   };
 
   const formatDate = (date?: string | null) =>
-    date ? formatPersianDate(date.slice(0, 10)) : '—';
+    date ? formatPersianDate(date.slice(0, 10)) : "—";
 
   const showOwnerColumn = isAdmin || isPilgrim;
-  const tableColSpan = showOwnerColumn ? 8 : 7;
+  const tableColSpan = 7 + (showOwnerColumn ? 1 : 0);
+
+  const openMawkibViewPage = (mawkib: Mawkib) => {
+    navigate(`/mawkibs/${mawkib.id}/view`);
+  };
+
+  const handleMawkibRowClick = (mawkib: Mawkib) => {
+    if (isPilgrim) {
+      openMawkibViewPage(mawkib);
+      return;
+    }
+    if (canManageMawkibs) {
+      openEditForm(mawkib);
+    }
+  };
+
+  const isRowClickable = isPilgrim || canManageMawkibs;
+  const rowClickableClass = isRowClickable
+    ? "cursor-pointer transition hover:bg-slate-50"
+    : "";
+
+  const exportOptions = {
+    includeOwner: showOwnerColumn,
+    includeStatus: isAdmin,
+  };
 
   const renderMaleCapacity = (mawkib: Mawkib) => (
     <MawkibMaleCapacityDisplay mawkib={mawkib} />
@@ -270,96 +359,140 @@ export function MawkibsPage() {
   );
 
   const pilgrimCardRows = (mawkib: Mawkib) => [
-    { label: 'مسئول', value: mawkib.owner?.fullName ?? '—' },
-    { label: 'تماس', value: <span className="font-mono">{mawkib.phoneNumber}</span> },
+    { label: "مسئول", value: mawkib.owner?.fullName ?? "—" },
     {
-      label: 'ظرفیت آقایان',
+      label: "تماس",
+      value: <span className="font-mono">{mawkib.phoneNumber}</span>,
+    },
+    {
+      label: "ظرفیت آقایان",
       value: <MawkibMaleCapacityDisplay mawkib={mawkib} />,
     },
     {
-      label: 'ظرفیت بانوان',
+      label: "ظرفیت بانوان",
       value: <MawkibFemaleCapacityDisplay mawkib={mawkib} />,
     },
-    { label: 'شروع خدمات', value: formatDate(mawkib.serviceStartDate) },
-    { label: 'پایان خدمات', value: formatDate(mawkib.serviceEndDate) },
+    { label: "شروع خدمات", value: formatDate(mawkib.serviceStartDate) },
+    { label: "پایان خدمات", value: formatDate(mawkib.serviceEndDate) },
   ];
 
   const adminOwnerCardRows = (mawkib: Mawkib) => [
-    ...(isAdmin ? [{ label: 'مسئول', value: mawkib.owner?.fullName ?? '—' }] : []),
-    { label: 'تماس', value: <span className="font-mono">{mawkib.phoneNumber}</span> },
+    ...(isAdmin
+      ? [{ label: "مسئول", value: mawkib.owner?.fullName ?? "—" }]
+      : []),
     {
-      label: 'ظرفیت آقایان',
+      label: "تماس",
+      value: <span className="font-mono">{mawkib.phoneNumber}</span>,
+    },
+    {
+      label: "ظرفیت آقایان",
       value: <MawkibMaleCapacityDisplay mawkib={mawkib} />,
     },
     {
-      label: 'ظرفیت بانوان',
+      label: "ظرفیت بانوان",
       value: <MawkibFemaleCapacityDisplay mawkib={mawkib} />,
     },
-    { label: 'شروع خدمات', value: formatDate(mawkib.serviceStartDate) },
-    { label: 'پایان خدمات', value: formatDate(mawkib.serviceEndDate) },
+    { label: "شروع خدمات", value: formatDate(mawkib.serviceStartDate) },
+    { label: "پایان خدمات", value: formatDate(mawkib.serviceEndDate) },
   ];
 
   const renderActions = (mawkib: Mawkib) => (
-    <>
+    <div className="flex flex-wrap gap-1.5">
       {showOwnerColumn && (
         <button
-          onClick={() => setViewingMawkib(mawkib)}
-          className={`${btnAction} bg-slate-100 text-slate-700 hover:bg-slate-200`}
+          onClick={() =>
+            isPilgrim ? openMawkibViewPage(mawkib) : setViewingMawkib(mawkib)
+          }
+          className={`${mawkibActionBtnNeutral}`}
         >
+          <NavIcon
+            name="info"
+            className={mawkibActionIconClass}
+            strokeWidth={1.75}
+          />
           مشاهده جزئیات
         </button>
       )}
-      {mawkib.status === 'Approved' && (
+      {mawkib.status === "Approved" && isPilgrim && (
         <button
-          onClick={() =>
-            navigate(
-              isPilgrim
-                ? `/reservations/new?mawkibId=${mawkib.id}`
-                : `/reservations/new?mawkibId=${mawkib.id}`,
-            )
-          }
-          className={`${btnAction} bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6]`}
+          onClick={() => navigate(`/reservations/new?mawkibId=${mawkib.id}`)}
+          className={mawkibActionBtnPrimary}
         >
+          <NavIcon
+            name="quickReserve"
+            className={mawkibActionIconClass}
+            strokeWidth={1.75}
+          />
           رزرو
         </button>
       )}
+      {mawkib.status === "Approved" && !isPilgrim && (
+        <Link
+          to={`/reservations/quick?mawkibId=${mawkib.id}`}
+          className={mawkibActionBtnPrimary}
+        >
+          <NavIcon
+            name="todayReserve"
+            className={mawkibActionIconClass}
+            strokeWidth={1.75}
+          />
+          رزرو سریع
+        </Link>
+      )}
       <button
+        type="button"
         onClick={() => setCapacityMawkib(mawkib)}
-        className={`${btnAction} bg-violet-50 text-violet-700 hover:bg-violet-100`}
+        className={mawkibActionBtnViolet}
       >
-        مشاهده ظرفیت
+        <NavIcon
+          name="reports"
+          className={mawkibActionIconClass}
+          strokeWidth={1.75}
+        />
+        تقویم ظرفیت
       </button>
       {!isPilgrim && (
         <>
-          <button
-            onClick={() => navigate(`/reservations?mawkibId=${mawkib.id}`)}
-            className={`${btnAction} bg-blue-50 text-blue-700 hover:bg-blue-100`}
-          >
-            رزروها
-          </button>
-          <button
-            onClick={() => openEditForm(mawkib)}
-            className={`${btnAction} bg-slate-100 text-slate-700 hover:bg-slate-200`}
-          >
-            ویرایش
-          </button>
           <Link
             to={`/mawkibs/${mawkib.id}/rules`}
-            className={`${btnAction} bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6]`}
+            className={mawkibActionBtnPrimary}
           >
+            <NavIcon
+              name="book"
+              className={mawkibActionIconClass}
+              strokeWidth={1.75}
+            />
             قوانین
           </Link>
+          <button
+            type="button"
+            onClick={() => openEditForm(mawkib)}
+            className={mawkibActionBtnNeutral}
+          >
+            <NavIcon
+              name="settings"
+              className={mawkibActionIconClass}
+              strokeWidth={1.75}
+            />
+            ویرایش
+          </button>
           {isAdmin && (
             <button
+              type="button"
               onClick={() => setDeletingMawkib(mawkib)}
-              className={`${btnAction} bg-red-50 text-red-600 hover:bg-red-100`}
+              className={mawkibActionBtnDanger}
             >
+              <NavIcon
+                name="x"
+                className={mawkibActionIconClass}
+                strokeWidth={2}
+              />
               حذف
             </button>
           )}
         </>
       )}
-    </>
+    </div>
   );
 
   if (isLoading) return <p className="text-slate-500">در حال بارگذاری...</p>;
@@ -369,7 +502,7 @@ export function MawkibsPage() {
     : undefined;
   const pageSubtitle = selectedOwner
     ? `فیلتر فعال: موکب‌دار «${selectedOwner.fullName}»${
-        activeStatusLabel ? ` · وضعیت: ${activeStatusLabel}` : ''
+        activeStatusLabel ? ` · وضعیت: ${activeStatusLabel}` : ""
       }`
     : activeStatusLabel
       ? `فیلتر فعال: وضعیت «${activeStatusLabel}»`
@@ -378,7 +511,9 @@ export function MawkibsPage() {
   return (
     <div>
       <PageHeader
-        title={isAdmin ? 'مدیریت موکب‌ها' : isPilgrim ? 'موکب‌ها' : 'موکب‌های من'}
+        title={
+          isAdmin ? "مدیریت موکب‌ها" : isPilgrim ? "موکب‌ها" : "موکب‌های من"
+        }
         subtitle={pageSubtitle}
         action={
           canManageMawkibs ? (
@@ -403,7 +538,7 @@ export function MawkibsPage() {
             value={filters.name}
             onChange={(e) => setFilters({ ...filters, name: e.target.value })}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === "Enter") {
                 e.preventDefault();
                 applyFilters();
               }
@@ -414,8 +549,10 @@ export function MawkibsPage() {
             <input
               type="text"
               placeholder="نام مسئول موکب"
-              value={filters.ownerName ?? ''}
-              onChange={(e) => setFilters({ ...filters, ownerName: e.target.value })}
+              value={filters.ownerName ?? ""}
+              onChange={(e) =>
+                setFilters({ ...filters, ownerName: e.target.value })
+              }
               className={filterInputClass}
             />
           )}
@@ -424,13 +561,15 @@ export function MawkibsPage() {
               type="text"
               placeholder="شماره تماس"
               value={filters.phoneNumber}
-              onChange={(e) => setFilters({ ...filters, phoneNumber: e.target.value })}
+              onChange={(e) =>
+                setFilters({ ...filters, phoneNumber: e.target.value })
+              }
               className={filterInputClass}
             />
           )}
           {isAdmin && (
             <MawkibOwnerFilterSelect
-              value={filters.ownerUserId ? String(filters.ownerUserId) : ''}
+              value={filters.ownerUserId ? String(filters.ownerUserId) : ""}
               onChange={(ownerUserId) =>
                 setFilters({
                   ...filters,
@@ -443,11 +582,12 @@ export function MawkibsPage() {
             <label className="block">
               <span className="mb-1 block text-xs text-slate-500">وضعیت</span>
               <select
-                value={filters.status ?? ''}
+                value={filters.status ?? ""}
                 onChange={(e) =>
                   setFilters({
                     ...filters,
-                    status: (e.target.value || undefined) as MawkibFilters['status'],
+                    status: (e.target.value ||
+                      undefined) as MawkibFilters["status"],
                   })
                 }
                 className={filterInputClass}
@@ -463,8 +603,8 @@ export function MawkibsPage() {
           )}
           <MawkibLocationFilterSelects
             compact
-            country={filters.country ?? ''}
-            mawkibCity={filters.mawkibCity ?? ''}
+            country={filters.country ?? ""}
+            mawkibCity={filters.mawkibCity ?? ""}
             onCountryChange={(country) =>
               setFilters((prev) => ({
                 ...prev,
@@ -481,7 +621,7 @@ export function MawkibsPage() {
           <PersianDateInput
             compact
             placeholder="از تاریخ شروع خدمات"
-            value={filters.serviceStartFrom ?? ''}
+            value={filters.serviceStartFrom ?? ""}
             onChange={(serviceStartFrom) =>
               setFilters({ ...filters, serviceStartFrom })
             }
@@ -489,13 +629,13 @@ export function MawkibsPage() {
           <PersianDateInput
             compact
             placeholder="تا تاریخ پایان خدمات"
-            value={filters.serviceEndTo ?? ''}
+            value={filters.serviceEndTo ?? ""}
             onChange={(serviceEndTo) =>
               setFilters({ ...filters, serviceEndTo })
             }
           />
           <select
-            value={filters.capacityFilter ?? ''}
+            value={filters.capacityFilter ?? ""}
             onChange={(e) =>
               setFilters({
                 ...filters,
@@ -519,6 +659,19 @@ export function MawkibsPage() {
         />
       </FilterPanel>
 
+      <div className="mb-4 flex justify-end gap-2">
+        <MawkibListDownloadButton
+          loadMawkibs={loadMawkibsForExport}
+          exportOptions={exportOptions}
+          disabled={isLoading}
+        />
+        <MawkibListPrintButton
+          loadMawkibs={loadMawkibsForExport}
+          exportOptions={exportOptions}
+          disabled={isLoading}
+        />
+      </div>
+
       <div className="space-y-3 lg:hidden">
         {mawkibs.length === 0 ? (
           <p className="rounded-xl bg-white p-8 text-center text-slate-400 shadow-sm">
@@ -529,8 +682,12 @@ export function MawkibsPage() {
             <DataCard
               key={mawkib.id}
               title={mawkib.name}
-              rows={isPilgrim ? pilgrimCardRows(mawkib) : adminOwnerCardRows(mawkib)}
+              rows={
+                isPilgrim ? pilgrimCardRows(mawkib) : adminOwnerCardRows(mawkib)
+              }
               actions={renderActions(mawkib)}
+              onClick={isPilgrim ? () => openMawkibViewPage(mawkib) : undefined}
+              className={isPilgrim ? rowClickableClass : ""}
             />
           ))
         )}
@@ -541,7 +698,9 @@ export function MawkibsPage() {
           <thead className="bg-slate-50 text-slate-600">
             <tr>
               <th className="px-4 py-3 text-right">نام موکب</th>
-              {showOwnerColumn && <th className="px-4 py-3 text-right">مسئول</th>}
+              {showOwnerColumn && (
+                <th className="px-4 py-3 text-right">مسئول</th>
+              )}
               <th className="px-4 py-3 text-right">تماس</th>
               <th className="px-4 py-3 text-right">ظرفیت آقایان</th>
               <th className="px-4 py-3 text-right">ظرفیت بانوان</th>
@@ -553,7 +712,10 @@ export function MawkibsPage() {
           <tbody>
             {mawkibs.length === 0 ? (
               <tr>
-                <td colSpan={tableColSpan} className="px-4 py-8 text-center text-slate-400">
+                <td
+                  colSpan={tableColSpan}
+                  className="px-4 py-8 text-center text-slate-400"
+                >
                   موکبی یافت نشد
                 </td>
               </tr>
@@ -561,26 +723,33 @@ export function MawkibsPage() {
               mawkibs.map((mawkib) => (
                 <tr
                   key={mawkib.id}
-                  className={`border-t border-slate-100 ${
-                    canManageMawkibs
-                      ? 'cursor-pointer transition hover:bg-slate-50'
-                      : ''
-                  }`}
+                  className={`border-t border-slate-100 ${rowClickableClass}`}
                   onClick={
-                    canManageMawkibs ? () => openEditForm(mawkib) : undefined
+                    isRowClickable
+                      ? () => handleMawkibRowClick(mawkib)
+                      : undefined
                   }
                 >
                   <td className="px-4 py-3 font-medium">{mawkib.name}</td>
                   {showOwnerColumn && (
-                    <td className="px-4 py-3">{mawkib.owner?.fullName ?? '—'}</td>
+                    <td className="px-4 py-3">
+                      {mawkib.owner?.fullName ?? "—"}
+                    </td>
                   )}
                   <td className="px-4 py-3 font-mono">{mawkib.phoneNumber}</td>
                   <td className="px-4 py-3">{renderMaleCapacity(mawkib)}</td>
                   <td className="px-4 py-3">{renderFemaleCapacity(mawkib)}</td>
-                  <td className="px-4 py-3">{formatDate(mawkib.serviceStartDate)}</td>
-                  <td className="px-4 py-3">{formatDate(mawkib.serviceEndDate)}</td>
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex flex-wrap gap-2">{renderActions(mawkib)}</div>
+                  <td className="px-4 py-3">
+                    {formatDate(mawkib.serviceStartDate)}
+                  </td>
+                  <td className="px-4 py-3">
+                    {formatDate(mawkib.serviceEndDate)}
+                  </td>
+                  <td
+                    className="px-4 py-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {renderActions(mawkib)}
                   </td>
                 </tr>
               ))
@@ -589,8 +758,18 @@ export function MawkibsPage() {
         </table>
       </div>
 
+      <PaginationBar
+        className="mt-4"
+        page={page}
+        totalPages={totalPages}
+        totalItems={totalMawkibs}
+        pageSize={DEFAULT_MAWKIBS_PAGE_SIZE}
+        onPageChange={setPage}
+        itemLabel="موکب"
+      />
+
       <MawkibFormModal
-        key={editingMawkib?.id ?? 'new'}
+        key={editingMawkib?.id ?? "new"}
         open={formOpen}
         onClose={closeEditForm}
         onSubmit={handleFormSubmit}
@@ -605,18 +784,21 @@ export function MawkibsPage() {
         mawkib={viewingMawkib}
         isAdmin={isAdmin}
         readOnly
+        hideReservationPolicy={isPilgrim}
       />
 
       {isAdmin && (
         <ConfirmDialog
           open={!!deletingMawkib}
           onClose={() => setDeletingMawkib(null)}
-          onConfirm={() => deletingMawkib && deleteMutation.mutate(deletingMawkib.id)}
+          onConfirm={() =>
+            deletingMawkib && deleteMutation.mutate(deletingMawkib.id)
+          }
           title="حذف موکب"
           message={
             deletingMawkib
               ? `آیا از حذف «${deletingMawkib.name}» مطمئن هستید؟ اگر رزرو فعال داشته باشد، رد می‌شود.`
-              : ''
+              : ""
           }
           confirmLabel="حذف"
           loading={deleteMutation.isPending}
@@ -628,7 +810,9 @@ export function MawkibsPage() {
         open={!!capacityMawkib}
         onClose={() => setCapacityMawkib(null)}
         mawkibId={capacityMawkib?.id ?? 0}
-        mawkibName={capacityMawkib?.name ?? ''}
+        mawkibName={capacityMawkib?.name ?? ""}
+        serviceStartDate={capacityMawkib?.serviceStartDate}
+        serviceEndDate={capacityMawkib?.serviceEndDate}
         authenticated
       />
     </div>

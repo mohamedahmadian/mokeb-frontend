@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { formatPersianDateRange } from "../ui/PersianDateRangePicker";
 import { NavIcon } from "../ui/NavIcons";
 import { ReservationDeliveredItemsButton } from "../reservations/ReservationDeliveredItemsButton";
+import { PilgrimCardViewButton } from "../reservations/PilgrimCardViewButton";
 import { ReservationUserCardPrintButton } from "../reservations/ReservationUserCardPrintButton";
 import { MawkibCardPrintButton } from "../mawkibs/MawkibCardPrintButton";
 import { reservationMawkibToCardData } from "../../lib/mawkib-card";
@@ -10,7 +11,7 @@ import {
   ReservationAttendanceModal,
   type AttendanceType,
 } from "../reservations/ReservationAttendanceModal";
-import { formatGuestCount } from "../../lib/capacity";
+import { GuestCountBadges } from "../reservations/GuestCountBadges";
 import { RESERVATION_STATUS_LABELS } from "../../lib/constants";
 import { formatTimeFa, formatTimeFromIso } from "../../lib/format-time";
 import { lookupOwnerReservation } from "../../lib/mawkib-owner-dashboard";
@@ -50,7 +51,7 @@ function InfoCell({
 }: {
   icon: ReactNode;
   label: string;
-  value: string;
+  value: ReactNode;
   dir?: "ltr" | "rtl";
   accent?: boolean;
   valueBold?: boolean;
@@ -63,9 +64,9 @@ function InfoCell({
       <div className="min-w-0 flex-1">
         <p className="text-[10px] text-slate-500">{label}</p>
         <p
-          className={`truncate ${valueBold ? "text-sm font-bold" : "text-xs font-semibold"} ${accent ? "text-emerald-700" : "text-slate-800"} ${dir === "ltr" && !valueBold ? "font-mono" : ""}`}
+          className={`truncate ${valueBold ? "text-sm font-bold" : "text-xs font-semibold"} ${accent ? "text-emerald-700" : "text-slate-800"} ${dir === "ltr" && !valueBold && typeof value === "string" ? "font-mono" : ""}`}
           dir={dir}
-          title={value}
+          title={typeof value === "string" ? value : undefined}
         >
           {value}
         </p>
@@ -82,6 +83,7 @@ function TrackResultRow({
   detailsLinkRef,
   highlightDetails = false,
   showCheckIn = true,
+  showCheckInOutTimes = true,
 }: {
   reservation: Reservation;
   onOpenAttendance: (id: number, type: AttendanceType) => void;
@@ -90,6 +92,7 @@ function TrackResultRow({
   detailsLinkRef?: RefObject<HTMLAnchorElement | null>;
   highlightDetails?: boolean;
   showCheckIn?: boolean;
+  showCheckInOutTimes?: boolean;
 }) {
   const endDate = reservation.reservationEndDate ?? reservation.reservationDate;
   const hasActualCheckIn = !!reservation.actualCheckInAt;
@@ -104,9 +107,11 @@ function TrackResultRow({
     : formatTimeFa(
         reservation.plannedCheckOutTime ?? reservation.mawkib.defaultCheckOutTime,
       );
-  const guestCount = formatGuestCount(
-    reservation.maleGuestCount,
-    reservation.femaleGuestCount,
+  const guestCount = (
+    <GuestCountBadges
+      male={reservation.maleGuestCount}
+      female={reservation.femaleGuestCount}
+    />
   );
   const canCheckIn =
     reservation.status === "Confirmed" && !reservation.actualCheckInAt;
@@ -139,7 +144,9 @@ function TrackResultRow({
         <StatusBadge status={reservation.status} />
       </div>
 
-      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div
+        className={`mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 ${showCheckInOutTimes ? "lg:grid-cols-6" : "lg:grid-cols-4"}`}
+      >
         <InfoCell
           icon={<NavIcon name="track" className="h-3.5 w-3.5" strokeWidth={1.75} />}
           label="کد رزرو"
@@ -159,25 +166,29 @@ function TrackResultRow({
         />
         <InfoCell
           icon={<NavIcon name="users" className="h-3.5 w-3.5" strokeWidth={1.75} />}
-          label="تعداد مهمان"
+          label="تعداد"
           value={guestCount}
         />
-        <InfoCell
-          icon={<NavIcon name="check" className="h-3.5 w-3.5" strokeWidth={1.75} />}
-          label={hasActualCheckIn ? "ورود واقعی" : "ساعت ورود"}
-          value={checkInTime}
-          dir="ltr"
-          accent={hasActualCheckIn}
-          valueBold
-        />
-        <InfoCell
-          icon={<NavIcon name="logout" className="h-3.5 w-3.5" strokeWidth={1.75} />}
-          label={hasActualCheckOut ? "خروج واقعی" : "ساعت خروج"}
-          value={checkOutTime}
-          dir="ltr"
-          accent={hasActualCheckOut}
-          valueBold
-        />
+        {showCheckInOutTimes && (
+          <>
+            <InfoCell
+              icon={<NavIcon name="check" className="h-3.5 w-3.5" strokeWidth={1.75} />}
+              label={hasActualCheckIn ? "ورود واقعی" : "ساعت ورود"}
+              value={checkInTime}
+              dir="ltr"
+              accent={hasActualCheckIn}
+              valueBold
+            />
+            <InfoCell
+              icon={<NavIcon name="logout" className="h-3.5 w-3.5" strokeWidth={1.75} />}
+              label={hasActualCheckOut ? "خروج واقعی" : "ساعت خروج"}
+              value={checkOutTime}
+              dir="ltr"
+              accent={hasActualCheckOut}
+              valueBold
+            />
+          </>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
@@ -221,6 +232,11 @@ function TrackResultRow({
           className={dashboardSecondaryBtn}
           onUpdate={onReservationUpdate}
         />
+        <PilgrimCardViewButton
+          trackingCode={reservation.trackingCode}
+          reservation={reservation}
+          className={dashboardSecondaryBtn}
+        />
         <ReservationUserCardPrintButton
           reservation={reservation}
           className={dashboardSecondaryBtn}
@@ -241,11 +257,16 @@ type LookupResult = Awaited<
 interface ReservationTrackLookupProps {
   lookupFn?: (query: string) => Promise<LookupResult>;
   showCheckIn?: boolean;
+  showCheckInOutTimes?: boolean;
+  /** Called after check-in/check-out succeeds (e.g. refresh dashboard stats). */
+  onAttendanceSuccess?: (type: AttendanceType) => void;
 }
 
 export function ReservationTrackLookup({
   lookupFn = lookupOwnerReservation,
   showCheckIn = true,
+  showCheckInOutTimes = false,
+  onAttendanceSuccess,
 }: ReservationTrackLookupProps = {}) {
   const navigate = useNavigate();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -268,7 +289,7 @@ export function ReservationTrackLookup({
   const handleSearch = async () => {
     const trimmed = query.trim();
     if (!trimmed) {
-      toast.error("لطفاً شماره موبایل یا کد رزرو را وارد کنید");
+      toast.error("لطفاً شماره موبایل، کد ملی یا شناسه رزرو را وارد کنید");
       return;
     }
 
@@ -280,9 +301,6 @@ export function ReservationTrackLookup({
         ? [result.reservation, ...result.alternatives]
         : [];
       setResults(matches);
-      if (matches.length === 0) {
-        toast.error("رزروی با این مشخصات یافت نشد");
-      }
     } catch (err) {
       resetResults();
       setSearched(true);
@@ -323,6 +341,7 @@ export function ReservationTrackLookup({
           ? "ساعت ورود زائر گرامی با موفقیت در سیستم ثبت شد"
           : "ساعت خروج زائر گرامی با موفقیت در سیستم ثبت شد",
       );
+      onAttendanceSuccess?.(type);
     } catch (err) {
       toastApiError(err, type === "check-in" ? "خطا در ثبت ورود" : "خطا در ثبت خروج");
       throw err;
@@ -336,6 +355,20 @@ export function ReservationTrackLookup({
       prev.map((item) => (item.id === updated.id ? updated : item)),
     );
   };
+
+  const activeAttendanceReservation = attendanceModal
+    ? results.find((item) => item.id === attendanceModal.id)
+    : undefined;
+
+  const activeCheckoutBounds = activeAttendanceReservation
+    ? {
+        min: activeAttendanceReservation.reservationDate.slice(0, 10),
+        max: (
+          activeAttendanceReservation.reservationEndDate ??
+          activeAttendanceReservation.reservationDate
+        ).slice(0, 10),
+      }
+    : undefined;
 
   useEffect(() => {
     searchInputRef.current?.focus();
@@ -370,8 +403,9 @@ export function ReservationTrackLookup({
                 if (searched) resetResults();
               }}
               className={`${inputClass} min-w-0 flex-1 !min-h-9 !py-2 text-right !text-sm`}
-              placeholder="شماره موبایل یا شناسه رزرو"
-              dir="rtl"
+              placeholder="موبایل، کد ملی یا شناسه رزرو"
+              dir="ltr"
+              inputMode="text"
               autoComplete="off"
             />
             <button
@@ -408,6 +442,7 @@ export function ReservationTrackLookup({
                 detailsLinkRef={index === 0 ? detailsLinkRef : undefined}
                 highlightDetails={index === 0}
                 showCheckIn={showCheckIn}
+                showCheckInOutTimes={showCheckInOutTimes}
               />
             </section>
           ))}
@@ -416,6 +451,16 @@ export function ReservationTrackLookup({
       <ReservationAttendanceModal
         open={attendanceModal !== null}
         type={attendanceModal?.type ?? "check-in"}
+        initialRecordedAt={
+          attendanceModal?.type === "check-out"
+            ? activeAttendanceReservation?.actualCheckOutAt
+            : activeAttendanceReservation?.actualCheckInAt
+        }
+        checkoutDateBounds={
+          attendanceModal?.type === "check-out"
+            ? activeCheckoutBounds
+            : undefined
+        }
         onClose={() => setAttendanceModal(null)}
         onConfirm={handleConfirmAttendance}
       />

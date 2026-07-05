@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Modal } from '../Modal';
 import { getMapCenter, hasValidCoords } from '../../lib/geo';
 import type { MawkibCity, MawkibCountry } from '../../lib/mawkib-locations';
@@ -62,6 +63,7 @@ export function MawkibLocationMapTrigger({
   defaultOpen = false,
 }: MawkibLocationMapTriggerProps) {
   const [mapOpen, setMapOpen] = useState(false);
+  const [mapMountReady, setMapMountReady] = useState(false);
 
   const hasCoords = hasValidCoords(latitude, longitude);
 
@@ -70,6 +72,23 @@ export function MawkibLocationMapTrigger({
       setMapOpen(true);
     }
   }, [defaultOpen, hasCoords]);
+
+  useEffect(() => {
+    if (!mapOpen) {
+      setMapMountReady(false);
+      return;
+    }
+
+    let timer: number | undefined;
+    const raf = requestAnimationFrame(() => {
+      timer = window.setTimeout(() => setMapMountReady(true), 100);
+    });
+
+    return () => {
+      cancelAnimationFrame(raf);
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [mapOpen]);
   const fallback = getMapCenter({
     country: fallbackCountry,
     mawkibCity: fallbackCity,
@@ -101,34 +120,27 @@ export function MawkibLocationMapTrigger({
       : 'انتخاب موقعیت روی نقشه'
     : 'مشاهده موقعیت روی نقشه';
 
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setMapOpen(true)}
-        className={`${btnSecondary} inline-flex w-full items-center justify-center gap-2 sm:w-auto ${className}`}
-      >
-        <MapPinIcon />
-        <span>{buttonLabel}</span>
-      </button>
-
+  const mapModal =
+    mapOpen &&
+    createPortal(
       <Modal
-        open={mapOpen}
+        open
+        elevated
         onClose={() => setMapOpen(false)}
         title={modalTitle}
         size="lg"
       >
-        {mapOpen && (
-          <div className="space-y-3">
-            {editable && (
-              <p className="text-xs leading-relaxed text-slate-500">
-                مارکر را بکشید یا روی نقشه کلیک کنید تا موقعیت جدید ثبت شود. مقادیر
-                عرض و طول جغرافیایی به‌صورت خودکار به‌روز می‌شوند.
-              </p>
-            )}
+        <div className="space-y-3">
+          {editable && (
+            <p className="text-xs leading-relaxed text-slate-500">
+              مارکر را بکشید یا روی نقشه کلیک کنید تا موقعیت جدید ثبت شود. مقادیر
+              عرض و طول جغرافیایی به‌صورت خودکار به‌روز می‌شوند.
+            </p>
+          )}
+          {mapMountReady ? (
             <Suspense
               fallback={
-                <div className="flex min-h-72 items-center justify-center text-sm text-slate-500">
+                <div className="flex min-h-[18rem] items-center justify-center text-sm text-slate-500 sm:min-h-[22rem]">
                   در حال بارگذاری نقشه...
                 </div>
               }
@@ -136,20 +148,39 @@ export function MawkibLocationMapTrigger({
               <MawkibLocationMiniMap
                 latitude={mapLat}
                 longitude={mapLng}
-                mountKey={mapOpen}
+                mountKey={`${mapOpen}-${mapLat}-${mapLng}`}
                 className="mawkib-mini-map-modal"
                 editable={editable}
                 onPositionChange={editable ? onPositionChange : undefined}
               />
             </Suspense>
-            {editable && (
-              <p className="text-center font-mono text-[10px] text-slate-500" dir="ltr">
-                {formatCoord(mapLat)}, {formatCoord(mapLng)}
-              </p>
-            )}
-          </div>
-        )}
-      </Modal>
+          ) : (
+            <div className="flex min-h-[18rem] items-center justify-center text-sm text-slate-500 sm:min-h-[22rem]">
+              در حال آماده‌سازی نقشه...
+            </div>
+          )}
+          {editable && (
+            <p className="text-center font-mono text-[10px] text-slate-500" dir="ltr">
+              {formatCoord(mapLat)}, {formatCoord(mapLng)}
+            </p>
+          )}
+        </div>
+      </Modal>,
+      document.body,
+    );
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setMapOpen(true)}
+        className={`${btnSecondary} inline-flex w-full max-w-sm items-center justify-center gap-2 ${className}`}
+      >
+        <MapPinIcon />
+        <span>{buttonLabel}</span>
+      </button>
+
+      {mapModal}
     </>
   );
 }

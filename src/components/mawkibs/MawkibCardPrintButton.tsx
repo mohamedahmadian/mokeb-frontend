@@ -3,18 +3,15 @@ import { QRCodeSVG } from 'qrcode.react';
 import { formatPersianNumber } from '../../lib/capacity';
 import { buildGuestMawkibUrl } from '../../lib/guest-mawkib';
 import type { MawkibCardData } from '../../lib/mawkib-card';
-import { resolveAssetUrl } from '../../lib/geo';
 import { btnSecondary } from '../../lib/styles';
-import { MAWKIB_DEFAULT_IMAGE } from './MawkibThumbnail';
+import {
+  PrintCardHeroImage,
+  PRINT_CARD_HERO_IMAGE_CSS,
+} from './PrintCardHeroImage';
 
 const CARD_TEAL = '#1a3f3f';
 const CARD_TEAL_LIGHT = '#e8f3f3';
 const PRINT_BODY_CLASS = 'printing-mawkib-card';
-
-function resolveHeroImage(imageUrl?: string | null): string {
-  const resolved = resolveAssetUrl(imageUrl);
-  return resolved || resolveAssetUrl(MAWKIB_DEFAULT_IMAGE);
-}
 
 function capacityDisplay(male?: number, female?: number) {
   const m = male ?? 0;
@@ -340,15 +337,15 @@ function AmenitiesRow({ amenities }: { amenities: string[] }) {
 
 export function MawkibCardPrintContent({ data }: { data: MawkibCardData }) {
   const mawkibMapUrl = buildGuestMawkibUrl(data.id, { focusMap: true });
-  const heroImage = resolveHeroImage(data.imageUrl);
 
   return (
     <div className="mawkib-card">
       <header className="mawkib-card__header">
-        <div
-          className="mawkib-card__header-hero"
-          style={{ backgroundImage: `url("${heroImage}")` }}
-        >
+        <div className="mawkib-card__header-hero">
+          <PrintCardHeroImage
+            imageUrl={data.imageUrl}
+            className="mawkib-card__hero-image"
+          />
           <div className="mawkib-card__hero-overlay">
             <h1 className="mawkib-card__hero-title">{data.name}</h1>
             <p className="mawkib-card__hero-badge">
@@ -433,6 +430,7 @@ export function MawkibCardPrintButton({ data, className }: MawkibCardPrintButton
   return (
     <>
       <style>{`
+        ${PRINT_CARD_HERO_IMAGE_CSS}
         #${printRootId} {
           display: none;
         }
@@ -482,14 +480,14 @@ export function MawkibCardPrintButton({ data, className }: MawkibCardPrintButton
           .mawkib-card__header-hero {
             position: relative;
             min-height: 22mm;
-            background-size: cover;
-            background-position: center;
+            overflow: hidden;
             background-color: #334155;
           }
 
           .mawkib-card__hero-overlay {
             position: absolute;
             inset: 0;
+            z-index: 1;
             display: flex;
             flex-direction: column;
             justify-content: flex-end;

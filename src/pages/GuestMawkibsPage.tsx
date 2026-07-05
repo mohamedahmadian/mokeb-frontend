@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import {
-  CapacityFilterToggle,
-  type CapacityView,
-} from "../components/guest/CapacityFilterToggle";
+import { CapacityFilterToggle } from "../components/guest/CapacityFilterToggle";
 import { GuestPageHeader, GuestShell } from "../components/guest/GuestShell";
 import {
   MawkibBrowseViewToggle,
@@ -16,9 +13,15 @@ import {
   MawkibInfoCard,
 } from "../components/mawkibs/MawkibInfoCard";
 import { MawkibCapacityViewModal } from "../components/mawkibs/MawkibCapacityViewModal";
+import {
+  MawkibGalleryModal,
+  mawkibGalleryUrls,
+} from "../components/mawkibs/MawkibGalleryModal";
 import { MawkibMap } from "../components/mawkibs/MawkibMap";
 import { SearchableSelect } from "../components/ui/SearchableSelect";
 import { guestTheme } from "../lib/guest-theme";
+import { buildGuestReserveUrl } from "../lib/guest-reserve";
+import { isMawkibOnlineReservationEnabled } from "../lib/mawkib-online-reservation";
 import { MAWKIB_CITIES } from "../lib/mawkib-locations";
 import type { MawkibCity } from "../lib/mawkib-locations";
 import { mawkibsApi } from "../lib/mawkibs";
@@ -65,8 +68,9 @@ const cityOptions = MAWKIB_CITIES.map((c) => ({
   label: c.label,
 }));
 
-function parseCapacityView(value: string | null): CapacityView {
-  return value === "full" ? "full" : "available";
+function parseOnlyAvailableCapacity(value: string | null): boolean {
+  if (value === "all" || value === "full") return false;
+  return true;
 }
 
 export function GuestMawkibsPage() {
@@ -74,16 +78,20 @@ export function GuestMawkibsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get("q") ?? "";
   const initialCity = searchParams.get("city") ?? "";
-  const initialCapacity = parseCapacityView(searchParams.get("capacity"));
+  const initialOnlyAvailable = parseOnlyAvailableCapacity(
+    searchParams.get("capacity"),
+  );
   const initialView = parseMawkibBrowseView(searchParams.get("view"));
 
   const [query, setQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [mawkibCity, setMawkibCity] = useState(initialCity);
-  const [capacityView, setCapacityView] =
-    useState<CapacityView>(initialCapacity);
+  const [onlyAvailableCapacity, setOnlyAvailableCapacity] = useState(
+    initialOnlyAvailable,
+  );
   const [browseView, setBrowseView] = useState<MawkibBrowseView>(initialView);
   const [capacityMawkib, setCapacityMawkib] = useState<Mawkib | null>(null);
+  const [galleryMawkib, setGalleryMawkib] = useState<Mawkib | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -95,10 +103,10 @@ export function GuestMawkibsPage() {
     const trimmed = debouncedQuery.trim();
     if (trimmed) params.q = trimmed;
     if (mawkibCity) params.city = mawkibCity;
-    if (capacityView !== "available") params.capacity = capacityView;
+    if (!onlyAvailableCapacity) params.capacity = "all";
     if (browseView === "map") params.view = "map";
     setSearchParams(params, { replace: true });
-  }, [debouncedQuery, mawkibCity, capacityView, browseView, setSearchParams]);
+  }, [debouncedQuery, mawkibCity, onlyAvailableCapacity, browseView, setSearchParams]);
 
   useEffect(() => {
     const next = parseMawkibBrowseView(searchParams.get("view"));
@@ -114,13 +122,13 @@ export function GuestMawkibsPage() {
       "guest-mawkibs-browse",
       debouncedQuery,
       mawkibCity,
-      capacityView,
+      onlyAvailableCapacity,
     ],
     queryFn: () =>
       mawkibsApi.getPublicList({
         ...(debouncedQuery ? { q: debouncedQuery } : {}),
         ...(mawkibCity ? { mawkibCity: mawkibCity as MawkibCity } : {}),
-        capacityFilter: capacityView,
+        capacityFilter: onlyAvailableCapacity ? "available" : "all",
       }),
   });
 
@@ -186,8 +194,8 @@ export function GuestMawkibsPage() {
         </div>
         <div>
           <CapacityFilterToggle
-            value={capacityView}
-            onChange={setCapacityView}
+            onlyAvailable={onlyAvailableCapacity}
+            onChange={setOnlyAvailableCapacity}
           />
         </div>
         <div className="justify-self-end sm:justify-self-auto">
@@ -246,27 +254,38 @@ export function GuestMawkibsPage() {
           <div className={`${guestTheme.card} p-10 text-center`}>
             <p className="font-medium text-slate-700">موکبی یافت نشد</p>
             <p className="mt-2 text-sm text-slate-500">
-              {debouncedQuery || mawkibCity || capacityView === "full"
+              {debouncedQuery || mawkibCity || !onlyAvailableCapacity
                 ? "فیلترها را تغییر دهید یا عبارت دیگری جستجو کنید."
                 : "در حال حاضر موکب فعالی ثبت نشده است."}
             </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {mawkibs.map((mawkib) => (
-              <MawkibInfoCard
-                key={mawkib.id}
-                mawkib={mawkib}
-                footer={
-                  <MawkibGuestBrowseFooter
-                    onViewCapacity={() => setCapacityMawkib(mawkib)}
-                    onViewDetails={() =>
-                      navigate(guestMawkibDetailPath(mawkib.id))
-                    }
-                  />
-                }
-              />
-            ))}
+            {mawkibs.map((mawkib) => {
+              const galleryUrls = mawkibGalleryUrls(mawkib);
+              return (
+                <MawkibInfoCard
+                  key={mawkib.id}
+                  mawkib={mawkib}
+                  showThumbnail
+                  variant="guest-browse"
+                  footer={
+                    <MawkibGuestBrowseFooter
+                      showGallery={galleryUrls.length > 0}
+                      showReserve={isMawkibOnlineReservationEnabled(mawkib)}
+                      onViewGallery={() => setGalleryMawkib(mawkib)}
+                      onViewCapacity={() => setCapacityMawkib(mawkib)}
+                      onReserve={() =>
+                        navigate(buildGuestReserveUrl(mawkib.id))
+                      }
+                      onViewDetails={() =>
+                        navigate(guestMawkibDetailPath(mawkib.id))
+                      }
+                    />
+                  }
+                />
+              );
+            })}
           </div>
         )}
       </div>
@@ -276,7 +295,16 @@ export function GuestMawkibsPage() {
         onClose={() => setCapacityMawkib(null)}
         mawkibId={capacityMawkib?.id ?? 0}
         mawkibName={capacityMawkib?.name ?? ""}
+        serviceStartDate={capacityMawkib?.serviceStartDate}
+        serviceEndDate={capacityMawkib?.serviceEndDate}
         guestReserveLinks
+      />
+
+      <MawkibGalleryModal
+        open={!!galleryMawkib}
+        onClose={() => setGalleryMawkib(null)}
+        mawkibName={galleryMawkib?.name ?? ""}
+        imageUrls={galleryMawkib ? mawkibGalleryUrls(galleryMawkib) : []}
       />
     </GuestShell>
   );

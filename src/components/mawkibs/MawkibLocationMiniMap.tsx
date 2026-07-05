@@ -13,6 +13,7 @@ import {
   LEAFLET_TILE_URL,
   mawkibMarkerIcon,
 } from '../../lib/leaflet-config';
+import { MapReadyGate, MapResizeFix } from './leaflet-map-host';
 
 import 'leaflet/dist/leaflet.css';
 
@@ -25,24 +26,6 @@ interface MawkibLocationMiniMapProps {
   mountKey?: string | number | boolean;
   editable?: boolean;
   onPositionChange?: (latitude: number, longitude: number) => void;
-}
-
-function MapResizeFix() {
-  const map = useMap();
-
-  useEffect(() => {
-    const invalidate = () => map.invalidateSize();
-    const raf = requestAnimationFrame(invalidate);
-    const timer = window.setTimeout(invalidate, 150);
-    window.addEventListener('resize', invalidate);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.clearTimeout(timer);
-      window.removeEventListener('resize', invalidate);
-    };
-  }, [map]);
-
-  return null;
 }
 
 function MapInitialCenter({
@@ -60,7 +43,9 @@ function MapInitialCenter({
 
   useEffect(() => {
     map.setView([latitude, longitude], zoom);
-  }, [map, mountKey]);
+    const timer = window.setTimeout(() => map.invalidateSize(), 100);
+    return () => window.clearTimeout(timer);
+  }, [map, latitude, longitude, zoom, mountKey]);
 
   return null;
 }
@@ -134,34 +119,46 @@ export function MawkibLocationMiniMap({
     onPositionChange?.(nextLat, nextLng);
   };
 
+  const isModalMap = className.includes('mawkib-mini-map-modal');
+
   return (
-    <div className={`mawkib-mini-map overflow-hidden rounded-xl border border-slate-200 ${className}`}>
-      <MapContainer
-        key={String(mountKey)}
-        center={position}
-        zoom={zoom}
-        scrollWheelZoom={editable}
-        dragging
-        zoomControl
-        className="h-full w-full"
+    <div
+      className={`mawkib-mini-map overflow-hidden rounded-xl border border-slate-200 ${className}`}
+    >
+      <MapReadyGate
+        mountKey={mountKey}
+        minHeightClass={isModalMap ? 'min-h-[18rem] sm:min-h-[22rem]' : 'min-h-48'}
       >
-        <TileLayer attribution={LEAFLET_TILE_ATTRIBUTION} url={LEAFLET_TILE_URL} />
-        <MapResizeFix />
-        <MapInitialCenter
-          latitude={lat}
-          longitude={lng}
+        <MapContainer
+          key={String(mountKey)}
+          center={position}
           zoom={zoom}
-          mountKey={mountKey}
-        />
-        {editable ? (
-          <>
-            <MapPickHandler onPick={handleMove} />
-            <DraggableMarker position={position} onMove={handleMove} />
-          </>
-        ) : (
-          <Marker position={position} icon={mawkibMarkerIcon} />
-        )}
-      </MapContainer>
+          scrollWheelZoom={editable}
+          dragging
+          zoomControl
+          className="h-full w-full"
+        >
+          <TileLayer
+            attribution={LEAFLET_TILE_ATTRIBUTION}
+            url={LEAFLET_TILE_URL}
+          />
+          <MapResizeFix />
+          <MapInitialCenter
+            latitude={lat}
+            longitude={lng}
+            zoom={zoom}
+            mountKey={mountKey}
+          />
+          {editable ? (
+            <>
+              <MapPickHandler onPick={handleMove} />
+              <DraggableMarker position={position} onMove={handleMove} />
+            </>
+          ) : (
+            <Marker position={position} icon={mawkibMarkerIcon} />
+          )}
+        </MapContainer>
+      </MapReadyGate>
     </div>
   );
 }

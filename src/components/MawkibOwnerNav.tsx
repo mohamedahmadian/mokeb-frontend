@@ -1,5 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { NavIcon } from "./ui/NavIcons";
+import { mawkibsApi } from "../lib/mawkibs";
 
 interface MawkibOwnerNavProps {
   collapsed?: boolean;
@@ -17,12 +19,47 @@ const listLinkClass = (isActive: boolean, collapsed: boolean) =>
   }`;
 
 function isReservationsActive(pathname: string) {
-  if (pathname === "/reservations/new") return false;
+  if (
+    pathname === "/reservations/new" ||
+    pathname === "/reservations/quick" ||
+    pathname === "/reservations/today" ||
+    pathname === "/reservations/waiting-list"
+  ) {
+    return false;
+  }
   return pathname === "/reservations" || /^\/reservations\/\d+/.test(pathname);
+}
+
+function isWaitingListActive(pathname: string) {
+  return pathname === "/reservations/waiting-list";
 }
 
 function isNewReservationActive(pathname: string) {
   return pathname === "/reservations/new";
+}
+
+function isQuickReservationActive(
+  pathname: string,
+  search: string,
+  mawkibId: number,
+) {
+  if (pathname !== "/reservations/quick" && pathname !== "/reservations/today") {
+    return false;
+  }
+  const id = parseInt(new URLSearchParams(search).get("mawkibId") ?? "", 10);
+  return id === mawkibId;
+}
+
+function quickReservationLabel(mawkibName: string) {
+  return `رزرو سریع ${mawkibName}`;
+}
+
+function isMawkibsListActive(pathname: string) {
+  return pathname === "/mawkibs";
+}
+
+function isMapSearchActive(pathname: string) {
+  return pathname === "/mawkibs/map" || /^\/mawkibs\/\d+\/view/.test(pathname);
 }
 
 export function MawkibOwnerSidebarSection({
@@ -30,7 +67,15 @@ export function MawkibOwnerSidebarSection({
   showOwnersList,
   onNavigate,
 }: MawkibOwnerNavProps) {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+
+  const { data: myMawkibs = [] } = useQuery({
+    queryKey: ["sidebar-my-mawkibs"],
+    queryFn: () => mawkibsApi.getMyList(),
+    staleTime: 60_000,
+  });
+
+  const quickReserveMawkibs = myMawkibs.filter((m) => m.status === "Approved");
 
   return (
     <div className="mb-2">
@@ -70,6 +115,28 @@ export function MawkibOwnerSidebarSection({
           <span className={collapsed ? "sr-only" : undefined}>رزرو جدید</span>
         </span>
       </NavLink>
+      {quickReserveMawkibs.map((mawkib) => {
+        const label = quickReservationLabel(mawkib.name);
+        return (
+          <NavLink
+            key={mawkib.id}
+            to={`/reservations/quick?mawkibId=${mawkib.id}`}
+            onClick={onNavigate}
+            className={listLinkClass(
+              isQuickReservationActive(pathname, search, mawkib.id),
+              collapsed,
+            )}
+            title={label}
+          >
+            <span
+              className={`flex items-center ${collapsed ? "" : "gap-2.5 px-1"}`}
+            >
+              <NavIcon name="todayReserve" />
+              <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
+            </span>
+          </NavLink>
+        );
+      })}
       <NavLink
         to="/reservations"
         onClick={onNavigate}
@@ -86,10 +153,23 @@ export function MawkibOwnerSidebarSection({
         </span>
       </NavLink>
       <NavLink
+        to="/reservations/waiting-list"
+        onClick={onNavigate}
+        className={listLinkClass(isWaitingListActive(pathname), collapsed)}
+        title="لیست انتظار"
+      >
+        <span
+          className={`flex items-center ${collapsed ? "" : "gap-2.5 px-1"}`}
+        >
+          <NavIcon name="reservations" />
+          <span className={collapsed ? "sr-only" : undefined}>لیست انتظار</span>
+        </span>
+      </NavLink>
+      <NavLink
         to="/mawkibs"
         end
         onClick={onNavigate}
-        className={({ isActive }) => listLinkClass(isActive, collapsed)}
+        className={listLinkClass(isMawkibsListActive(pathname), collapsed)}
         title="موکب‌ها"
       >
         <span
@@ -97,6 +177,21 @@ export function MawkibOwnerSidebarSection({
         >
           <NavIcon name="mawkibs" />
           <span className={collapsed ? "sr-only" : undefined}>موکب‌ها</span>
+        </span>
+      </NavLink>
+      <NavLink
+        to="/mawkibs/map"
+        onClick={onNavigate}
+        className={listLinkClass(isMapSearchActive(pathname), collapsed)}
+        title="جستجوی موکب ( نقشه )"
+      >
+        <span
+          className={`flex items-center ${collapsed ? "" : "gap-2.5 px-1"}`}
+        >
+          <NavIcon name="map" />
+          <span className={collapsed ? "sr-only" : undefined}>
+            جستجوی موکب ( نقشه )
+          </span>
         </span>
       </NavLink>
     </div>

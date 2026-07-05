@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { UserFormModal } from '../components/users/UserFormModal';
+import { UserAvatar, UserNameWithAvatar } from '../components/users/UserAvatar';
 import { DataCard } from '../components/ui/DataCard';
 import { FilterPanel } from '../components/ui/FilterPanel';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -204,6 +205,9 @@ export function UsersPage() {
           users.map((user) => (
             <DataCard
               key={user.id}
+              leading={
+                <UserAvatar fullName={user.fullName} imageUrl={user.imageUrl} size="sm" />
+              }
               title={user.fullName}
               subtitle={user.mobileNumber}
               badge={
@@ -265,7 +269,13 @@ export function UsersPage() {
             ) : (
               users.map((user) => (
                 <tr key={user.id} className="border-t border-slate-100">
-                  <td className="px-4 py-3 font-medium">{user.fullName}</td>
+                  <td className="px-4 py-3">
+                    <UserNameWithAvatar
+                      fullName={user.fullName}
+                      imageUrl={user.imageUrl}
+                      avatarSize="sm"
+                    />
+                  </td>
                   <td className="px-4 py-3 font-mono">{user.mobileNumber}</td>
                   <td className="px-4 py-3">{user.province ?? '—'}</td>
                   <td className="px-4 py-3">{user.city ?? '—'}</td>

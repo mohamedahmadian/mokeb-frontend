@@ -8,18 +8,28 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { CancelReservationModal } from "../components/reservations/CancelReservationModal";
+import { GuestCountBadges } from "../components/reservations/GuestCountBadges";
 import { PilgrimFilterSelect } from "../components/reservations/PilgrimFilterSelect";
+import { ReservationListDownloadButton } from "../components/reservations/ReservationListDownloadButton";
+import { ReservationListPrintButton } from "../components/reservations/ReservationListPrintButton";
 import { ReservationReviewModal } from "../components/reservations/ReservationReviewModal";
 import { DataCard } from "../components/ui/DataCard";
 import { NavIcon } from "../components/ui/NavIcons";
 import { FilterPanel } from "../components/ui/FilterPanel";
 import { PageHeader } from "../components/ui/PageHeader";
+import { PaginationBar } from "../components/ui/PaginationBar";
 import {
   PersianDateInput,
   formatPersianDate,
+  formatPersianSlashDateFromGregorian,
+  toLocalGregorianDateString,
+  toPersianDigits,
 } from "../components/ui/PersianDateInput";
-import { formatGuestCount } from "../lib/capacity";
-import { formatTimeFromIso } from "../lib/format-time";
+import {
+  DEFAULT_CHECK_IN_TIME,
+  DEFAULT_CHECK_OUT_TIME,
+  formatTimeFromIso,
+} from "../lib/format-time";
 import { useAuth } from "../contexts/AuthContext";
 import {
   RESERVATION_STATUS_LABELS,
@@ -34,6 +44,7 @@ import {
 } from "../lib/styles";
 import { mawkibsApi } from "../lib/mawkibs";
 import {
+  DEFAULT_RESERVATIONS_PAGE_SIZE,
   reservationsApi,
   type ReservationFilters,
   type ReservationStatus,
@@ -64,6 +75,7 @@ const emptyFilters: ReservationFilters & {
   reservationDateTo: "",
   trackingCode: "",
   pilgrimMobile: "",
+  pilgrimNationalId: "",
 };
 
 function parseFilters(form: typeof emptyFilters): ReservationFilters {
@@ -78,6 +90,9 @@ function parseFilters(form: typeof emptyFilters): ReservationFilters {
     filters.reservationDateTo = form.reservationDateTo;
   if (form.trackingCode) filters.trackingCode = form.trackingCode.trim();
   if (form.pilgrimMobile) filters.pilgrimMobile = form.pilgrimMobile;
+  if (form.pilgrimNationalId)
+    filters.pilgrimNationalId = form.pilgrimNationalId.trim();
+  filters.sortOrder = "desc";
   return filters;
 }
 
@@ -90,17 +105,47 @@ function buildInitialAppliedFilters(
   if (mawkibId) filters.mawkibId = parseInt(mawkibId, 10);
   if (pilgrimUserId) filters.pilgrimUserId = parseInt(pilgrimUserId, 10);
   if (status) filters.status = status;
+  filters.sortOrder = "desc";
   return filters;
+}
+
+function RequestDateCell({ createdAt }: { createdAt: string }) {
+  const datePart = formatPersianSlashDateFromGregorian(
+    toLocalGregorianDateString(createdAt),
+  );
+  if (datePart === "—") return <>—</>;
+
+  const date = new Date(createdAt);
+  const time =
+    Number.isNaN(date.getTime())
+      ? ""
+      : toPersianDigits(
+          `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`,
+        );
+
+  return (
+    <div
+      dir="ltr"
+      className="whitespace-nowrap text-right font-[Vazir,ui-sans-serif,system-ui,sans-serif] tabular-nums"
+    >
+      <span>{datePart}</span>
+      {time ? <span>{` ${time}`}</span> : null}
+    </div>
+  );
 }
 
 function ReservationDateCell({
   date,
   actualAt,
   timeLabel,
+  plannedTime,
+  defaultTime,
 }: {
   date: string;
   actualAt?: string | null;
   timeLabel: string;
+  plannedTime?: string | null;
+  defaultTime?: string | null;
 }) {
   const time = formatTimeFromIso(actualAt);
 
@@ -160,6 +205,7 @@ export function ReservationsPage() {
       validInitialStatus,
     ),
   );
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const status =
@@ -176,19 +222,38 @@ export function ReservationsPage() {
     setAppliedFilters(
       buildInitialAppliedFilters(initialMawkibId, initialPilgrimUserId, status),
     );
+    setPage(1);
   }, [initialMawkibId, initialPilgrimUserId, initialStatus]);
 
   const queryKey = isAdmin
-    ? ["reservations-admin", appliedFilters]
-    : ["reservations-my", appliedFilters];
+    ? ["reservations-admin", appliedFilters, page]
+    : ["reservations-my", appliedFilters, page];
 
-  const { data: reservations = [], isLoading, refetch } = useQuery({
+  const { data: reservationsPage, isLoading, refetch } = useQuery({
     queryKey,
-    queryFn: () =>
-      isAdmin
-        ? reservationsApi.getAdminList(appliedFilters)
-        : reservationsApi.getMyList(appliedFilters),
+    queryFn: () => {
+      const params = {
+        ...appliedFilters,
+        page,
+        pageSize: DEFAULT_RESERVATIONS_PAGE_SIZE,
+      };
+      return isAdmin
+        ? reservationsApi.getAdminListPaginated(params)
+        : reservationsApi.getMyListPaginated(params);
+    },
   });
+
+  const reservations = reservationsPage?.items ?? [];
+  const totalReservations = reservationsPage?.total ?? 0;
+  const totalPages = reservationsPage?.totalPages ?? 1;
+
+  const loadReservationsForExport = () =>
+    isAdmin
+      ? reservationsApi.getAdminListForExport(appliedFilters)
+      : reservationsApi.getMyListForExport(appliedFilters);
+
+  const exportOptions = { includePilgrim: !isPilgrim };
+  const printExportOptions = { ...exportOptions, compactColumns: isPilgrim };
 
   const { data: mawkibs = [] } = useQuery({
     queryKey: isAdmin
@@ -292,6 +357,7 @@ export function ReservationsPage() {
 
   const applyFilters = () => {
     const next = parseFilters(filters);
+    setPage(1);
     if (JSON.stringify(next) === JSON.stringify(appliedFilters)) {
       void refetch();
       return;
@@ -301,6 +367,7 @@ export function ReservationsPage() {
 
   const resetFilters = () => {
     setFilters(emptyFilters);
+    setPage(1);
     if (Object.keys(appliedFilters).length === 0) {
       void refetch();
       return;
@@ -339,9 +406,9 @@ export function ReservationsPage() {
   const renderActions = (r: Reservation) => {
     const canReview =
       isPilgrim && canPilgrimReviewReservation(r, user?.id);
-    const showRegisterReview = canReview && !r.review;
+    const showRegisterReview = !isPilgrim && canReview && !r.review;
     const showEditReview =
-      canReview && r.review && canEditReservationReview(r, user?.id);
+      !isPilgrim && canReview && r.review && canEditReservationReview(r, user?.id);
 
     const detailsButton = (
       <Link
@@ -350,7 +417,7 @@ export function ReservationsPage() {
         onClick={stopRowClick}
       >
         <NavIcon name="info" className={actionIconClass} />
-        {isPilgrim ? "مشاهده جزئیات" : "جزئیات"}
+        جزئیات
       </Link>
     );
 
@@ -364,32 +431,6 @@ export function ReservationsPage() {
         {isPilgrim ? (
           <>
             {detailsButton}
-            {showRegisterReview && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  stopRowClick(e);
-                  setReviewingReservation(r);
-                }}
-                className={`${btnAction} inline-flex items-center gap-1.5 bg-[#f0f4fa] text-[#3d5d8a] hover:bg-[#e8eef6]`}
-              >
-                <NavIcon name="feedback" className={actionIconClass} />
-                ثبت نظر
-              </button>
-            )}
-            {showEditReview && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  stopRowClick(e);
-                  setReviewingReservation(r);
-                }}
-                className={`${btnAction} inline-flex items-center gap-1.5 bg-[#f0f4fa] text-[#3d5d8a] hover:bg-[#e8eef6]`}
-              >
-                <NavIcon name="feedback" className={actionIconClass} />
-                ویرایش نظر
-              </button>
-            )}
             {canCancel(r) && (
               <button
                 type="button"
@@ -484,6 +525,10 @@ export function ReservationsPage() {
 
   const rowInteractiveClass =
     "cursor-pointer border-t border-slate-100 transition hover:bg-slate-50/80";
+
+  const renderGuestCount = (male: number, female: number) => (
+    <GuestCountBadges male={male} female={female} />
+  );
 
   if (isLoading) return <p className="text-slate-500">در حال بارگذاری...</p>;
 
@@ -581,6 +626,17 @@ export function ReservationsPage() {
                 className={filterInputClass}
                 dir="ltr"
               />
+              <input
+                type="text"
+                placeholder="کد ملی زائر"
+                value={filters.pilgrimNationalId}
+                onChange={(e) =>
+                  setFilters({ ...filters, pilgrimNationalId: e.target.value })
+                }
+                className={filterInputClass}
+                dir="ltr"
+                inputMode="numeric"
+              />
               <PilgrimFilterSelect
                 value={filters.pilgrimUserIdStr}
                 onChange={(pilgrimUserIdStr, pilgrim) =>
@@ -595,6 +651,20 @@ export function ReservationsPage() {
           )}
         </div>
       </FilterPanel>
+
+      <div className="mb-4 flex justify-end gap-2">
+        <ReservationListDownloadButton
+          loadReservations={loadReservationsForExport}
+          exportOptions={exportOptions}
+          disabled={isLoading}
+        />
+        <ReservationListPrintButton
+          loadReservations={loadReservationsForExport}
+          exportOptions={printExportOptions}
+          title={isPilgrim ? "رزروهای من" : "لیست رزروها"}
+          disabled={isLoading}
+        />
+      </div>
 
       <div className="space-y-3 lg:hidden">
         {reservations.length === 0 ? (
@@ -621,9 +691,17 @@ export function ReservationsPage() {
                 </span>
               }
               rows={[
+                ...(isPilgrim && r.createdAt
+                  ? [
+                      {
+                        label: "درخواست",
+                        value: <RequestDateCell createdAt={r.createdAt} />,
+                      },
+                    ]
+                  : []),
                 {
                   label: "تعداد",
-                  value: formatGuestCount(r.maleGuestCount, r.femaleGuestCount),
+                  value: renderGuestCount(r.maleGuestCount, r.femaleGuestCount),
                 },
                 {
                   label: "تاریخ شروع",
@@ -632,6 +710,8 @@ export function ReservationsPage() {
                       date={r.reservationDate}
                       actualAt={r.actualCheckInAt}
                       timeLabel="ورود"
+                      plannedTime={r.plannedCheckInTime}
+                      defaultTime={r.mawkib.defaultCheckInTime ?? DEFAULT_CHECK_IN_TIME}
                     />
                   ),
                 },
@@ -642,6 +722,8 @@ export function ReservationsPage() {
                       date={r.reservationEndDate ?? r.reservationDate}
                       actualAt={r.actualCheckOutAt}
                       timeLabel="خروج"
+                      plannedTime={r.plannedCheckOutTime}
+                      defaultTime={r.mawkib.defaultCheckOutTime ?? DEFAULT_CHECK_OUT_TIME}
                     />
                   ),
                 },
@@ -653,9 +735,12 @@ export function ReservationsPage() {
       </div>
 
       <div className="hidden overflow-x-auto rounded-xl bg-white shadow-sm lg:block">
-        <table className="w-full min-w-[800px] text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
+              {isPilgrim && (
+                <th className="px-4 py-3 text-right">درخواست</th>
+              )}
               <th className="px-4 py-3 text-right">موکب</th>
               {!isPilgrim && (
                 <th className="px-4 py-3 text-right">زائر</th>
@@ -671,7 +756,7 @@ export function ReservationsPage() {
             {reservations.length === 0 ? (
               <tr>
                 <td
-                  colSpan={isPilgrim ? 6 : 7}
+                  colSpan={isPilgrim ? 7 : 7}
                   className="px-4 py-8 text-center text-slate-400"
                 >
                   رزروی یافت نشد
@@ -693,18 +778,29 @@ export function ReservationsPage() {
                   role="link"
                   aria-label={`مشاهده جزئیات رزرو ${isPilgrim ? r.mawkib.name : r.pilgrim.fullName}`}
                 >
+                  {isPilgrim && (
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {r.createdAt ? (
+                        <RequestDateCell createdAt={r.createdAt} />
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  )}
                   <td className="px-4 py-3">{r.mawkib.name}</td>
                   {!isPilgrim && (
                     <td className="px-4 py-3">{r.pilgrim.fullName}</td>
                   )}
-                  <td className="px-4 py-3">
-                    {formatGuestCount(r.maleGuestCount, r.femaleGuestCount)}
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {renderGuestCount(r.maleGuestCount, r.femaleGuestCount)}
                   </td>
                   <td className="px-4 py-3">
                     <ReservationDateCell
                       date={r.reservationDate}
                       actualAt={r.actualCheckInAt}
                       timeLabel="ورود"
+                      plannedTime={r.plannedCheckInTime}
+                      defaultTime={r.mawkib.defaultCheckInTime ?? DEFAULT_CHECK_IN_TIME}
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -712,6 +808,8 @@ export function ReservationsPage() {
                       date={r.reservationEndDate ?? r.reservationDate}
                       actualAt={r.actualCheckOutAt}
                       timeLabel="خروج"
+                      plannedTime={r.plannedCheckOutTime}
+                      defaultTime={r.mawkib.defaultCheckOutTime ?? DEFAULT_CHECK_OUT_TIME}
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -732,6 +830,16 @@ export function ReservationsPage() {
           </tbody>
         </table>
       </div>
+
+      <PaginationBar
+        className="mt-4"
+        page={page}
+        totalPages={totalPages}
+        totalItems={totalReservations}
+        pageSize={DEFAULT_RESERVATIONS_PAGE_SIZE}
+        onPageChange={setPage}
+        itemLabel="رزرو"
+      />
 
       <CancelReservationModal
         open={!!cancellingReservation}

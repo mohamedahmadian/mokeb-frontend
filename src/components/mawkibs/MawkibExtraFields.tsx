@@ -1,4 +1,11 @@
-import { inputClass } from '../../lib/styles';
+import {
+  DEFAULT_MAWKIB_DEFAULT_RESERVATION_DAYS,
+  DEFAULT_MAWKIB_MAX_RESERVATION_DAYS,
+} from '../../lib/date-range';
+import {
+  DEFAULT_MAWKIB_RULES,
+  normalizeMawkibRulesText,
+} from '../../lib/mawkib-rules-print';
 import {
   MAWKIB_CITIES,
   MAWKIB_COUNTRIES,
@@ -6,13 +13,17 @@ import {
   mawkibCountryLabel,
 } from '../../lib/mawkib-locations';
 import type { MawkibCity, MawkibCountry } from '../../lib/mawkib-locations';
+import { inputClass } from '../../lib/styles';
 import type { MawkibExtraFields as MawkibExtraFieldsType } from '../../types';
 import { SearchableSelect } from '../ui/SearchableSelect';
 import { NavIcon } from '../ui/NavIcons';
 import { FieldLabel, FormSection } from '../users/user-form-ui';
+import { MawkibRulesEditor } from './MawkibRulesEditor';
 
 export type MawkibExtraFormValues = {
   distanceToShrine: string;
+  distanceToBusStation: string;
+  distanceToMetro: string;
   lunchReception: boolean;
   breakfastReception: boolean;
   dinnerReception: boolean;
@@ -21,7 +32,10 @@ export type MawkibExtraFormValues = {
   parking: boolean;
   internet: boolean;
   familyFriendly: boolean;
+  elevator: boolean;
+  stairs: boolean;
   maxReservationDays: string;
+  defaultReservationDays: string;
   country: MawkibCountry;
   mawkibCity: MawkibCity | '';
   rules: string;
@@ -41,6 +55,8 @@ export const MAWKIB_AMENITY_FIELDS = [
   { key: 'parking' as const, label: 'پارکینگ' },
   { key: 'internet' as const, label: 'اینترنت' },
   { key: 'familyFriendly' as const, label: 'خانوادگی' },
+  { key: 'elevator' as const, label: 'آسانسور' },
+  { key: 'stairs' as const, label: 'پله' },
 ];
 
 export type MawkibAmenityKey = (typeof MAWKIB_AMENITY_FIELDS)[number]['key'];
@@ -59,9 +75,14 @@ export const MAWKIB_NOTIFY_FIELDS = [
   { key: 'websiteUrl' as const, label: 'آدرس وب‌سایت', placeholder: 'https://...', type: 'url' as const },
 ];
 
+const defaultMaxReservationDaysValue = String(DEFAULT_MAWKIB_MAX_RESERVATION_DAYS);
+const defaultReservationDaysValue = String(DEFAULT_MAWKIB_DEFAULT_RESERVATION_DAYS);
+
 export function emptyMawkibExtraFields(): MawkibExtraFormValues {
   return {
     distanceToShrine: '',
+    distanceToBusStation: '',
+    distanceToMetro: '',
     lunchReception: false,
     breakfastReception: false,
     dinnerReception: false,
@@ -70,10 +91,13 @@ export function emptyMawkibExtraFields(): MawkibExtraFormValues {
     parking: false,
     internet: false,
     familyFriendly: false,
-    maxReservationDays: '',
+    elevator: false,
+    stairs: false,
+    maxReservationDays: defaultMaxReservationDaysValue,
+    defaultReservationDays: defaultReservationDaysValue,
     country: 'Iran',
     mawkibCity: '',
-    rules: '',
+    rules: DEFAULT_MAWKIB_RULES,
     telegramChannel: '',
     whatsapp: '',
     bale: '',
@@ -87,6 +111,8 @@ export function mawkibExtraFieldsFromMawkib(
 ): MawkibExtraFormValues {
   return {
     distanceToShrine: mawkib?.distanceToShrine ?? '',
+    distanceToBusStation: mawkib?.distanceToBusStation ?? '',
+    distanceToMetro: mawkib?.distanceToMetro ?? '',
     lunchReception: mawkib?.lunchReception ?? false,
     breakfastReception: mawkib?.breakfastReception ?? false,
     dinnerReception: mawkib?.dinnerReception ?? false,
@@ -95,7 +121,12 @@ export function mawkibExtraFieldsFromMawkib(
     parking: mawkib?.parking ?? false,
     internet: mawkib?.internet ?? false,
     familyFriendly: mawkib?.familyFriendly ?? false,
-    maxReservationDays: mawkib?.maxReservationDays?.toString() ?? '',
+    elevator: mawkib?.elevator ?? false,
+    stairs: mawkib?.stairs ?? false,
+    maxReservationDays:
+      mawkib?.maxReservationDays?.toString() ?? defaultMaxReservationDaysValue,
+    defaultReservationDays:
+      mawkib?.defaultReservationDays?.toString() ?? defaultReservationDaysValue,
     country: mawkib?.country ?? 'Iran',
     mawkibCity: mawkib?.mawkibCity ?? '',
     rules: mawkib?.rules ?? '',
@@ -110,12 +141,23 @@ export function mawkibExtraFieldsFromMawkib(
 export function mawkibExtraFieldsToPayload(
   fields: MawkibExtraFormValues,
 ): MawkibExtraFieldsType {
-  const maxDays = fields.maxReservationDays.trim()
+  const maxDaysRaw = fields.maxReservationDays.trim()
     ? parseInt(fields.maxReservationDays, 10)
-    : undefined;
+    : DEFAULT_MAWKIB_MAX_RESERVATION_DAYS;
+  const defaultDaysRaw = fields.defaultReservationDays.trim()
+    ? parseInt(fields.defaultReservationDays, 10)
+    : DEFAULT_MAWKIB_DEFAULT_RESERVATION_DAYS;
+  const maxDays =
+    maxDaysRaw >= 1 ? maxDaysRaw : DEFAULT_MAWKIB_MAX_RESERVATION_DAYS;
+  const defaultDays =
+    defaultDaysRaw >= 1
+      ? Math.min(defaultDaysRaw, maxDays)
+      : DEFAULT_MAWKIB_DEFAULT_RESERVATION_DAYS;
 
   return {
     distanceToShrine: fields.distanceToShrine.trim() || undefined,
+    distanceToBusStation: fields.distanceToBusStation.trim() || undefined,
+    distanceToMetro: fields.distanceToMetro.trim() || undefined,
     lunchReception: fields.lunchReception,
     breakfastReception: fields.breakfastReception,
     dinnerReception: fields.dinnerReception,
@@ -124,10 +166,13 @@ export function mawkibExtraFieldsToPayload(
     parking: fields.parking,
     internet: fields.internet,
     familyFriendly: fields.familyFriendly,
-    maxReservationDays: maxDays && maxDays >= 1 ? maxDays : undefined,
+    elevator: fields.elevator,
+    stairs: fields.stairs,
+    maxReservationDays: maxDays,
+    defaultReservationDays: defaultDays,
     country: fields.country,
     mawkibCity: fields.mawkibCity || undefined,
-    rules: fields.rules.trim() || undefined,
+    rules: normalizeMawkibRulesText(fields.rules),
     telegramChannel: fields.telegramChannel.trim() || undefined,
     whatsapp: fields.whatsapp.trim() || undefined,
     bale: fields.bale.trim() || undefined,
@@ -139,10 +184,18 @@ export function mawkibExtraFieldsToPayload(
 interface MawkibExtraFieldsProps {
   values: MawkibExtraFormValues;
   onChange: (values: MawkibExtraFormValues) => void;
+  facilities?: string;
+  onFacilitiesChange?: (facilities: string) => void;
   readOnly?: boolean;
 }
 
-export function MawkibExtraFields({ values, onChange, readOnly = false }: MawkibExtraFieldsProps) {
+export function MawkibExtraFields({
+  values,
+  onChange,
+  facilities,
+  onFacilitiesChange,
+  readOnly = false,
+}: MawkibExtraFieldsProps) {
   const setField = <K extends keyof MawkibExtraFormValues>(
     key: K,
     value: MawkibExtraFormValues[K],
@@ -206,18 +259,6 @@ export function MawkibExtraFields({ values, onChange, readOnly = false }: Mawkib
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="block">
-            <FieldLabel label="حداکثر بازه زمانی رزرو (روز)" />
-            <input
-              type="number"
-              min={1}
-              value={values.maxReservationDays}
-              onChange={(e) => setField('maxReservationDays', e.target.value)}
-              className={inputClass}
-              placeholder="بدون محدودیت"
-              {...fieldProps}
-            />
-          </label>
-          <label className="block">
             <FieldLabel label="فاصله تا حرم" />
             <input
               type="text"
@@ -225,6 +266,28 @@ export function MawkibExtraFields({ values, onChange, readOnly = false }: Mawkib
               onChange={(e) => setField('distanceToShrine', e.target.value)}
               className={inputClass}
               placeholder="مثلاً ۵۰۰ متر"
+              {...fieldProps}
+            />
+          </label>
+          <label className="block">
+            <FieldLabel label="فاصله تا ایستگاه اتوبوس" />
+            <input
+              type="text"
+              value={values.distanceToBusStation}
+              onChange={(e) => setField('distanceToBusStation', e.target.value)}
+              className={inputClass}
+              placeholder="مثلاً ۲۰۰ متر"
+              {...fieldProps}
+            />
+          </label>
+          <label className="block sm:col-span-2">
+            <FieldLabel label="فاصله تا مترو" />
+            <input
+              type="text"
+              value={values.distanceToMetro}
+              onChange={(e) => setField('distanceToMetro', e.target.value)}
+              className={inputClass}
+              placeholder="مثلاً ۱ کیلومتر"
               {...fieldProps}
             />
           </label>
@@ -251,20 +314,31 @@ export function MawkibExtraFields({ values, onChange, readOnly = false }: Mawkib
             </label>
           ))}
         </div>
+
+        {facilities !== undefined && onFacilitiesChange && (
+          <label className="block">
+            <FieldLabel label="امکانات" />
+            <textarea
+              value={facilities}
+              onChange={(e) => {
+                if (readOnly) return;
+                onFacilitiesChange(e.target.value);
+              }}
+              rows={2}
+              className={inputClass}
+              placeholder="اسکان، پارکینگ، حمام..."
+              {...fieldProps}
+            />
+          </label>
+        )}
       </FormSection>
 
       <FormSection title="قوانین" icon={<NavIcon name="book" className="h-4 w-4" />}>
-        <label className="block">
-          <FieldLabel label="قوانین و مقررات" hint="اختیاری" />
-        <textarea
+        <MawkibRulesEditor
           value={values.rules}
-          onChange={(e) => setField('rules', e.target.value)}
-          rows={3}
-          className={inputClass}
-          placeholder="قوانین و مقررات موکب..."
-          {...fieldProps}
+          onChange={(rules) => setField('rules', rules)}
+          readOnly={readOnly}
         />
-        </label>
       </FormSection>
 
       <FormSection title="اطلاع‌رسانی" icon={<NavIcon name="feedback" className="h-4 w-4" />}>

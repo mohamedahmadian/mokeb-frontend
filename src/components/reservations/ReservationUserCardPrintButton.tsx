@@ -1,20 +1,25 @@
-import { flushSync } from 'react-dom';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
-import { Modal } from '../Modal';
-import { NavIcon } from '../ui/NavIcons';
-import { formatPersianNumber } from '../../lib/capacity';
-import { buildGuestMawkibUrl } from '../../lib/guest-mawkib';
-import { buildReservationTrackUrl } from '../../lib/reservation-track';
-import { btnPrimary, btnSecondary, inputClass } from '../../lib/styles';
-import { formatPersianDateRange } from '../ui/PersianDateRangePicker';
-import { MAWKIB_DEFAULT_IMAGE } from '../mawkibs/MawkibThumbnail';
-import { resolveAssetUrl } from '../../lib/geo';
+import { createPortal, flushSync } from "react-dom";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import { Modal } from "../Modal";
+import { NavIcon } from "../ui/NavIcons";
+import { formatPersianNumber } from "../../lib/capacity";
+import { buildGuestMawkibUrl } from "../../lib/guest-mawkib";
+import { buildPilgrimCardUrl } from "../../lib/reservation-track";
+import { btnPrimary, btnSecondary, inputClass } from "../../lib/styles";
+import { formatPersianDateRange } from "../ui/PersianDateRangePicker";
+import { formatPresenceStayWeekdays } from "../../lib/pilgrim-card-weekday";
+import { PRINT_CARD_HERO_IMAGE_CSS } from "../mawkibs/PrintCardHeroImage";
+import { resolveMawkibImageUrl } from "../mawkibs/MawkibThumbnail";
 
-import type { Reservation } from '../../types';
+import type { Reservation } from "../../types";
 
-const CARD_TEAL = '#1a3f3f';
-const CARD_TEAL_LIGHT = '#e8f3f3';
+const CARD_TEAL = "#1a3f3f";
+const CARD_TEAL_LIGHT = "#e8f3f3";
+
+function resolveHeroImage(imageUrl?: string | null): string {
+  return resolveMawkibImageUrl(imageUrl);
+}
 
 interface ReservationUserCardPrintProps {
   reservation: Reservation;
@@ -23,10 +28,9 @@ interface ReservationUserCardPrintProps {
 
 function presenceDateLabel(reservation: Reservation) {
   const start = reservation.reservationDate.slice(0, 10);
-  const end = (reservation.reservationEndDate ?? reservation.reservationDate).slice(
-    0,
-    10,
-  );
+  const end = (
+    reservation.reservationEndDate ?? reservation.reservationDate
+  ).slice(0, 10);
   return formatPersianDateRange(start, end);
 }
 
@@ -58,12 +62,7 @@ function companionCountDisplay(male: number, female: number) {
   );
 }
 
-const PRINT_BODY_CLASS = 'printing-reservation-user-card';
-
-function resolveHeroImage(imageUrl?: string | null): string {
-  const resolved = resolveAssetUrl(imageUrl);
-  return resolved || resolveAssetUrl(MAWKIB_DEFAULT_IMAGE);
-}
+const PRINT_BODY_CLASS = "printing-reservation-user-card";
 
 function CircleIcon({ children }: { children: ReactNode }) {
   return <span className="pilgrim-card__circle-icon">{children}</span>;
@@ -74,11 +73,13 @@ function StatColumn({
   label,
   value,
   valueDir,
+  subValue,
 }: {
   icon: ReactNode;
   label: string;
   value: ReactNode;
-  valueDir?: 'ltr' | 'rtl';
+  valueDir?: "ltr" | "rtl";
+  subValue?: ReactNode;
 }) {
   return (
     <div className="pilgrim-card__stat">
@@ -87,6 +88,9 @@ function StatColumn({
       <p className="pilgrim-card__stat-value" dir={valueDir}>
         {value}
       </p>
+      {subValue != null && subValue !== "" && (
+        <p className="pilgrim-card__stat-subvalue">{subValue}</p>
+      )}
     </div>
   );
 }
@@ -100,7 +104,7 @@ function DetailRow({
   icon: ReactNode;
   label: string;
   value: ReactNode;
-  valueDir?: 'ltr' | 'rtl';
+  valueDir?: "ltr" | "rtl";
 }) {
   return (
     <div className="pilgrim-card__detail-row">
@@ -116,9 +120,9 @@ function DetailRow({
 }
 
 const iconProps = {
-  fill: 'none',
-  viewBox: '0 0 24 24',
-  stroke: 'currentColor',
+  fill: "none",
+  viewBox: "0 0 24 24",
+  stroke: "currentColor",
   strokeWidth: 1.6,
 } as const;
 
@@ -254,25 +258,37 @@ export function ReservationUserCardPrintContent({
   reservation: Reservation;
   footerNote?: string;
 }) {
-  const trackUrl = buildReservationTrackUrl(reservation.trackingCode);
-  const mawkibMapUrl = buildGuestMawkibUrl(reservation.mawkib.id, { focusMap: true });
+  const trackUrl = buildPilgrimCardUrl(reservation.trackingCode);
+  const mawkibMapUrl = buildGuestMawkibUrl(reservation.mawkib.id, {
+    focusMap: true,
+  });
   const trimmedFooterNote = footerNote?.trim();
-  const mawkibAddress = reservation.mawkib.address?.trim() || '—';
-  const ownerName = reservation.mawkib.owner?.fullName?.trim() || '—';
-  const ownerPhone = reservation.mawkib.owner?.mobileNumber?.trim() || '—';
+  const mawkibAddress = reservation.mawkib.address?.trim() || "—";
+  const ownerName = reservation.mawkib.owner?.fullName?.trim() || "—";
+  const ownerPhone = reservation.mawkib.owner?.mobileNumber?.trim() || "—";
   const pilgrimName = reservation.pilgrim.fullName;
   const stayRange = presenceDateLabel(reservation);
-  const heroImage = resolveHeroImage(reservation.mawkib.imageUrl);
+  const stayWeekdays = formatPresenceStayWeekdays(
+    reservation.reservationDate,
+    reservation.reservationEndDate,
+  );
 
   return (
     <div className="pilgrim-card">
       <header className="pilgrim-card__header">
-        <div
-          className="pilgrim-card__header-hero"
-          style={{ backgroundImage: `url("${heroImage}")` }}
-        >
+        <div className="pilgrim-card__header-hero">
+          <img
+            src={resolveHeroImage(reservation.mawkib.imageUrl)}
+            alt=""
+            aria-hidden
+            className="pilgrim-card__hero-image"
+            loading="eager"
+            decoding="sync"
+          />
           <div className="pilgrim-card__hero-overlay">
-            <h1 className="pilgrim-card__hero-title">{reservation.mawkib.name}</h1>
+            <h1 className="pilgrim-card__hero-title">
+              {reservation.mawkib.name}
+            </h1>
             <p className="pilgrim-card__hero-badge">
               <IconUser />
               <span>{pilgrimName}</span>
@@ -286,7 +302,7 @@ export function ReservationUserCardPrintContent({
             level="M"
             fgColor="#ffffff"
             bgColor={CARD_TEAL}
-            aria-label={`QR پیگیری رزرو ${reservation.trackingCode}`}
+            aria-label={`QR زائر کارت ${reservation.trackingCode}`}
           />
           <p className="pilgrim-card__header-qr-label">شناسه رزرو</p>
           <p className="pilgrim-card__header-qr-code" dir="ltr">
@@ -302,7 +318,12 @@ export function ReservationUserCardPrintContent({
           value={reservation.pilgrimMobile}
           valueDir="ltr"
         />
-        <StatColumn icon={<IconCalendar />} label="تاریخ حضور" value={stayRange} />
+        <StatColumn
+          icon={<IconCalendar />}
+          label="تاریخ حضور"
+          value={stayRange}
+          subValue={stayWeekdays}
+        />
         <StatColumn
           icon={<IconUsers />}
           label="تعداد همراهان"
@@ -319,7 +340,11 @@ export function ReservationUserCardPrintContent({
           <span>اطلاعات موکب</span>
         </h2>
         <div className="pilgrim-card__details">
-          <DetailRow icon={<IconHome />} label="نام موکب" value={reservation.mawkib.name} />
+          <DetailRow
+            icon={<IconHome />}
+            label="نام موکب"
+            value={reservation.mawkib.name}
+          />
           <DetailRow icon={<IconMapPin />} label="آدرس" value={mawkibAddress} />
           <DetailRow
             icon={<IconUser />}
@@ -338,7 +363,9 @@ export function ReservationUserCardPrintContent({
           <div className="pilgrim-card__location-qr">
             <p className="pilgrim-card__location-title">موقعیت موکب</p>
             <QRCodeSVG value={mawkibMapUrl} size={72} level="M" />
-            <p className="pilgrim-card__location-caption">اسکن برای مشاهده در نقشه</p>
+            <p className="pilgrim-card__location-caption">
+              اسکن برای مشاهده در نقشه
+            </p>
           </div>
         </div>
       </section>
@@ -346,11 +373,6 @@ export function ReservationUserCardPrintContent({
       {trimmedFooterNote && (
         <p className="pilgrim-card__custom-note">{trimmedFooterNote}</p>
       )}
-
-      <footer className="pilgrim-card__footer">
-        <IconInfo />
-        <span>لطفاً اطلاعات این کارت را نزد خود نگهداری کنید.</span>
-      </footer>
     </div>
   );
 }
@@ -359,10 +381,10 @@ export function ReservationUserCardPrintButton({
   reservation,
   className,
 }: ReservationUserCardPrintProps) {
-  const printRootId = useId().replace(/:/g, '');
+  const printRootId = useId().replace(/:/g, "");
   const [modalOpen, setModalOpen] = useState(false);
-  const [draftNote, setDraftNote] = useState('');
-  const [footerNote, setFooterNote] = useState('');
+  const [draftNote, setDraftNote] = useState("");
+  const [footerNote, setFooterNote] = useState("");
   const printSubmitRef = useRef<HTMLButtonElement>(null);
   const printFormRef = useRef<HTMLFormElement>(null);
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
@@ -380,15 +402,15 @@ export function ReservationUserCardPrintButton({
 
     const cleanup = () => {
       document.body.classList.remove(PRINT_BODY_CLASS);
-      window.removeEventListener('afterprint', cleanup);
+      window.removeEventListener("afterprint", cleanup);
     };
 
-    window.addEventListener('afterprint', cleanup);
+    window.addEventListener("afterprint", cleanup);
     window.requestAnimationFrame(() => window.print());
   };
 
   const handleOpenModal = () => {
-    setDraftNote('');
+    setDraftNote("");
     setModalOpen(true);
   };
 
@@ -401,8 +423,10 @@ export function ReservationUserCardPrintButton({
     triggerPrint();
   };
 
-  const handleNoteKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key !== 'Enter' || event.shiftKey) return;
+  const handleNoteKeyDown = (
+    event: React.KeyboardEvent<HTMLTextAreaElement>,
+  ) => {
+    if (event.key !== "Enter" || event.shiftKey) return;
     event.preventDefault();
     printFormRef.current?.requestSubmit();
   };
@@ -410,6 +434,7 @@ export function ReservationUserCardPrintButton({
   return (
     <>
       <style>{`
+        ${PRINT_CARD_HERO_IMAGE_CSS}
         #${printRootId} {
           display: none;
         }
@@ -501,14 +526,14 @@ export function ReservationUserCardPrintButton({
           .pilgrim-card__header-hero {
             flex: 1;
             position: relative;
-            background-size: cover;
-            background-position: center;
+            overflow: hidden;
             background-color: #334155;
           }
 
           .pilgrim-card__hero-overlay {
             position: absolute;
             inset: 0;
+            z-index: 1;
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
@@ -602,6 +627,14 @@ export function ReservationUserCardPrintButton({
             line-height: 1.35;
             color: #1e293b;
             word-break: break-word;
+          }
+
+          .pilgrim-card__stat-subvalue {
+            margin: 0.4mm 0 0;
+            font-size: 6.2pt;
+            font-weight: 500;
+            line-height: 1.3;
+            color: #64748b;
           }
 
           .pilgrim-card__companion-value {
@@ -706,6 +739,7 @@ export function ReservationUserCardPrintButton({
           .pilgrim-card__location-row {
             display: flex;
             justify-content: center;
+            width: 100%;
           }
 
           .pilgrim-card__location-qr {
@@ -714,9 +748,8 @@ export function ReservationUserCardPrintButton({
             align-items: center;
             justify-content: center;
             gap: 1mm;
-            width: 42%;
-            min-width: 34mm;
-            padding: 2mm 1.5mm;
+            width: 100%;
+            padding: 2.5mm 2mm;
             border: 0.25mm solid #e2e8f0;
             border-radius: 2mm;
             background: #fff;
@@ -782,10 +815,13 @@ export function ReservationUserCardPrintButton({
       <button
         type="button"
         onClick={handleOpenModal}
-        className={className ?? `${btnSecondary} w-full sm:w-auto`}
+        className={
+          className ??
+          `${btnSecondary} inline-flex w-full items-center justify-center gap-1.5 sm:w-auto`
+        }
       >
         <svg
-          className="h-4 w-4 shrink-0 text-[#4a6fa5]"
+          className="h-4 w-4 shrink-0"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -801,10 +837,19 @@ export function ReservationUserCardPrintButton({
         چاپ زائر کارت
       </button>
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="چاپ زائر کارت">
-        <form ref={printFormRef} onSubmit={handleConfirmPrint} className="space-y-4">
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="چاپ زائر کارت"
+      >
+        <form
+          ref={printFormRef}
+          onSubmit={handleConfirmPrint}
+          className="space-y-4"
+        >
           <p className="text-sm text-slate-600">
-            در صورت نیاز، توضیحات تکمیلی را وارد کنید تا در پایین زائر کارت چاپ شود.
+            در صورت نیاز، توضیحات تکمیلی را وارد کنید تا در پایین زائر کارت چاپ
+            شود.
           </p>
           <label className="block">
             <span className="mb-1.5 flex items-center gap-2 text-sm font-medium text-slate-700">
@@ -839,12 +884,15 @@ export function ReservationUserCardPrintButton({
         </form>
       </Modal>
 
-      <div id={printRootId} aria-hidden>
-        <ReservationUserCardPrintContent
-          reservation={reservation}
-          footerNote={footerNote}
-        />
-      </div>
+      {createPortal(
+        <div id={printRootId} aria-hidden>
+          <ReservationUserCardPrintContent
+            reservation={reservation}
+            footerNote={footerNote}
+          />
+        </div>,
+        document.body,
+      )}
     </>
   );
 }

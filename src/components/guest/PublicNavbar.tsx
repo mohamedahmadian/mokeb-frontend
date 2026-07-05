@@ -15,75 +15,6 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 const dropdownLinkClass =
   "flex items-center px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50";
 
-function VolunteersMenu() {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-      >
-        <NavIcon name="honorary" />
-        <span>سامانه خادمین</span>
-        <NavIcon
-          name="chevron"
-          className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`}
-          strokeWidth={2}
-        />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 min-w-[12rem] rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
-          <Link
-            to="/guest/honorary-volunteer/register"
-            onClick={() => setOpen(false)}
-            className={dropdownLinkClass}
-          >
-            <DropdownLinkContent icon="honoraryRegister" label="ثبت‌نام خادم" />
-          </Link>
-          <Link
-            to={buildLoginUrl("honorary")}
-            onClick={() => setOpen(false)}
-            className={dropdownLinkClass}
-          >
-            <DropdownLinkContent icon="login" label=" سامانه خادمین" />
-          </Link>
-          <Link
-            to="/guest/honorary-volunteer/needs"
-            onClick={() => setOpen(false)}
-            className={dropdownLinkClass}
-          >
-            <DropdownLinkContent
-              icon="honoraryNeeds"
-              label="نیازمندی‌های موکب‌ها"
-            />
-          </Link>
-          <Link
-            to="/guest/honorary-volunteer/track"
-            onClick={() => setOpen(false)}
-            className={dropdownLinkClass}
-          >
-            <DropdownLinkContent icon="honoraryTrack" label="پیگیری درخواست" />
-          </Link>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function OwnersMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -155,13 +86,15 @@ export function PublicNavbar() {
       <NavLink to="/" end className={navLinkClass}>
         <NavLinkContent icon="home" label="صفحه اصلی" />
       </NavLink>
+      <NavLink to="/guest/reserve" className={navLinkClass}>
+        <NavLinkContent icon="quickReserve" label="رزرو سریع" />
+      </NavLink>
       <NavLink to="/guest/mawkibs" className={navLinkClass}>
         <NavLinkContent icon="mawkibs" label="موکب‌ها" />
       </NavLink>
       <NavLink to="/guest/track" className={navLinkClass}>
         <NavLinkContent icon="track" label="پیگیری رزرو" />
       </NavLink>
-      <VolunteersMenu />
       <OwnersMenu />
     </>
   );

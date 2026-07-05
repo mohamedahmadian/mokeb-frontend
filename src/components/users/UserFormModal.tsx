@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal } from '../Modal';
 import { NavIcon } from '../ui/NavIcons';
-import { ROLE_OPTIONS } from '../../lib/constants';
+import { ROLE_OPTIONS, getApiErrorMessage } from '../../lib/constants';
 import {
   emptyUserSocialFields,
   userSocialFieldsFromUser,
@@ -14,15 +14,23 @@ import {
   RoleHero,
   roleNavIcon,
 } from './user-form-ui';
-import { UserFormSections } from './UserFormSections';
-import type { AdminUser, RoleName } from '../../types';
+import { UserFormSections, type MobileCheckStatus } from './UserFormSections';
+import { NationalIdCardUpload } from '../ui/NationalIdCardUpload';
+import { ProfileImageUpload } from '../ui/ProfileImageUpload';
+import { PilgrimLatestCardActions } from './PilgrimLatestCardActions';
+import type { AdminUser, RoleName, UserGender } from '../../types';
 import type {
   CreateQuickPilgrimPayload,
   CreateUserPayload,
   UpdateUserPayload,
 } from '../../lib/users';
+import { usersApi } from '../../lib/users';
+import { authApi } from '../../lib/auth';
+import { splitFullName } from '../../lib/full-name';
+import { useRoleAccess } from '../../hooks/useRoleAccess';
 import { btnPrimary, btnSecondary } from '../../lib/styles';
 import { toast } from '../../lib/toast';
+import { formatPersianDateTimeFromIso } from '../ui/PersianDateInput';
 
 interface UserFormModalProps {
   open: boolean;
@@ -34,8 +42,10 @@ interface UserFormModalProps {
   fixedRole?: RoleName;
   title?: string;
   hideRoles?: boolean;
-  /** ثبت سریع زائر: نام/نام‌خانوادگی جدا، رمز اختیاری، API مخصوص */
+  /** ثبت سریع زائر: API مخصوص */
   quickPilgrim?: boolean;
+  /** محدود کردن چاپ زائر کارت به موکب‌های موکب‌دار */
+  pilgrimCardOwnerScope?: boolean;
 }
 
 interface FormState {
@@ -43,6 +53,11 @@ interface FormState {
   firstName: string;
   lastName: string;
   mobileNumber: string;
+  nationalId: string;
+  gender: UserGender | '';
+  birthDate: string;
+  country: string;
+  passportNumber: string;
   password: string;
   province: string;
   city: string;
@@ -57,6 +72,11 @@ const emptyForm: FormState = {
   firstName: '',
   lastName: '',
   mobileNumber: '',
+  nationalId: '',
+  gender: '',
+  birthDate: '',
+  country: '',
+  passportNumber: '',
   password: '',
   province: '',
   city: '',
@@ -92,11 +112,41 @@ export function UserFormModal({
   title,
   hideRoles = false,
   quickPilgrim = false,
+  pilgrimCardOwnerScope = false,
 }: UserFormModalProps) {
   const isEdit = !!user;
+  const { isAdmin } = useRoleAccess();
   const isQuickCreate = quickPilgrim && !isEdit;
+  const isMawkibOwnerCreate = fixedRole === 'MawkibOwner' && !isEdit;
+  const showNationalIdCardUpload =
+    hideRoles ||
+    fixedRole === 'Pilgrim' ||
+    (isEdit && (user?.roles.some((r) => r.role.name === 'Pilgrim') ?? false));
   const [form, setForm] = useState<FormState>(emptyForm);
+  const showBirthDate =
+    hideRoles ||
+    fixedRole === 'Pilgrim' ||
+    isQuickCreate ||
+    (isEdit &&
+      (user?.roles.some((r) => r.role.name === 'Pilgrim') ?? false)) ||
+    (!fixedRole && form.roles.includes('Pilgrim'));
+  const showGender =
+    hideRoles ||
+    fixedRole === 'Pilgrim' ||
+    fixedRole === 'MawkibOwner' ||
+    (isEdit &&
+      (user?.roles.some(
+        (r) => r.role.name === 'Pilgrim' || r.role.name === 'MawkibOwner',
+      ) ?? false)) ||
+    (!fixedRole &&
+      (form.roles.includes('Pilgrim') || form.roles.includes('MawkibOwner')));
+  const [nationalIdCardImageUrl, setNationalIdCardImageUrl] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [mobileCheckStatus, setMobileCheckStatus] = useState<MobileCheckStatus>('idle');
+  const formRef = useRef<HTMLFormElement>(null);
+  const mobileCheckRequestId = useRef(0);
 
   const modalTitle = resolveTitle(isEdit, fixedRole, title);
 
@@ -110,6 +160,11 @@ export function UserFormModal({
         firstName: nameParts[0] ?? '',
         lastName: nameParts.slice(1).join(' '),
         mobileNumber: user.mobileNumber,
+        nationalId: user.nationalId ?? '',
+        gender: user.gender ?? '',
+        birthDate: user.birthDate?.slice(0, 10) ?? '',
+        country: user.country ?? '',
+        passportNumber: user.passportNumber ?? '',
         password: '',
         province: user.province ?? '',
         city: user.city ?? '',
@@ -118,13 +173,73 @@ export function UserFormModal({
         isActive: user.isActive,
         roles: user.roles.map((r) => r.role.name),
       });
+      setNationalIdCardImageUrl(user.nationalIdCardImageUrl ?? null);
+      setImageUrl(user.imageUrl ?? null);
     } else {
       setForm({
         ...emptyForm,
         roles: fixedRole ? [fixedRole] : emptyForm.roles,
       });
+      setNationalIdCardImageUrl(null);
+      setImageUrl(null);
     }
+    setMobileCheckStatus('idle');
+    setSubmitError('');
   }, [open, user, fixedRole]);
+
+  const checkMobileDuplicate = async (mobile: string) => {
+    const trimmed = mobile.trim();
+    const digits = trimmed.replace(/\D/g, '');
+    if (digits.length < 10) {
+      setMobileCheckStatus('idle');
+      return;
+    }
+
+    setMobileCheckStatus('checking');
+    const requestId = ++mobileCheckRequestId.current;
+    try {
+      const result = await authApi.isMobileRegistered(trimmed);
+      if (requestId !== mobileCheckRequestId.current) return;
+      setMobileCheckStatus(result.registered ? 'duplicate' : 'available');
+    } catch {
+      if (requestId === mobileCheckRequestId.current) {
+        setMobileCheckStatus('idle');
+      }
+    }
+  };
+
+  const handleMobileBlur = (mobile: string) => {
+    if (!isMawkibOwnerCreate) return;
+    void checkMobileDuplicate(mobile);
+  };
+
+  useEffect(() => {
+    if (!open || !isQuickCreate) return;
+
+    const mobile = form.mobileNumber.trim();
+    const digits = mobile.replace(/\D/g, '');
+    if (digits.length < 10) {
+      setMobileCheckStatus('idle');
+      return;
+    }
+
+    setMobileCheckStatus('checking');
+    const requestId = ++mobileCheckRequestId.current;
+    const timer = setTimeout(async () => {
+      try {
+        const users = await usersApi.getAll({ mobileNumber: mobile });
+        if (requestId !== mobileCheckRequestId.current) return;
+        const exists = users.some((u) => u.mobileNumber.trim() === mobile);
+        setMobileCheckStatus(exists ? 'duplicate' : 'available');
+      } catch {
+        if (requestId === mobileCheckRequestId.current) {
+          setMobileCheckStatus('idle');
+        }
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [form.mobileNumber, open, isQuickCreate]);
 
   const toggleRole = (role: RoleName) => {
     setForm((prev) => {
@@ -140,17 +255,33 @@ export function UserFormModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setSubmitError('');
 
     try {
       if (isEdit) {
         const payload: UpdateUserPayload = {
           fullName: form.fullName,
+          nationalId: form.nationalId.trim(),
           province: form.province || undefined,
           city: form.city || undefined,
           description: form.description || undefined,
           ...userSocialFieldsToPayload(form.social),
         };
-        if (!hideRoles) {
+        if (showGender) {
+          payload.gender = form.gender || null;
+        }
+        if (showBirthDate) {
+          payload.birthDate = form.birthDate || null;
+          payload.country = form.country || null;
+          payload.passportNumber = form.passportNumber || null;
+        }
+        if (showNationalIdCardUpload) {
+          payload.nationalIdCardImageUrl = nationalIdCardImageUrl;
+        }
+        if (hideRoles) {
+          payload.imageUrl = imageUrl;
+        }
+        if (!hideRoles && isAdmin) {
           payload.isActive = form.isActive;
           payload.roles = fixedRole ? [fixedRole] : form.roles;
         }
@@ -170,15 +301,63 @@ export function UserFormModal({
           setLoading(false);
           return;
         }
+        if (!form.fullName.trim()) {
+          toast.error('نام و نام خانوادگی زائر را وارد کنید');
+          setLoading(false);
+          return;
+        }
+        if (mobileCheckStatus === 'duplicate') {
+          toast.error('این شماره تلفن همراه قبلا در سیستم ثبت نام شده است');
+          setLoading(false);
+          return;
+        }
+        const { firstName, lastName } = splitFullName(form.fullName);
         await onSubmit({
-          firstName: form.firstName.trim(),
-          lastName: form.lastName.trim(),
+          firstName,
+          lastName,
           mobileNumber: form.mobileNumber.trim(),
+          nationalId: form.nationalId.trim() || undefined,
+          gender: form.gender || undefined,
+          birthDate: form.birthDate || undefined,
+          country: form.country || undefined,
+          passportNumber: form.passportNumber || undefined,
+          ...(showNationalIdCardUpload
+            ? { nationalIdCardImageUrl: nationalIdCardImageUrl ?? undefined }
+            : {}),
           password: password || undefined,
           province: form.province || undefined,
           city: form.city || undefined,
           description: form.description || undefined,
           ...userSocialFieldsToPayload(form.social),
+        });
+      } else if (isMawkibOwnerCreate) {
+        if (mobileCheckStatus === 'duplicate') {
+          setSubmitError('این شماره موبایل تکراری است');
+          setLoading(false);
+          return;
+        }
+        const fullName = form.fullName.trim();
+        if (!fullName) {
+          setSubmitError('نام و نام خانوادگی را وارد کنید');
+          setLoading(false);
+          return;
+        }
+        if (!form.password || form.password.length < 4) {
+          setSubmitError('رمز عبور باید حداقل ۴ کاراکتر باشد');
+          setLoading(false);
+          return;
+        }
+        await onSubmit({
+          fullName,
+          mobileNumber: form.mobileNumber.trim(),
+          nationalId: form.nationalId.trim() || undefined,
+          gender: form.gender || undefined,
+          password: form.password,
+          province: form.province || undefined,
+          city: form.city || undefined,
+          description: form.description || undefined,
+          ...userSocialFieldsToPayload(form.social),
+          roles: ['MawkibOwner'],
         });
       } else {
         if (!form.password || form.password.length < 4) {
@@ -189,6 +368,18 @@ export function UserFormModal({
         await onSubmit({
           fullName: form.fullName,
           mobileNumber: form.mobileNumber,
+          nationalId: form.nationalId.trim() || undefined,
+          ...(showGender ? { gender: form.gender || undefined } : {}),
+          ...(showBirthDate
+            ? {
+                birthDate: form.birthDate || undefined,
+                country: form.country || undefined,
+                passportNumber: form.passportNumber || undefined,
+              }
+            : {}),
+          ...(showNationalIdCardUpload
+            ? { nationalIdCardImageUrl: nationalIdCardImageUrl ?? undefined }
+            : {}),
           password: form.password,
           province: form.province || undefined,
           city: form.city || undefined,
@@ -199,9 +390,11 @@ export function UserFormModal({
       }
       onClose();
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : 'خطا در ذخیره اطلاعات کاربر',
+      const message = getApiErrorMessage(
+        err,
+        'خطا در ذخیره اطلاعات کاربر',
       );
+      setSubmitError(message);
     } finally {
       setLoading(false);
     }
@@ -213,9 +406,17 @@ export function UserFormModal({
       ? `افزودن ${roleLabels[fixedRole]}`
       : 'افزودن کاربر';
 
+  const passwordPlaceholder = isQuickCreate
+    ? form.mobileNumber.replace(/\D/g, '').slice(-4) || undefined
+    : undefined;
+
   return (
     <Modal open={open} onClose={onClose} title={modalTitle} size="lg">
-      <form onSubmit={handleSubmit} className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit}
+        className="max-h-[70vh] space-y-4 overflow-y-auto pr-1"
+      >
         {fixedRole && (
           <RoleHero
             role={fixedRole}
@@ -224,32 +425,72 @@ export function UserFormModal({
               isEdit
                 ? 'ویرایش اطلاعات حساب کاربری'
                 : isQuickCreate
-                  ? 'ثبت سریع — در صورت تکراری بودن موبایل، همان کاربر انتخاب می‌شود'
+                  ? undefined
                   : 'ثبت حساب جدید در سامانه'
             }
           />
         )}
 
+        {hideRoles && isEdit && user && (
+          <ProfileImageUpload
+            fullName={form.fullName || user.fullName}
+            value={imageUrl}
+            onChange={setImageUrl}
+            disabled={loading}
+          />
+        )}
+
         <UserFormSections
           values={form}
-          onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
-          nameMode={isQuickCreate ? 'splitName' : 'fullName'}
-          mobileDisabled={isEdit}
-          passwordRequired={!isEdit && !isQuickCreate}
-          passwordPlaceholder={
-            isQuickCreate ? 'در صورت خالی بودن: ۴ رقم آخر موبایل' : undefined
+          onChange={(patch) => {
+            setSubmitError('');
+            setForm((prev) => ({ ...prev, ...patch }));
+            if (isMawkibOwnerCreate && 'mobileNumber' in patch) {
+              setMobileCheckStatus('idle');
+            }
+          }}
+          nameMode="fullName"
+          primaryLayout={
+            isQuickCreate
+              ? 'quickPilgrim'
+              : isMawkibOwnerCreate
+                ? 'mawkibOwner'
+                : 'default'
           }
+          mobileDisabled={isEdit}
+          mobileCheckStatus={
+            isQuickCreate || isMawkibOwnerCreate ? mobileCheckStatus : undefined
+          }
+          onMobileBlur={isMawkibOwnerCreate ? handleMobileBlur : undefined}
+          passwordRequired={!isEdit && !isQuickCreate}
+          passwordPlaceholder={passwordPlaceholder}
           passwordHint={
             isEdit
               ? 'در صورت خالی بودن، رمز تغییر نمی‌کند'
               : isQuickCreate
-                ? 'اختیاری — در صورت خالی بودن، ۴ رقم آخر موبایل'
-                : 'حداقل ۴ کاراکتر'
+                ? undefined
+                : isMawkibOwnerCreate
+                  ? 'حداقل ۴ کاراکتر'
+                  : 'حداقل ۴ کاراکتر'
+          }
+          hideOptionalLabels={isQuickCreate}
+          onPasswordEnter={
+            isQuickCreate ? () => formRef.current?.requestSubmit() : undefined
           }
           extraFields="inline"
           locationInPrimary={hideRoles}
           descriptionLabel="درباره کاربر"
+          showGender={showGender && !isMawkibOwnerCreate}
+          showBirthDate={showBirthDate}
         />
+
+        {showNationalIdCardUpload && (
+          <NationalIdCardUpload
+            value={nationalIdCardImageUrl}
+            onChange={setNationalIdCardImageUrl}
+            disabled={loading}
+          />
+        )}
 
         {!fixedRole && !hideRoles && (
           <FormSection
@@ -279,31 +520,50 @@ export function UserFormModal({
               </svg>
             }
           >
-            <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3.5 py-3">
-              <input
-                type="checkbox"
-                checked={form.isActive}
-                onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-                className="h-4 w-4 rounded border-slate-300 text-[#4a6fa5] focus:ring-[#4a6fa5]"
-              />
-              <div>
-                <p className="text-sm font-medium text-slate-800">کاربر فعال است</p>
-                <p className="text-xs text-slate-500">
-                  کاربر غیرفعال نمی‌تواند وارد سامانه شود
-                </p>
-              </div>
-            </label>
+            <div className="space-y-3">
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3.5 py-3">
+                <input
+                  type="checkbox"
+                  checked={form.isActive}
+                  onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                  className="h-4 w-4 rounded border-slate-300 text-[#4a6fa5] focus:ring-[#4a6fa5]"
+                />
+                <div>
+                  <p className="text-sm font-medium text-slate-800">کاربر فعال است</p>
+                  <p className="text-xs text-slate-500">
+                    کاربر غیرفعال نمی‌تواند وارد سامانه شود
+                  </p>
+                </div>
+              </label>
+
+              {user?.createdAt && (
+                <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3.5 py-3">
+                  <p className="text-xs text-slate-500">تاریخ ثبت</p>
+                  <p className="mt-0.5 text-sm font-medium text-slate-800">
+                    {formatPersianDateTimeFromIso(user.createdAt)}
+                  </p>
+                </div>
+              )}
+            </div>
           </FormSection>
         )}
 
-        {isQuickCreate && (
-          <p className="flex items-start gap-2 rounded-xl border border-[#c5d4e8]/50 bg-[#f0f4fa]/60 px-3.5 py-2.5 text-xs text-slate-500">
-            <NavIcon name="info" className="mt-0.5 h-4 w-4 shrink-0 text-[#4a6fa5]" />
-            اگر شماره موبایل قبلاً ثبت شده باشد، همان کاربر بدون ایجاد حساب جدید برگردانده می‌شود.
+        {submitError && (
+          <p
+            role="alert"
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+          >
+            {submitError}
           </p>
         )}
 
         <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+          {isEdit && fixedRole === 'Pilgrim' && user && (
+            <PilgrimLatestCardActions
+              pilgrimUserId={user.id}
+              ownerScope={pilgrimCardOwnerScope}
+            />
+          )}
           <button
             type="button"
             onClick={onClose}

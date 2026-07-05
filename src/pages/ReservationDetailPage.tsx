@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CancelReservationModal } from '../components/reservations/CancelReservationModal';
+import { ExtendReservationModal } from '../components/reservations/ExtendReservationModal';
 import { ReservationCheckInOut } from '../components/reservations/ReservationCheckInOut';
 import { ReservationDetailInfo, ReservationStatusBanner } from '../components/reservations/ReservationDetailInfo';
 import { ReservationReviewSection } from '../components/reservations/ReservationReviewSection';
 import { ReservationToolsCard } from '../components/reservations/ReservationToolsCard';
-import { ReservationTrackingHeader } from '../components/reservations/ReservationTrackingHeader';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useAuth } from '../contexts/AuthContext';
 import { getApiErrorMessage } from '../lib/constants';
+import { canExtendReservation, extensionSuccessMessage } from '../lib/reservation-extend';
 import { toast, toastApiError } from '../lib/toast';
 import { reservationsApi } from '../lib/reservations';
 import { btnAction, btnDanger, btnPrimary, btnSecondary } from '../lib/styles';
@@ -17,6 +18,7 @@ import { btnAction, btnDanger, btnPrimary, btnSecondary } from '../lib/styles';
 export function ReservationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const reservationId = Number(id);
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.roles.includes('Admin') ?? false;
@@ -25,6 +27,7 @@ export function ReservationDetailPage() {
     (user?.roles.includes('Pilgrim') ?? false) && !isAdmin && !isMawkibOwner;
   const canConfirm = isAdmin || isMawkibOwner;
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [extendOpen, setExtendOpen] = useState(false);
 
   const { data: reservation, isLoading, isError } = useQuery({
     queryKey: ['reservation', reservationId],
@@ -59,6 +62,21 @@ export function ReservationDetailPage() {
     },
   });
 
+  const extendReservation = useMutation({
+    mutationFn: (payload?: { reservationEndDate?: string; stayDays?: number }) =>
+      reservationsApi.extend(reservationId, payload),
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: ['reservations-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['reservations-my'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      toast.success(extensionSuccessMessage(created.status));
+      navigate(`/reservations/${created.id}`);
+    },
+    onError: (error) => {
+      toastApiError(error, 'خطا در ثبت تمدید رزرو');
+    },
+  });
+
   if (!reservationId) {
     return <p className="text-red-600">شناسه رزرو نامعتبر است</p>;
   }
@@ -86,13 +104,17 @@ export function ReservationDetailPage() {
       (isPilgrim && reservation.pilgrim.id === user?.id));
 
   const showConfirm = reservation.status === 'Pending' && canConfirm;
+  const canExtend = canExtendReservation(reservation);
+  const showExtendModal = canExtend && !isPilgrim;
+
+  const extendButtonClass = `${btnAction} inline-flex items-center gap-1.5 border border-[#c5d4e8] bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6] !min-h-9 !px-2.5 !py-1.5 !text-xs`;
+
+  const handlePilgrimExtend = () => {
+    extendReservation.mutate({});
+  };
 
   const actions = (
-    <div
-      className={`flex w-full items-center gap-2 ${
-        showConfirm ? 'justify-between' : 'justify-end'
-      }`}
-    >
+    <div className="flex w-full flex-wrap items-center gap-2 justify-end">
       {showConfirm && (
         <button
           type="button"
@@ -101,6 +123,32 @@ export function ReservationDetailPage() {
           className={`${btnAction} ${btnPrimary} !min-h-9 !px-2.5 !py-1.5 !text-xs`}
         >
           تایید رزرو
+        </button>
+      )}
+      {canExtend && (
+        <button
+          type="button"
+          onClick={() =>
+            isPilgrim ? handlePilgrimExtend() : setExtendOpen(true)
+          }
+          disabled={extendReservation.isPending}
+          className={extendButtonClass}
+        >
+          <svg
+            className="h-4 w-4 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            aria-hidden
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          {extendReservation.isPending ? 'در حال ثبت...' : 'تمدید رزرو'}
         </button>
       )}
       {canCancel && (
@@ -129,7 +177,7 @@ export function ReservationDetailPage() {
     </div>
   );
 
-  const hasActions = showConfirm || canCancel;
+  const hasActions = showConfirm || canCancel || canExtend;
 
   return (
     <div className="mx-auto w-full max-w-xl">
@@ -179,8 +227,6 @@ export function ReservationDetailPage() {
           reservation={reservation}
           reservationId={reservationId}
         />
-
-        <ReservationTrackingHeader trackingCode={reservation.trackingCode} copyable />
       </div>
 
       <CancelReservationModal
@@ -194,6 +240,17 @@ export function ReservationDetailPage() {
           }
         }}
       />
+
+      {showExtendModal && (
+        <ExtendReservationModal
+          open={extendOpen}
+          reservation={reservation}
+          onClose={() => setExtendOpen(false)}
+          onSubmit={async (reservationEndDate) => {
+            await extendReservation.mutateAsync({ reservationEndDate });
+          }}
+        />
+      )}
     </div>
   );
 }

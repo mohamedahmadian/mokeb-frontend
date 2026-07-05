@@ -5,6 +5,7 @@ import { GuestPageHeader, GuestShell } from "../components/guest/GuestShell";
 import { GuestReservationSuccessView } from "../components/reservations/GuestReservationSuccessView";
 import {
   ReservationForm,
+  parseGuestReservationModeParam,
   type ReservationFormSuccess,
 } from "../components/reservations/ReservationForm";
 import { IconHome } from "../components/reservations/reservation-form-ui";
@@ -17,6 +18,10 @@ export function GuestReservationPage() {
   const initialMawkibId = searchParams.get("mawkibId");
   const parsedMawkibId = initialMawkibId ? parseInt(initialMawkibId, 10) : null;
   const initialReservationDate = searchParams.get("date")?.slice(0, 10) ?? null;
+  const initialGuestReservationMode =
+    parseGuestReservationModeParam(
+      searchParams.get("mode") ?? searchParams.get("fast"),
+    ) ?? "fast";
   const [success, setSuccess] = useState<GuestSuccess | null>(null);
   const [selectedMawkibName, setSelectedMawkibName] = useState<string | null>(
     null,
@@ -51,6 +56,7 @@ export function GuestReservationPage() {
         variant="guest"
         initialMawkibId={parsedMawkibId}
         initialReservationDate={initialReservationDate}
+        initialGuestReservationMode={initialGuestReservationMode}
         onSelectedMawkibChange={(mawkib) =>
           setSelectedMawkibName(mawkib?.name ?? null)
         }

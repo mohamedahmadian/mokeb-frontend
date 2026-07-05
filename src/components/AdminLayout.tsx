@@ -17,6 +17,10 @@ import {
   FeedbackSidebarSection,
   resolveFeedbackNavVariant,
 } from "./FeedbackNav";
+import {
+  ReportsSidebarSection,
+  getReportsSectionInsertIndex,
+} from "./ReportsNav";
 import type { RoleName } from "../types";
 
 interface NavItem {
@@ -27,11 +31,59 @@ interface NavItem {
   indent?: boolean;
 }
 
+const MAP_SEARCH_NAV_ITEM: NavItem = {
+  to: "/mawkibs/map",
+  label: "جستجوی موکب ( نقشه )",
+  icon: "map",
+  roles: ["Admin", "MawkibOwner", "Pilgrim", "HonoraryServant"],
+};
+
 function buildNavItems(user: { roles: RoleName[] } | null): NavItem[] {
   const isAdmin = user?.roles.includes("Admin") ?? false;
   const isMawkibOwner = user?.roles.includes("MawkibOwner") ?? false;
-  // const isPilgrimOnly =
-  //   (user?.roles.includes("Pilgrim") ?? false) && !isAdmin && !isMawkibOwner;
+  const isPilgrimOnly =
+    (user?.roles.includes("Pilgrim") ?? false) && !isAdmin && !isMawkibOwner;
+
+  if (isPilgrimOnly) {
+    return [
+      {
+        to: "/dashboard",
+        label: "داشبورد",
+        icon: "dashboard",
+        roles: ["Pilgrim"],
+      },
+      {
+        to: "/reservations/new",
+        label: "رزرو جدید",
+        icon: "quickReserve",
+        roles: ["Pilgrim"],
+      },
+      {
+        to: "/reservations",
+        label: "رزروهای من",
+        icon: "reservations",
+        roles: ["Pilgrim"],
+      },
+      {
+        to: "/mawkibs/map",
+        label: "جستجوی موکب ( نقشه )",
+        icon: "map",
+        roles: ["Pilgrim"],
+      },
+      {
+        to: "/mawkibs",
+        label: "لیست موکب‌ها",
+        icon: "mawkibs",
+        roles: ["Pilgrim"],
+      },
+      {
+        to: "/feedback",
+        label: "سامانه انتقادات و پیشنهادات",
+        icon: "feedback",
+        roles: ["Pilgrim"],
+      },
+    ];
+  }
 
   const items: NavItem[] = [
     {
@@ -41,19 +93,22 @@ function buildNavItems(user: { roles: RoleName[] } | null): NavItem[] {
       roles: ["Admin", "MawkibOwner", "Pilgrim", "HonoraryServant"],
     },
     {
-      to: "/mawkibs/map",
-      label: "جستجوی موکب ( نقشه )",
-      icon: "map",
-      roles: ["Admin", "MawkibOwner", "Pilgrim", "HonoraryServant"],
-    },
-    { to: "/users", label: "کاربران", icon: "users", roles: ["Admin"] },
-    {
       to: "/users/pilgrims",
-      label: "زائرین",
+      label: isAdmin ? "زائرین" : "زائرین موکب‌های من",
       icon: "pilgrims",
       roles: ["Admin", "MawkibOwner"],
     },
+    { to: "/users", label: "کاربران", icon: "users", roles: ["Admin"] },
   ];
+
+  if (isAdmin) {
+    items.push({
+      to: "/admin/crons",
+      label: "وظایف زمان‌بندی",
+      icon: "settings",
+      roles: ["Admin"],
+    });
+  }
 
   // if (isPilgrimOnly) {
   //   items.push({
@@ -64,28 +119,11 @@ function buildNavItems(user: { roles: RoleName[] } | null): NavItem[] {
   //   });
   // }
 
-  if (!isAdmin && !isMawkibOwner) {
-    items.push(
-      {
-        to: "/mawkibs",
-        label: "موکب‌ها",
-        icon: "mawkibs",
-        roles: ["Pilgrim"],
-      },
-      {
-        to: "/reservations",
-        label: "رزروهای من",
-        icon: "reservations",
-        roles: ["Pilgrim"],
-      },
-    );
-  }
-
   items.push({
     to: "/honorary-volunteers/my",
     label: "همکاری به عنوان خادم",
     icon: "myRequests",
-    roles: ["HonoraryServant", "Pilgrim"],
+    roles: ["HonoraryServant"],
   });
 
   return items;
@@ -97,9 +135,18 @@ function isNavItemActive(item: NavItem, pathname: string): boolean {
     return pathname === "/mawkibs/map" || /^\/mawkibs\/\d+\/view/.test(pathname);
   }
   if (item.to === "/users") return pathname === "/users";
+  if (item.to === "/admin/crons") return pathname === "/admin/crons";
   if (item.to === "/reservations/new") return pathname === "/reservations/new";
   if (item.to === "/honorary-volunteers/my")
     return pathname === "/honorary-volunteers/my";
+  if (item.to === "/feedback") {
+    return (
+      pathname === "/feedback" ||
+      pathname === "/feedback/new" ||
+      pathname.startsWith("/feedback/new/") ||
+      /^\/feedback\/\d+\/edit/.test(pathname)
+    );
+  }
   if (item.to === "/reservations") {
     return (
       pathname === "/reservations" || /^\/reservations\/\d+/.test(pathname)
@@ -201,6 +248,10 @@ export function AdminLayout() {
   });
 
   const navItems = buildNavItems(user);
+  const isPilgrimOnly =
+    (user?.roles.includes("Pilgrim") ?? false) &&
+    !(user?.roles.includes("Admin") ?? false) &&
+    !(user?.roles.includes("MawkibOwner") ?? false);
   const visibleNav = navItems.filter((item) =>
     user?.roles.some((role) => item.roles.includes(role)),
   );
@@ -208,16 +259,19 @@ export function AdminLayout() {
     (user?.roles.includes("Admin") ?? false) ||
     (user?.roles.includes("MawkibOwner") ?? false);
   const showMawkibOwnersList = user?.roles.includes("Admin") ?? false;
-  const showCooperationNav =
+  const showCooperationNav = user?.roles.includes("Admin") ?? false;
+  const showHonoraryServantsList = user?.roles.includes("Admin") ?? false;
+  const feedbackNavVariant =
+    user && !isPilgrimOnly ? resolveFeedbackNavVariant(user.roles) : null;
+  const showReportsNav =
     (user?.roles.includes("Admin") ?? false) ||
     (user?.roles.includes("MawkibOwner") ?? false);
-  const showNewCooperationRequest =
-    user?.roles.includes("MawkibOwner") ?? false;
-  const showHonoraryServantsList = user?.roles.includes("Admin") ?? false;
-  const feedbackNavVariant = user
-    ? resolveFeedbackNavVariant(user.roles)
-    : null;
+  const showMapSearchNav =
+    user?.roles.some((role) => MAP_SEARCH_NAV_ITEM.roles.includes(role)) ??
+    false;
+  const showMawkibOwnersReport = user?.roles.includes("Admin") ?? false;
   const portalSectionsInsertIndex = getPortalSectionsInsertIndex(visibleNav);
+  const reportsSectionInsertIndex = getReportsSectionInsertIndex(visibleNav);
   const roleHonorificLabel = getPrimaryRoleHonorificLabel(user?.roles);
 
   const toggleSidebarCollapsed = () => {
@@ -275,7 +329,7 @@ export function AdminLayout() {
               {showCooperationNav && (
                 <CooperationRequestSidebarSection
                   collapsed={collapsed}
-                  showNewRequest={showNewCooperationRequest}
+                  showNewRequest={false}
                   showServantsList={showHonoraryServantsList}
                   onNavigate={onNavigate}
                 />
@@ -289,11 +343,26 @@ export function AdminLayout() {
               )}
             </>
           )}
+          {index === reportsSectionInsertIndex && showReportsNav && (
+            <ReportsSidebarSection
+              collapsed={collapsed}
+              showMawkibOwners={showMawkibOwnersReport}
+              onNavigate={onNavigate}
+            />
+          )}
           {renderNavItem(item, collapsed, onNavigate)}
+          {item.to === "/dashboard" &&
+            showMapSearchNav &&
+            !showMawkibOwnerNav &&
+            !isPilgrimOnly &&
+            renderNavItem(MAP_SEARCH_NAV_ITEM, collapsed, onNavigate)}
         </Fragment>
       ))}
       {portalSectionsInsertIndex >= visibleNav.length &&
-        (showMawkibOwnerNav || showCooperationNav || feedbackNavVariant) && (
+        (showMawkibOwnerNav ||
+          showCooperationNav ||
+          feedbackNavVariant ||
+          showReportsNav) && (
           <>
             {showMawkibOwnerNav && (
               <MawkibOwnerSidebarSection
@@ -305,7 +374,7 @@ export function AdminLayout() {
             {showCooperationNav && (
               <CooperationRequestSidebarSection
                 collapsed={collapsed}
-                showNewRequest={showNewCooperationRequest}
+                showNewRequest={false}
                 showServantsList={showHonoraryServantsList}
                 onNavigate={onNavigate}
               />
@@ -314,6 +383,13 @@ export function AdminLayout() {
               <FeedbackSidebarSection
                 collapsed={collapsed}
                 variant={feedbackNavVariant}
+                onNavigate={onNavigate}
+              />
+            )}
+            {showReportsNav && (
+              <ReportsSidebarSection
+                collapsed={collapsed}
+                showMawkibOwners={showMawkibOwnersReport}
                 onNavigate={onNavigate}
               />
             )}

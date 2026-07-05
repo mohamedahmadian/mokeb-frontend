@@ -1,9 +1,15 @@
 import api from './api';
-import type { AdminUser, RoleName, UserSocialFields } from '../types';
+import type { AdminUser, RoleName, UserGender, UserSocialFields } from '../types';
 
 export interface CreateUserPayload extends UserSocialFields {
   fullName: string;
   mobileNumber: string;
+  nationalId?: string;
+  nationalIdCardImageUrl?: string;
+  gender?: UserGender;
+  birthDate?: string;
+  country?: string;
+  passportNumber?: string;
   password: string;
   province?: string;
   city?: string;
@@ -13,6 +19,13 @@ export interface CreateUserPayload extends UserSocialFields {
 
 export interface UpdateUserPayload extends UserSocialFields {
   fullName?: string;
+  nationalId?: string;
+  nationalIdCardImageUrl?: string | null;
+  imageUrl?: string | null;
+  gender?: UserGender | null;
+  birthDate?: string | null;
+  country?: string | null;
+  passportNumber?: string | null;
   province?: string;
   city?: string;
   description?: string;
@@ -31,6 +44,12 @@ export interface CreateQuickPilgrimPayload extends UserSocialFields {
   firstName: string;
   lastName: string;
   mobileNumber: string;
+  nationalId?: string;
+  nationalIdCardImageUrl?: string;
+  gender?: UserGender;
+  birthDate?: string;
+  country?: string;
+  passportNumber?: string;
   province?: string;
   city?: string;
   password?: string;
@@ -41,6 +60,9 @@ export interface UserListFilters {
   role?: RoleName;
   fullName?: string;
   mobileNumber?: string;
+  nationalId?: string;
+  gender?: UserGender;
+  birthDate?: string;
   province?: string;
   city?: string;
   isActive?: boolean;
@@ -58,6 +80,16 @@ export interface PilgrimOption {
   city?: string | null;
 }
 
+export interface PaginatedPilgrimsResponse {
+  items: AdminUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export const DEFAULT_PILGRIMS_PAGE_SIZE = 10;
+
 export const usersApi = {
   getAll: (filters?: UserListFilters) =>
     api
@@ -70,6 +102,25 @@ export const usersApi = {
     api
       .get<AdminUser[]>('/users/pilgrims', {
         params: { scope: 'mine', ...filters },
+      })
+      .then((r) => r.data),
+
+  getPilgrimsPaginated: (
+    filters?: Omit<UserListFilters, 'role' | 'scope'> & {
+      page?: number;
+      pageSize?: number;
+    },
+  ) =>
+    api
+      .get<PaginatedPilgrimsResponse>('/users/pilgrims', {
+        params: { scope: 'mine', ...filters },
+      })
+      .then((r) => r.data),
+
+  getPilgrimsForExport: (filters?: Omit<UserListFilters, 'role' | 'scope'>) =>
+    api
+      .get<AdminUser[]>('/users/pilgrims', {
+        params: { scope: 'mine', all: true, ...filters },
       })
       .then((r) => r.data),
 

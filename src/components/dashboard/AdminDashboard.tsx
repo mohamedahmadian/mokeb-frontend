@@ -10,6 +10,7 @@ import { IconPhone } from "../mawkibs/mawkib-form-ui";
 import { MapPinIcon } from "../users/user-form-ui";
 import { mawkibCityLabel } from "../../lib/mawkib-locations";
 import { formatGuestCount } from "../../lib/capacity";
+import { GuestCountBadges } from "../reservations/GuestCountBadges";
 import { getApiErrorMessage } from "../../lib/constants";
 import { formatTimeFa } from "../../lib/format-time";
 import {
@@ -292,13 +293,15 @@ function PendingReservationCard({
     reservation.reservationDate.slice(0, 10),
     endDate.slice(0, 10),
   );
-  const guestCount = formatGuestCount(
-    reservation.maleGuestCount,
-    reservation.femaleGuestCount,
+  const guestCount = (
+    <GuestCountBadges
+      male={reservation.maleGuestCount}
+      female={reservation.femaleGuestCount}
+    />
   );
 
   return (
-    <div className="overflow-hidden rounded-lg border border-amber-200/70 bg-amber-50/40">
+    <div className="overflow-visible rounded-lg border border-amber-200/70 bg-amber-50/40">
       <div className="flex flex-col gap-2 p-2.5 sm:flex-row sm:items-center sm:gap-3 sm:p-3">
         <div className="min-w-0 flex-1 sm:pe-3 sm:border-e sm:border-slate-200/80">
           <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -332,7 +335,7 @@ function PendingReservationCard({
               className="shrink-0"
             />
             <MetaDivider />
-            <MetaInline label="مهمان" value={guestCount} className="shrink-0" />
+            <MetaInline label="تعداد" value={guestCount} className="shrink-0" />
           </div>
 
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -607,7 +610,10 @@ export function AdminDashboard({ fullName }: AdminDashboardProps) {
         )}
       </section>
 
-      <ReservationTrackLookup lookupFn={lookupAdminReservation} />
+      <ReservationTrackLookup
+        lookupFn={lookupAdminReservation}
+        showCheckInOutTimes
+      />
 
       {reservationStats.pendingReservations > 0 && (
         <section className="overflow-hidden rounded-xl border border-amber-200 bg-gradient-to-l from-amber-50 to-white px-4 py-3 shadow-sm">

@@ -1,0 +1,16 @@
+import type { UserGender } from '../types';
+
+export const USER_GENDER_OPTIONS: { value: UserGender; label: string }[] = [
+  { value: 'Male', label: 'آقا' },
+  { value: 'Female', label: 'بانو' },
+];
+
+export function userGenderLabel(gender?: UserGender | null): string {
+  if (gender === 'Male') return 'آقا';
+  if (gender === 'Female') return 'بانو';
+  return '—';
+}
+
+export function isUserGender(value: string): value is UserGender {
+  return value === 'Male' || value === 'Female';
+}

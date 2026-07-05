@@ -25,7 +25,20 @@ export interface MawkibFilters extends Partial<Pick<MawkibExtraFields, MawkibAme
   serviceStartTo?: string;
   serviceEndFrom?: string;
   serviceEndTo?: string;
+  page?: number;
+  pageSize?: number;
+  all?: boolean;
 }
+
+export interface PaginatedMawkibsResponse {
+  items: Mawkib[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export const DEFAULT_MAWKIBS_PAGE_SIZE = 10;
 
 export interface CreateMawkibPayload extends MawkibExtraFields {
   name: string;
@@ -41,11 +54,15 @@ export interface CreateMawkibPayload extends MawkibExtraFields {
   maleCapacity: number;
   femaleCapacity: number;
   imageUrl?: string;
+  galleryImageUrls?: string[];
   ownerUserId: number;
   status?: MawkibStatus;
   defaultCheckInTime?: string;
   defaultCheckOutTime?: string;
   onlineReservationEnabled?: boolean;
+  autoApprovePilgrimReservations?: boolean;
+  recordCheckInOnReservationConfirm?: boolean;
+  skipCapacityCheckEnabled?: boolean;
 }
 
 export interface UpdateMawkibPayload extends MawkibExtraFields {
@@ -61,12 +78,16 @@ export interface UpdateMawkibPayload extends MawkibExtraFields {
   serviceEndDate?: string;
   maleCapacity?: number;
   femaleCapacity?: number;
-  imageUrl?: string;
+  imageUrl?: string | null;
+  galleryImageUrls?: string[];
   ownerUserId?: number;
   status?: MawkibStatus;
   defaultCheckInTime?: string;
   defaultCheckOutTime?: string;
   onlineReservationEnabled?: boolean;
+  autoApprovePilgrimReservations?: boolean;
+  recordCheckInOnReservationConfirm?: boolean;
+  skipCapacityCheckEnabled?: boolean;
 }
 
 export interface DeleteMawkibResponse {
@@ -115,28 +136,43 @@ function buildParams(filters?: MawkibFilters) {
   return params;
 }
 
+type PublicListFilters = Pick<
+  MawkibFilters,
+  | 'q'
+  | 'name'
+  | 'ownerName'
+  | 'country'
+  | 'mawkibCity'
+  | 'reservationDate'
+  | 'reservationDateFrom'
+  | 'reservationDateTo'
+  | 'minAvailableMaleCapacity'
+  | 'minAvailableFemaleCapacity'
+  | 'hasAvailability'
+  | 'capacityFilter'
+  | 'serviceStartFrom'
+  | 'serviceStartTo'
+  | 'serviceEndFrom'
+  | 'serviceEndTo'
+  | MawkibAmenityKey
+  | 'page'
+  | 'pageSize'
+  | 'all'
+>;
+
 export const mawkibsApi = {
-  getPublicList: (filters?: Pick<
-    MawkibFilters,
-    | 'q'
-    | 'name'
-    | 'ownerName'
-    | 'country'
-    | 'mawkibCity'
-    | 'reservationDate'
-    | 'reservationDateFrom'
-    | 'reservationDateTo'
-    | 'minAvailableMaleCapacity'
-    | 'minAvailableFemaleCapacity'
-    | 'hasAvailability'
-    | 'capacityFilter'
-    | 'serviceStartFrom'
-    | 'serviceStartTo'
-    | 'serviceEndFrom'
-    | 'serviceEndTo'
-    | MawkibAmenityKey
-  >) =>
+  getPublicList: (filters?: PublicListFilters) =>
     api.get<Mawkib[]>('/mawkibs', { params: buildParams(filters) }).then((r) => r.data),
+
+  getPublicListPaginated: (filters?: PublicListFilters) =>
+    api
+      .get<PaginatedMawkibsResponse>('/mawkibs', { params: buildParams(filters) })
+      .then((r) => r.data),
+
+  getPublicListForExport: (filters?: Omit<PublicListFilters, 'page' | 'pageSize'>) =>
+    api
+      .get<Mawkib[]>('/mawkibs', { params: buildParams({ ...filters, all: true }) })
+      .then((r) => r.data),
 
   getPublicOne: (id: number) =>
     api.get<Mawkib>(`/mawkibs/public/${id}`).then((r) => r.data),
@@ -146,9 +182,29 @@ export const mawkibsApi = {
       .get<Mawkib[]>('/mawkibs/admin', { params: buildParams(filters) })
       .then((r) => r.data),
 
+  getAdminListPaginated: (filters?: MawkibFilters) =>
+    api
+      .get<PaginatedMawkibsResponse>('/mawkibs/admin', { params: buildParams(filters) })
+      .then((r) => r.data),
+
+  getAdminListForExport: (filters?: Omit<MawkibFilters, 'page' | 'pageSize'>) =>
+    api
+      .get<Mawkib[]>('/mawkibs/admin', { params: buildParams({ ...filters, all: true }) })
+      .then((r) => r.data),
+
   getMyList: (filters?: MawkibFilters) =>
     api
       .get<Mawkib[]>('/mawkibs/my', { params: buildParams(filters) })
+      .then((r) => r.data),
+
+  getMyListPaginated: (filters?: MawkibFilters) =>
+    api
+      .get<PaginatedMawkibsResponse>('/mawkibs/my', { params: buildParams(filters) })
+      .then((r) => r.data),
+
+  getMyListForExport: (filters?: Omit<MawkibFilters, 'page' | 'pageSize'>) =>
+    api
+      .get<Mawkib[]>('/mawkibs/my', { params: buildParams({ ...filters, all: true }) })
       .then((r) => r.data),
 
   getOne: (id: number) => api.get<Mawkib>(`/mawkibs/${id}`).then((r) => r.data),

@@ -1,7 +1,13 @@
 import type { ReactNode } from 'react';
+import { formatPersianNumber } from '../../lib/capacity';
 import { guestTheme } from '../../lib/guest-theme';
 
-export { MawkibCard, mawkibCapacitySnapshot } from '../mawkibs/MawkibInfoCard';
+export {
+  MawkibCard,
+  MawkibInfoCard,
+  MawkibGuestGalleryDetailsFooter,
+  mawkibCapacitySnapshot,
+} from '../mawkibs/MawkibInfoCard';
 
 export function todayDateString() {
   const d = new Date();
@@ -110,18 +116,75 @@ export function SectionHeader({
   );
 }
 
+export function NoFemaleAcceptanceHint() {
+  return (
+    <div className="flex items-end sm:min-h-[4.75rem]">
+      <span className="inline-flex items-center gap-1.5 rounded-lg bg-pink-50 px-2 py-1 text-[11px] font-medium text-pink-500 ring-1 ring-inset ring-pink-100">
+        <svg
+          className="h-3.5 w-3.5 shrink-0"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={1.75}
+          aria-hidden
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
+          />
+        </svg>
+        عدم پذیرش بانوان
+      </span>
+    </div>
+  );
+}
+
+export function GuestCountCapacityBadge({
+  available,
+  variant = 'male',
+}: {
+  available: number;
+  variant?: 'male' | 'female';
+}) {
+  if (available <= 0) {
+    return (
+      <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-600 ring-1 ring-red-100">
+        (تکمیل ظرفیت)
+      </span>
+    );
+  }
+
+  const tone =
+    variant === 'male'
+      ? 'bg-sky-50 text-sky-700 ring-sky-100'
+      : 'bg-pink-50 text-pink-600 ring-pink-100';
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${tone}`}
+    >
+      ({formatPersianNumber(available)} ظرفیت خالی)
+    </span>
+  );
+}
+
 export function GuestCountStepper({
   value,
   onChange,
   max,
   min = 0,
   label,
+  labelSuffix,
+  disabled = false,
 }: {
   value: number;
   onChange: (n: number) => void;
   max?: number;
   min?: number;
   label: string;
+  labelSuffix?: ReactNode;
+  disabled?: boolean;
 }) {
   const decrement = () => onChange(Math.max(min, value - 1));
   const increment = () => {
@@ -131,13 +194,16 @@ export function GuestCountStepper({
   };
 
   return (
-    <div>
-      <span className="mb-2 block text-sm text-slate-600">{label}</span>
+    <div className={disabled ? "opacity-50" : undefined}>
+      <span className="mb-2 flex flex-wrap items-center gap-x-1.5 text-sm text-slate-600">
+        <span>{label}</span>
+        {labelSuffix}
+      </span>
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={decrement}
-          disabled={value <= min}
+          disabled={disabled || value <= min}
           className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg font-medium text-slate-700 transition hover:border-[#c5d4e8] hover:bg-[#f0f4fa] disabled:opacity-40"
           aria-label="کاهش"
         >
@@ -146,9 +212,11 @@ export function GuestCountStepper({
         <input
           type="number"
           min={min}
-          max={max}
+          {...(max !== undefined ? { max } : {})}
           value={value}
+          disabled={disabled}
           onChange={(e) => {
+            if (disabled) return;
             const n = parseInt(e.target.value, 10);
             if (Number.isNaN(n) || n < min) onChange(min);
             else if (max !== undefined && n > max) onChange(max);
@@ -159,7 +227,7 @@ export function GuestCountStepper({
         <button
           type="button"
           onClick={increment}
-          disabled={max !== undefined && value >= max}
+          disabled={disabled || (max !== undefined && value >= max)}
           className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg font-medium text-slate-700 transition hover:border-[#c5d4e8] hover:bg-[#f0f4fa] disabled:opacity-40"
           aria-label="افزایش"
         >

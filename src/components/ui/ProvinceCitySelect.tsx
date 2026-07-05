@@ -1,13 +1,17 @@
 import { useMemo } from 'react';
 import {
-  getCitiesByProvinceFromLocations,
-  getProvincesFromLocations,
-} from '../../lib/iran-locations';
+  getCityOptionsForCountryProvince,
+  getProvinceOptionsForCountry,
+  countryHasCityList,
+  countryHasProvinceList,
+} from '../../lib/country-locations';
+import { DEFAULT_USER_COUNTRY } from '../../lib/countries';
 import { filterInputClass, inputClass } from '../../lib/styles';
 import { useIranLocations } from '../../lib/use-iran-locations';
-import { SearchableSelect } from './SearchableSelect';
+import { LocationCombobox } from './LocationCombobox';
 
 interface ProvinceCitySelectProps {
+  country?: string;
   province: string;
   city: string;
   onProvinceChange: (province: string) => void;
@@ -16,9 +20,13 @@ interface ProvinceCitySelectProps {
   cityLabel?: string;
   disabled?: boolean;
   compact?: boolean;
+  /** Renders province and city as separate labeled fields without an outer grid (for parent layouts). */
+  inline?: boolean;
+  inputClassName?: string;
 }
 
 export function ProvinceCitySelect({
+  country = DEFAULT_USER_COUNTRY,
   province,
   city,
   onProvinceChange,
@@ -27,71 +35,93 @@ export function ProvinceCitySelect({
   cityLabel = 'شهر',
   disabled = false,
   compact = false,
+  inline = false,
+  inputClassName,
 }: ProvinceCitySelectProps) {
-  const { data: locations = [] } = useIranLocations();
+  const { data: locations = [], isLoading: iranLoading } = useIranLocations();
 
-  const provinceOptions = useMemo(() => {
-    const provinces = getProvincesFromLocations(locations);
-    if (province && !provinces.includes(province)) {
-      return [province, ...provinces];
-    }
-    return provinces;
-  }, [locations, province]);
+  const normalizedCountry = country.trim() || DEFAULT_USER_COUNTRY;
+  const isIran = normalizedCountry === 'ایران';
+  const loading = isIran && iranLoading;
 
-  const cityOptions = useMemo(() => {
-    const cities = province ? getCitiesByProvinceFromLocations(locations, province) : [];
-    if (city && !cities.includes(city)) {
-      return [city, ...cities];
-    }
-    return cities;
-  }, [locations, province, city]);
+  const provinceOptions = useMemo(
+    () => getProvinceOptionsForCountry(normalizedCountry, province, locations),
+    [normalizedCountry, province, locations],
+  );
 
-  const selectClass = compact ? filterInputClass : inputClass;
-  const isLoading = locations.length === 0;
+  const cityOptions = useMemo(
+    () => getCityOptionsForCountryProvince(normalizedCountry, province, city, locations),
+    [normalizedCountry, province, city, locations],
+  );
 
-  const provinceSelect = (
-    <SearchableSelect
+  const selectClass = inputClassName ?? (compact ? filterInputClass : inputClass);
+  const hasProvinceList = countryHasProvinceList(normalizedCountry);
+  const hasCityList = countryHasCityList(normalizedCountry);
+
+  const provinceField = (
+    <LocationCombobox
       value={province}
       onChange={(value) => {
         onProvinceChange(value);
         if (value !== province) onCityChange('');
       }}
       options={provinceOptions}
-      placeholder={
-        isLoading ? 'در حال بارگذاری...' : compact ? 'استان' : 'انتخاب استان'
+      placeholder={hasProvinceList ? 'انتخاب یا وارد کردن استان' : 'نام استان را وارد کنید'}
+      disabled={disabled}
+      inputClassName={selectClass}
+      loading={loading}
+      manualEntryHint={
+        hasProvinceList
+          ? undefined
+          : 'برای این کشور لیست استان نداریم؛ نام استان را دستی وارد کنید'
       }
-      searchPlaceholder="جستجوی استان..."
-      disabled={disabled || isLoading}
-      className={selectClass}
-      emptyMessage="استانی یافت نشد"
     />
   );
 
-  const citySelect = (
-    <SearchableSelect
+  const cityField = (
+    <LocationCombobox
       value={city}
       onChange={onCityChange}
       options={cityOptions}
       placeholder={
-        compact
-          ? 'شهر'
-          : province
-            ? 'انتخاب شهر'
+        hasCityList
+          ? province
+            ? 'انتخاب یا وارد کردن شهر'
             : 'ابتدا استان را انتخاب کنید'
+          : 'نام شهر را وارد کنید'
       }
-      searchPlaceholder="جستجوی شهر..."
-      disabled={disabled || !province || isLoading}
-      className={selectClass}
-      emptyMessage="شهری یافت نشد"
+      disabled={disabled || loading}
+      inputClassName={selectClass}
+      loading={loading}
+      manualEntryHint={
+        hasCityList
+          ? undefined
+          : 'برای این کشور لیست شهر نداریم؛ نام شهر را دستی وارد کنید'
+      }
     />
   );
 
   if (compact) {
     return (
       <div className="grid grid-cols-2 gap-3">
-        {provinceSelect}
-        {citySelect}
+        {provinceField}
+        {cityField}
       </div>
+    );
+  }
+
+  if (inline) {
+    return (
+      <>
+        <label className="block">
+          <span className="mb-1.5 block text-sm text-slate-600">{provinceLabel}</span>
+          {provinceField}
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-sm text-slate-600">{cityLabel}</span>
+          {cityField}
+        </label>
+      </>
     );
   }
 
@@ -99,11 +129,11 @@ export function ProvinceCitySelect({
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <label className="block">
         <span className="mb-1 block text-sm text-slate-600">{provinceLabel}</span>
-        {provinceSelect}
+        {provinceField}
       </label>
       <label className="block">
         <span className="mb-1 block text-sm text-slate-600">{cityLabel}</span>
-        {citySelect}
+        {cityField}
       </label>
     </div>
   );

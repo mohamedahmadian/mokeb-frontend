@@ -10,6 +10,7 @@ import {
 import type { Mawkib } from '../../types';
 import { MAWKIB_AMENITY_FIELDS } from './MawkibExtraFields';
 import { MawkibReservationTypeBadges } from './MawkibReservationTypeBadges';
+import { MawkibThumbnail } from './MawkibThumbnail';
 
 function SvgIcon({
   className = 'h-3.5 w-3.5',
@@ -168,9 +169,24 @@ export function MawkibMapHoverCard({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      <InfoRow icon={icons.mawkib} label="نام موکب" value={mawkib.name} />
-      <div className="mt-1.5">
-        <MawkibReservationTypeBadges mawkib={mawkib} />
+      <div className="flex items-start gap-2.5">
+        <div className="relative shrink-0">
+          <div
+            className="absolute -inset-0.5 rounded-xl bg-gradient-to-br from-[#c5d4e8]/60 to-[#e8eef6]/30 blur-[1px]"
+            aria-hidden
+          />
+          <MawkibThumbnail
+            imageUrl={mawkib.imageUrl}
+            name={mawkib.name}
+            className="relative h-14 w-14 rounded-lg shadow-md shadow-slate-300/50 ring-2 ring-white"
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold leading-snug text-slate-800">{mawkib.name}</p>
+          <div className="mt-1">
+            <MawkibReservationTypeBadges mawkib={mawkib} />
+          </div>
+        </div>
       </div>
 
       <div className="mt-2 space-y-2">
@@ -267,7 +283,7 @@ interface HoverCardLayout {
   transform: string;
 }
 
-const CARD_ESTIMATE = { width: 256, height: 360 };
+const CARD_ESTIMATE = { width: 256, height: 400 };
 const HOVER_GAP = 14;
 const EDGE_PADDING = 10;
 

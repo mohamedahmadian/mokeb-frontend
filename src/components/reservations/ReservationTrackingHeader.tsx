@@ -2,6 +2,7 @@ import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { guestDetailTheme } from "../../lib/guest-theme";
 import { buildReservationTrackUrl } from "../../lib/reservation-track";
+import { copyTextToClipboard } from "../../lib/copy-to-clipboard";
 
 interface ReservationTrackingHeaderProps {
   trackingCode: string;
@@ -20,16 +21,19 @@ export function ReservationTrackingHeader({
   const isGuest = variant === "guest";
   const isCopyable = copyable ?? isGuest;
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   const handleCopyCode = async () => {
     if (!isCopyable) return;
 
-    try {
-      await navigator.clipboard.writeText(trackingCode);
+    setCopyFailed(false);
+    const ok = await copyTextToClipboard(trackingCode);
+    if (ok) {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
+    } else {
+      setCopyFailed(true);
+      window.setTimeout(() => setCopyFailed(false), 3000);
     }
   };
 
@@ -86,7 +90,7 @@ export function ReservationTrackingHeader({
           <button
             type="button"
             onClick={handleCopyCode}
-            className={codeClassName}
+            className={`${codeClassName} border-0 bg-transparent p-0`}
             dir="ltr"
             title="کپی شناسه رزرو"
           >
@@ -99,6 +103,10 @@ export function ReservationTrackingHeader({
         )}
         {copied ? (
           <p className="mt-1.5 text-xs font-medium text-emerald-600">شناسه کپی شد</p>
+        ) : copyFailed ? (
+          <p className="mt-1.5 text-xs font-medium text-amber-700">
+            کپی خودکار ممکن نشد — شناسه را دستی انتخاب و کپی کنید
+          </p>
         ) : isCopyable ? (
           <p className="mt-1.5 text-xs text-slate-400">برای کپی، روی شناسه کلیک کنید</p>
         ) : null}

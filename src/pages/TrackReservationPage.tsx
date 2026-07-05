@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { GuestPageHeader, GuestShell } from '../components/guest/GuestShell';
 import { TrackModeSwitch, type TrackMode } from '../components/guest/TrackModeSwitch';
 import { ReservationCheckInOut } from '../components/reservations/ReservationCheckInOut';
@@ -10,7 +10,7 @@ import { formatPersianDateRange } from '../components/ui/PersianDateRangePicker'
 import { RESERVATION_STATUS_LABELS } from '../lib/constants';
 import { guestApi } from '../lib/guest';
 import { guestTheme } from '../lib/guest-theme';
-import { getTrackingCodeFromSearchParams } from '../lib/reservation-track';
+import { getTrackingCodeFromSearchParams, pilgrimCardPath } from '../lib/reservation-track';
 import { toast, toastApiError } from '../lib/toast';
 import type { Reservation } from '../types';
 
@@ -107,6 +107,14 @@ function ReservationDetails({
         compact
         variant="guest"
       />
+      <div className="flex justify-center">
+        <Link
+          to={pilgrimCardPath(reservation.trackingCode)}
+          className={`${guestTheme.btnPrimary} w-full sm:w-auto`}
+        >
+          مشاهده زائر کارت
+        </Link>
+      </div>
     </div>
   );
 }
@@ -158,11 +166,25 @@ export function TrackReservationPage() {
       return;
     }
 
+    const digitsOnly = trimmed.replace(/[۰-۹٠-٩]/g, (ch) => {
+      const persian = '۰۱۲۳۴۵۶۷۸۹';
+      const arabic = '٠١٢٣٤٥٦٧٨٩';
+      const persianIndex = persian.indexOf(ch);
+      if (persianIndex >= 0) return String(persianIndex);
+      const arabicIndex = arabic.indexOf(ch);
+      return arabicIndex >= 0 ? String(arabicIndex) : ch;
+    }).replace(/\D/g, '');
+
+    if (digitsOnly.length < 10) {
+      toast.error('لطفاً شماره موبایل را به‌صورت کامل وارد کنید');
+      return;
+    }
+
     setReservation(null);
     setMobileResults([]);
     setLoading(true);
     try {
-      const results = await guestApi.trackReservationsByMobile(trimmed);
+      const results = await guestApi.trackReservationsByExactMobile(trimmed);
       setMobileResults(results);
       if (results.length === 1) {
         shouldScrollToMobileDetailRef.current = true;
@@ -246,7 +268,7 @@ export function TrackReservationPage() {
   const subtitle =
     mode === 'code'
       ? 'کد رزرو خود را وارد کنید تا جزئیات نمایش داده شود'
-      : 'شماره موبایل خود را وارد کنید تا ۲ رزرو اخیر نمایش داده شود';
+      : 'شماره موبایل کامل خود را وارد کنید تا ۲ رزرو اخیر نمایش داده شود';
 
   return (
     <GuestShell maxWidth="md">
@@ -264,7 +286,7 @@ export function TrackReservationPage() {
                 value={trackingCode}
                 onChange={(e) => setTrackingCode(e.target.value)}
                 className={`${guestTheme.input} font-mono tracking-wide`}
-                placeholder="مثلاً MKB-..."
+                placeholder="مثلاً 50415-1"
                 dir="ltr"
                 autoComplete="off"
               />
@@ -281,7 +303,9 @@ export function TrackReservationPage() {
                 dir="ltr"
                 autoComplete="tel"
               />
-              <p className="mt-1.5 text-xs text-slate-400">۲ رزرو اخیر ثبت‌شده با این شماره نمایش داده می‌شود</p>
+              <p className="mt-1.5 text-xs text-slate-400">
+                شماره موبایل باید کامل باشد (مثلاً 09121234567) — ۲ رزرو اخیر نمایش داده می‌شود
+              </p>
             </label>
           )}
 

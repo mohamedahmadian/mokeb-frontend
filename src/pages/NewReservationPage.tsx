@@ -1,16 +1,16 @@
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ReservationForm,
   type ReservationFormSuccess,
-} from '../components/reservations/ReservationForm';
-import { IconHome } from '../components/reservations/reservation-form-ui';
+} from "../components/reservations/ReservationForm";
+import { IconHome } from "../components/reservations/reservation-form-ui";
 
 export function NewReservationPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const initialMawkibId = searchParams.get('mawkibId');
-  const initialPilgrimUserId = searchParams.get('pilgrimUserId');
-  const initialReservationDate = searchParams.get('date');
+  const initialMawkibId = searchParams.get("mawkibId");
+  const initialPilgrimUserId = searchParams.get("pilgrimUserId");
+  const initialReservationDate = searchParams.get("date");
 
   const parsedMawkibId = initialMawkibId ? parseInt(initialMawkibId, 10) : null;
   const parsedPilgrimUserId = initialPilgrimUserId
@@ -18,7 +18,7 @@ export function NewReservationPage() {
     : null;
 
   const handleSuccess = (result: ReservationFormSuccess) => {
-    if (result.variant !== 'panel') return;
+    if (result.variant !== "panel") return;
     navigate(`/reservations/${result.reservationId}`);
   };
 
@@ -37,7 +37,7 @@ export function NewReservationPage() {
         initialReservationDate={initialReservationDate}
         initialPilgrimUserId={parsedPilgrimUserId}
         onSuccess={handleSuccess}
-        onCancel={() => navigate('/reservations')}
+        onCancel={() => navigate("/reservations")}
       />
     </div>
   );

@@ -35,6 +35,13 @@ export function formatPersianDateRange(startDate: string, endDate: string): stri
   const end = fromGregorianString(endDate);
   const startLabel = start.format('DD MMMM YYYY');
   if (startDate === endDate) return startLabel;
+
+  const startYear = start.format('YYYY');
+  const endYear = end.format('YYYY');
+  if (startYear === endYear) {
+    return `${start.format('DD MMMM')} الی ${end.format('DD MMMM YYYY')}`;
+  }
+
   return `${startLabel} تا ${end.format('DD MMMM YYYY')}`;
 }
 

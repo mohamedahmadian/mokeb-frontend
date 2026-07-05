@@ -3,48 +3,35 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { MawkibFeedbackDetailModal } from "../mawkib-feedback/MawkibFeedbackDetailModal";
 import { MawkibCardPrintButton } from "../mawkibs/MawkibCardPrintButton";
-import { MawkibFormModal } from "../mawkibs/MawkibFormModal";
 import { MawkibCapacityViewModal } from "../mawkibs/MawkibCapacityViewModal";
+import { MawkibCapacityMiniDonuts } from "../mawkibs/MawkibCapacityMiniDonut";
 import { MawkibCapacityPills } from "../mawkibs/MawkibInfoCard";
+import { MawkibThumbnail } from "../mawkibs/MawkibThumbnail";
 import { CancelReservationModal } from "../reservations/CancelReservationModal";
+import { PendingReservationCard } from "../reservations/PendingReservationCard";
 import { ReservationTrackLookup } from "./ReservationTrackLookup";
-import { formatPersianDateRange } from "../ui/PersianDateRangePicker";
-import { formatPersianDateFromIso } from "../ui/PersianDateInput";
 import { NavIcon, type NavIconName } from "../ui/NavIcons";
 import { mawkibCityLabel } from "../../lib/mawkib-locations";
-import { useAuth } from "../../contexts/AuthContext";
-import { formatGuestCount } from "../../lib/capacity";
 import { mawkibToCardData } from "../../lib/mawkib-card";
 import { getApiErrorMessage } from "../../lib/constants";
 import { dashboardApi } from "../../lib/dashboard";
-import { formatTimeFa } from "../../lib/format-time";
 import {
   computeReservationStats,
   getPendingReservations,
-  getRecentPilgrims,
 } from "../../lib/mawkib-owner-dashboard";
 import { mawkibFeedbackApi } from "../../lib/mawkib-feedback";
-import {
-  mawkibsApi,
-  type UpdateMawkibPayload,
-} from "../../lib/mawkibs";
+import { mawkibsApi } from "../../lib/mawkibs";
 import {
   reservationsApi,
   type ReservationStatus,
 } from "../../lib/reservations";
-import { usersApi } from "../../lib/users";
-import { RESERVATION_STATUS_LABELS } from "../../lib/constants";
 import { toast, toastApiError } from "../../lib/toast";
-import { btnAction, btnDanger, btnPrimary } from "../../lib/styles";
 import { truncateText } from "../../lib/text";
-import type { AdminUser, Mawkib, MawkibFeedback, Reservation } from "../../types";
-
-const statusColors: Record<string, string> = {
-  Pending: "bg-amber-100 text-amber-800 ring-amber-200",
-  Confirmed: "bg-emerald-100 text-emerald-800 ring-emerald-200",
-  Cancelled: "bg-red-100 text-red-700 ring-red-200",
-  Completed: "bg-slate-100 text-slate-700 ring-slate-200",
-};
+import type {
+  Mawkib,
+  MawkibFeedback,
+  Reservation,
+} from "../../types";
 
 function StatTile({
   label,
@@ -104,16 +91,6 @@ function QuickAction({
   );
 }
 
-function StatusBadge({ status }: { status: Reservation["status"] }) {
-  return (
-    <span
-      className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${statusColors[status] ?? "bg-slate-100 text-slate-700"}`}
-    >
-      {RESERVATION_STATUS_LABELS[status]}
-    </span>
-  );
-}
-
 function SectionHeader({
   title,
   subtitle,
@@ -129,7 +106,9 @@ function SectionHeader({
     <div className="mb-3 flex items-start justify-between gap-2 sm:mb-4">
       <div>
         <h2 className="text-base font-semibold text-slate-700">{title}</h2>
-        {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
+        {subtitle && (
+          <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>
+        )}
       </div>
       {viewAllTo && (
         <Link
@@ -150,170 +129,6 @@ function EmptyState({ icon, message }: { icon: ReactNode; message: string }) {
         {icon}
       </div>
       <p className="text-sm text-slate-500">{message}</p>
-    </div>
-  );
-}
-
-function MetaInline({
-  label,
-  value,
-  dir,
-  className = "",
-}: {
-  label: string;
-  value: ReactNode;
-  dir?: "ltr" | "rtl";
-  className?: string;
-}) {
-  return (
-    <span className={`inline-flex items-baseline gap-1 ${className}`}>
-      <span className="text-[10px] text-slate-500">{label}</span>
-      <span
-        className={`text-[11px] font-semibold text-slate-800 ${dir === "ltr" ? "font-mono" : ""}`}
-        dir={dir}
-      >
-        {value}
-      </span>
-    </span>
-  );
-}
-
-function MetaDivider() {
-  return (
-    <span className="hidden text-slate-300 sm:inline" aria-hidden>
-      ·
-    </span>
-  );
-}
-
-function PendingReservationCard({
-  reservation,
-  onApprove,
-  onReject,
-  isApproving,
-  isRejecting,
-}: {
-  reservation: Reservation;
-  onApprove: () => void;
-  onReject: () => void;
-  isApproving: boolean;
-  isRejecting: boolean;
-}) {
-  const endDate = reservation.reservationEndDate ?? reservation.reservationDate;
-  const checkInTime = formatTimeFa(
-    reservation.plannedCheckInTime ?? reservation.mawkib.defaultCheckInTime,
-  );
-  const checkOutTime = formatTimeFa(
-    reservation.plannedCheckOutTime ?? reservation.mawkib.defaultCheckOutTime,
-  );
-  const createdAtLabel = reservation.createdAt
-    ? formatPersianDateFromIso(reservation.createdAt)
-    : "—";
-  const isBusy = isApproving || isRejecting;
-  const stayRange = formatPersianDateRange(
-    reservation.reservationDate.slice(0, 10),
-    endDate.slice(0, 10),
-  );
-  const guestCount = formatGuestCount(
-    reservation.maleGuestCount,
-    reservation.femaleGuestCount,
-  );
-
-  return (
-    <div className="overflow-hidden rounded-lg border border-amber-200/70 bg-amber-50/40">
-      <div className="flex flex-col gap-2 p-2.5 sm:flex-row sm:items-center sm:gap-3 sm:p-3">
-        <div className="min-w-0 flex-1 sm:pe-3 sm:border-e sm:border-slate-200/80">
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-              <span className="truncate text-sm font-bold text-slate-800">
-                {reservation.pilgrim.fullName}
-              </span>
-              <span className="text-slate-300" aria-hidden>
-                ·
-              </span>
-              <span className="truncate text-[11px] text-slate-500">
-                {reservation.mawkib.name}
-              </span>
-            </div>
-            <StatusBadge status={reservation.status} />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <MetaInline
-              label="اقامت"
-              value={stayRange}
-              className="shrink-0"
-            />
-            <MetaDivider />
-            <MetaInline
-              label="ورود"
-              value={checkInTime}
-              dir="ltr"
-              className="shrink-0"
-            />
-            <MetaInline
-              label="خروج"
-              value={checkOutTime}
-              dir="ltr"
-              className="shrink-0"
-            />
-            <MetaDivider />
-            <MetaInline
-              label="مهمان"
-              value={guestCount}
-              className="shrink-0"
-            />
-          </div>
-
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <MetaInline
-              label="موبایل"
-              value={reservation.pilgrim.mobileNumber}
-              dir="ltr"
-            />
-            <MetaDivider />
-            <MetaInline
-              label="پیگیری"
-              value={reservation.trackingCode}
-              dir="ltr"
-            />
-            <MetaDivider />
-            <MetaInline label="ثبت" value={createdAtLabel} />
-          </div>
-
-          {reservation.description?.trim() && (
-            <p className="mt-1 line-clamp-1 text-[11px] text-slate-600">
-              <span className="text-slate-400">توضیح: </span>
-              {reservation.description}
-            </p>
-          )}
-        </div>
-
-        <div className="flex shrink-0 flex-row gap-1.5 sm:w-[7rem] sm:flex-col sm:gap-1">
-          <button
-            type="button"
-            onClick={onApprove}
-            disabled={isBusy}
-            className={`${btnPrimary} flex-1 !min-h-8 !px-2 !py-1.5 !text-[11px] sm:w-full`}
-          >
-            {isApproving ? "..." : "تایید"}
-          </button>
-          <button
-            type="button"
-            onClick={onReject}
-            disabled={isBusy}
-            className={`${btnDanger} flex-1 !min-h-8 !px-2 !py-1.5 !text-[11px] sm:w-full`}
-          >
-            {isRejecting ? "..." : "رد"}
-          </button>
-          <Link
-            to={`/reservations/${reservation.id}`}
-            className={`${btnAction} flex-1 border border-slate-200 bg-white !min-h-8 !px-2 !py-1.5 !text-[11px] text-slate-700 hover:bg-slate-50 sm:w-full`}
-          >
-            جزئیات
-          </Link>
-        </div>
-      </div>
     </div>
   );
 }
@@ -354,118 +169,88 @@ function PendingFeedbackRow({
   );
 }
 
-function PilgrimRow({ pilgrim }: { pilgrim: AdminUser }) {
-  return (
-    <Link
-      to={`/reservations/new?pilgrimUserId=${pilgrim.id}`}
-      className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-white px-4 py-3 transition hover:border-[#c5d4e8] hover:bg-[#f0f4fa]/40"
-    >
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#e8eef6] text-[#4a6fa5]">
-          <NavIcon name="pilgrims" className="h-4 w-4" />
-        </div>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-slate-800">
-            {pilgrim.fullName}
-          </p>
-          <p className="mt-0.5 font-mono text-xs text-slate-500" dir="ltr">
-            {pilgrim.mobileNumber}
-          </p>
-        </div>
-      </div>
-      <span className="shrink-0 text-[10px] font-medium text-[#4a6fa5]">
-        رزرو جدید
-      </span>
-    </Link>
-  );
-}
-
 function MawkibQuickCard({
   mawkib,
-  onEdit,
   onViewCapacity,
 }: {
   mawkib: Mawkib;
-  onEdit: () => void;
   onViewCapacity: () => void;
 }) {
+  const quickBtn =
+    "inline-flex min-w-0 flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-medium transition sm:px-2.5 sm:text-[11px]";
+
   return (
     <div className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-800">
-            {mawkib.name}
-          </p>
-          {mawkib.mawkibCity && (
-            <p className="mt-0.5 text-xs text-slate-500">
-              {mawkibCityLabel(mawkib.mawkibCity)}
-            </p>
-          )}
+      <div
+        className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3"
+        dir="ltr"
+      >
+        <MawkibCapacityMiniDonuts mawkib={mawkib} size={100} />
+
+        <div className="flex min-w-0 flex-col items-end gap-2">
+          <div className="flex max-w-full items-start gap-2.5">
+            <div className="min-w-0 text-right" dir="rtl">
+              <p className="truncate text-sm font-semibold text-slate-800">
+                {mawkib.name}
+              </p>
+              {mawkib.mawkibCity && (
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {mawkibCityLabel(mawkib.mawkibCity)}
+                </p>
+              )}
+            </div>
+            <div className="relative shrink-0">
+              <div
+                className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-[#c5d4e8]/70 to-[#e8eef6]/30 blur-[2px]"
+                aria-hidden
+              />
+              <MawkibThumbnail
+                imageUrl={mawkib.imageUrl}
+                name={mawkib.name}
+                className="relative h-16 w-16 rounded-xl shadow-lg shadow-slate-300/60 ring-2 ring-white"
+              />
+            </div>
+          </div>
+
+          <MawkibCapacityPills mawkib={mawkib} compact fitContent />
         </div>
-        <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-            mawkib.status === "Approved"
-              ? "bg-emerald-100 text-emerald-700"
-              : mawkib.status === "Pending"
-                ? "bg-amber-100 text-amber-700"
-                : "bg-red-100 text-red-700"
-          }`}
-        >
-          {mawkib.status === "Approved"
-            ? "فعال"
-            : mawkib.status === "Pending"
-              ? "در انتظار"
-              : "رد شده"}
-        </span>
       </div>
 
-      <div className="mt-3">
-        <MawkibCapacityPills mawkib={mawkib} />
-      </div>
-
-      <div className="mt-3 space-y-1.5">
-        <div className="flex flex-wrap gap-1.5">
+      <div className="mt-2 space-y-1.5">
+        <div className="grid grid-cols-2 gap-1.5">
           <Link
             to={`/reservations/new?mawkibId=${mawkib.id}`}
-            className="inline-flex items-center gap-1 rounded-lg bg-[#4a6fa5] px-2.5 py-1.5 text-[11px] font-medium text-white transition hover:bg-[#3d5d8a]"
+            className={`${quickBtn} bg-[#4a6fa5] text-white hover:bg-[#3d5d8a]`}
           >
-            <NavIcon name="quickReserve" className="h-3.5 w-3.5" />
+            <NavIcon name="quickReserve" className="h-3.5 w-3.5 shrink-0" />
             رزرو جدید
           </Link>
           <Link
             to={`/reservations?mawkibId=${mawkib.id}`}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50"
+            className={`${quickBtn} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`}
           >
-            <NavIcon name="reservations" className="h-3.5 w-3.5" />
-            رزروها
-          </Link>
-          <Link
-            to={`/users/pilgrims?mawkibId=${mawkib.id}`}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50"
-          >
-            <NavIcon name="pilgrims" className="h-3.5 w-3.5" />
-            زائرین
+            <NavIcon name="reservations" className="h-3.5 w-3.5 shrink-0" />
+            تاریخچه رزروها
           </Link>
         </div>
-        <div className="flex gap-1.5">
+        <div className="grid grid-cols-3 gap-1.5">
+          <Link
+            to={`/reservations/quick?mawkibId=${mawkib.id}`}
+            className={`${quickBtn} border border-[#4a6fa5]/30 bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6]`}
+          >
+            <NavIcon name="todayReserve" className="h-3.5 w-3.5 shrink-0" />
+            رزرو سریع
+          </Link>
           <button
             type="button"
             onClick={onViewCapacity}
-            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2 py-1.5 text-[10px] font-medium text-violet-700 transition hover:bg-violet-100 sm:px-2.5 sm:text-[11px]"
+            className={`${quickBtn} border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100`}
           >
-            مشاهده ظرفیت
-          </button>
-          <button
-            type="button"
-            onClick={onEdit}
-            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-medium text-slate-700 transition hover:bg-slate-50 sm:px-2.5 sm:text-[11px]"
-          >
-            <NavIcon name="mawkibs" className="h-3.5 w-3.5 shrink-0" />
-            ویرایش موکب
+            تقویم ظرفیت
           </button>
           <MawkibCardPrintButton
             data={mawkibToCardData(mawkib)}
-            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 rounded-lg border border-[#c5d4e8] bg-[#f0f4fa] px-2 py-1.5 text-[10px] font-medium text-[#4a6fa5] transition hover:bg-[#e8eef6] sm:px-2.5 sm:text-[11px]"
+            className={`${quickBtn} border border-[#c5d4e8] bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6]`}
           />
         </div>
       </div>
@@ -479,14 +264,10 @@ interface MawkibOwnerDashboardProps {
 
 export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const isAdmin = user?.roles.includes("Admin") ?? false;
 
   const [viewingFeedback, setViewingFeedback] = useState<MawkibFeedback | null>(
     null,
   );
-  const [editingMawkib, setEditingMawkib] = useState<Mawkib | null>(null);
-  const [mawkibFormOpen, setMawkibFormOpen] = useState(false);
   const [capacityMawkib, setCapacityMawkib] = useState<Mawkib | null>(null);
   const [rejectingReservation, setRejectingReservation] =
     useState<Reservation | null>(null);
@@ -512,11 +293,6 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
     queryFn: () => mawkibFeedbackApi.listInbox({ replyStatus: "pending" }),
   });
 
-  const { data: pilgrims = [], isLoading: pilgrimsLoading } = useQuery({
-    queryKey: ["pilgrims-list", {}],
-    queryFn: () => usersApi.getPilgrims(),
-  });
-
   const { data: mawkibs = [], isLoading: mawkibsLoading } = useQuery({
     queryKey: ["mawkibs-my"],
     queryFn: () => mawkibsApi.getMyList(),
@@ -525,6 +301,11 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
   const invalidateReservationData = () => {
     queryClient.invalidateQueries({ queryKey: ["reservations-my"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    queryClient.invalidateQueries({ queryKey: ["mawkibs-my"] });
+    queryClient.invalidateQueries({
+      queryKey: ["reservations-pending-counts"],
+    });
+    queryClient.invalidateQueries({ queryKey: ["waiting-list-mawkibs"] });
   };
 
   const approveReservation = useMutation({
@@ -568,55 +349,19 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
     },
   });
 
-  const updateMawkib = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: UpdateMawkibPayload }) =>
-      mawkibsApi.update(id, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["mawkibs-my"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      toast.success("موکب با موفقیت ویرایش شد");
-    },
-  });
-
-  const handleMawkibFormSubmit = async (payload: UpdateMawkibPayload) => {
-    if (!editingMawkib) return;
-    try {
-      await updateMawkib.mutateAsync({
-        id: editingMawkib.id,
-        payload,
-      });
-    } catch (error) {
-      throw new Error(getApiErrorMessage(error, "خطا در ذخیره موکب"));
-    }
-  };
-
-  const openMawkibEditor = (mawkib: Mawkib) => {
-    setEditingMawkib(mawkib);
-    setMawkibFormOpen(true);
-    void mawkibsApi
-      .getOne(mawkib.id)
-      .then(setEditingMawkib)
-      .catch(() => toast.error("بارگذاری جزئیات موکب ناموفق بود"));
-  };
-
   const isLoading =
     statsLoading ||
     reservationsLoading ||
     feedbackLoading ||
-    pilgrimsLoading ||
     mawkibsLoading;
 
   const pendingReservations = useMemo(
-    () => getPendingReservations(reservations, 5),
+    () => getPendingReservations(reservations, 3),
     [reservations],
   );
   const recentFeedbacks = useMemo(
     () => pendingFeedbacks.slice(0, 5),
     [pendingFeedbacks],
-  );
-  const recentPilgrims = useMemo(
-    () => getRecentPilgrims(pilgrims, 10),
-    [pilgrims],
   );
   const reservationStats = useMemo(
     () => stats?.mawkibOwnerStats ?? computeReservationStats(reservations),
@@ -630,7 +375,9 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
   return (
     <div className="space-y-6 sm:space-y-8">
       <header>
-        <h1 className="text-xl font-bold text-slate-800 sm:text-2xl">داشبورد</h1>
+        <h1 className="text-xl font-bold text-slate-800 sm:text-2xl">
+          داشبورد
+        </h1>
         <p className="mt-1 text-sm text-slate-500">
           موکب‌دار گرامی،
           <span className="mx-1 inline-block rounded-lg bg-[#f3ebe0] px-3 py-1 text-xs font-semibold text-[#8b6914]">
@@ -658,7 +405,7 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
               </div>
             </div>
             <Link
-              to="/reservations?status=Pending"
+              to="/reservations/waiting-list"
               className="inline-flex shrink-0 items-center justify-center rounded-lg bg-amber-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-amber-700"
             >
               مشاهده همه
@@ -667,7 +414,37 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
         </section>
       )}
 
-      <ReservationTrackLookup />
+      <ReservationTrackLookup
+        onAttendanceSuccess={(type) => {
+          if (type === "check-out") {
+            invalidateReservationData();
+          }
+        }}
+      />
+
+      <section>
+        <SectionHeader
+          title="موکب‌های من"
+          subtitle="دسترسی سریع به عملیات هر موکب"
+          viewAllTo={mawkibs.length > 0 ? "/mawkibs" : undefined}
+        />
+        {mawkibs.length > 0 ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {mawkibs.map((mawkib) => (
+              <MawkibQuickCard
+                key={mawkib.id}
+                mawkib={mawkib}
+                onViewCapacity={() => setCapacityMawkib(mawkib)}
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={<NavIcon name="mawkibs" className="h-5 w-5" />}
+            message="هنوز موکبی ثبت نکرده‌اید."
+          />
+        )}
+      </section>
 
       <section>
         {pendingReservations.length > 0 ? (
@@ -675,9 +452,9 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
             <SectionHeader
               title="رزروهای در انتظار تایید"
               subtitle="درخواست‌های ثبت‌شده که هنوز تایید نشده‌اند"
-              viewAllTo="/reservations?status=Pending"
+              viewAllTo="/reservations/waiting-list"
             />
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {pendingReservations.map((reservation) => (
                 <PendingReservationCard
                   key={reservation.id}
@@ -694,6 +471,14 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
                   }
                 />
               ))}
+            </div>
+            <div className="mt-4 flex justify-center">
+              <Link
+                to="/reservations/waiting-list"
+                className="inline-flex items-center justify-center rounded-lg border border-amber-300 bg-white px-4 py-2.5 text-sm font-medium text-amber-800 transition hover:bg-amber-50"
+              >
+                مشاهده لیست کامل انتظار
+              </Link>
             </div>
           </>
         ) : (
@@ -784,31 +569,6 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
       )}
 
       <section>
-        <SectionHeader
-          title="موکب‌های من"
-          subtitle="دسترسی سریع به عملیات هر موکب"
-          viewAllTo={mawkibs.length > 0 ? "/mawkibs" : undefined}
-        />
-        {mawkibs.length > 0 ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {mawkibs.map((mawkib) => (
-              <MawkibQuickCard
-                key={mawkib.id}
-                mawkib={mawkib}
-                onEdit={() => openMawkibEditor(mawkib)}
-                onViewCapacity={() => setCapacityMawkib(mawkib)}
-              />
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            icon={<NavIcon name="mawkibs" className="h-5 w-5" />}
-            message="هنوز موکبی ثبت نکرده‌اید."
-          />
-        )}
-      </section>
-
-      <section>
         <SectionHeader title="آمار رزروها" />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4">
           <StatTile
@@ -839,26 +599,6 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
         </div>
       </section>
 
-      <section>
-        <SectionHeader
-          title="زائرین"
-          subtitle="۱۰ زائر اخیر — برای رزرو سریع کلیک کنید"
-          viewAllTo={pilgrims.length > 0 ? "/users/pilgrims" : undefined}
-        />
-        {recentPilgrims.length > 0 ? (
-          <div className="space-y-2">
-            {recentPilgrims.map((pilgrim) => (
-              <PilgrimRow key={pilgrim.id} pilgrim={pilgrim} />
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            icon={<NavIcon name="pilgrims" className="h-5 w-5" />}
-            message="هنوز زائری در سامانه ثبت نشده است."
-          />
-        )}
-      </section>
-
       <MawkibFeedbackDetailModal
         open={!!viewingFeedback}
         feedback={viewingFeedback}
@@ -869,19 +609,6 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
           "dashboard-stats",
           "reservations-my",
         ]}
-      />
-
-      <MawkibFormModal
-        key={editingMawkib?.id ?? "new"}
-        open={mawkibFormOpen}
-        onClose={() => {
-          setMawkibFormOpen(false);
-          setEditingMawkib(null);
-        }}
-        onSubmit={handleMawkibFormSubmit}
-        mawkib={editingMawkib}
-        isAdmin={isAdmin}
-        currentUserId={user?.id}
       />
 
       <CancelReservationModal
@@ -909,6 +636,8 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
         onClose={() => setCapacityMawkib(null)}
         mawkibId={capacityMawkib?.id ?? 0}
         mawkibName={capacityMawkib?.name ?? ""}
+        serviceStartDate={capacityMawkib?.serviceStartDate}
+        serviceEndDate={capacityMawkib?.serviceEndDate}
         authenticated
       />
     </div>

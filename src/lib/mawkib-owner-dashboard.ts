@@ -16,10 +16,26 @@ export function normalizeLookupQuery(value: string): string {
 }
 
 export function isMobileLookupQuery(value: string): boolean {
-  return normalizeLookupQuery(value).startsWith('0');
+  const trimmed = normalizeLookupQuery(value);
+  return trimmed.startsWith('0') || /^9\d{9}$/.test(trimmed);
 }
 
-export async function lookupOwnerReservation(query: string): Promise<{
+export function isNationalIdLookupQuery(value: string): boolean {
+  const trimmed = normalizeLookupQuery(value);
+  if (!/^\d{10}$/.test(trimmed)) return false;
+  return !/^9\d{9}$/.test(trimmed);
+}
+
+export function normalizeMobileLookupQuery(value: string): string {
+  const trimmed = normalizeLookupQuery(value);
+  if (/^9\d{9}$/.test(trimmed)) return `0${trimmed}`;
+  return trimmed;
+}
+
+export async function lookupReservationList(
+  query: string,
+  fetchList: (filters: import('./reservations').ReservationFilters) => Promise<Reservation[]>,
+): Promise<{
   reservation: Reservation | null;
   alternatives: Reservation[];
 }> {
@@ -29,7 +45,9 @@ export async function lookupOwnerReservation(query: string): Promise<{
   }
 
   if (isMobileLookupQuery(trimmed)) {
-    const results = await reservationsApi.getMyList({ pilgrimMobile: trimmed });
+    const results = await fetchList({
+      pilgrimMobile: normalizeMobileLookupQuery(trimmed),
+    });
     if (results.length === 0) {
       return { reservation: null, alternatives: [] };
     }
@@ -37,7 +55,16 @@ export async function lookupOwnerReservation(query: string): Promise<{
     return { reservation: first, alternatives: rest };
   }
 
-  const results = await reservationsApi.getMyList({ trackingCode: trimmed });
+  if (isNationalIdLookupQuery(trimmed)) {
+    const results = await fetchList({ pilgrimNationalId: trimmed });
+    if (results.length === 0) {
+      return { reservation: null, alternatives: [] };
+    }
+    const [first, ...rest] = results;
+    return { reservation: first, alternatives: rest };
+  }
+
+  const results = await fetchList({ trackingCode: trimmed });
   const exact =
     results.find(
       (item) => item.trackingCode.toLowerCase() === trimmed.toLowerCase(),
@@ -51,6 +78,15 @@ export async function lookupOwnerReservation(query: string): Promise<{
     reservation: exact,
     alternatives: results.filter((item) => item.id !== exact.id),
   };
+}
+
+export async function lookupOwnerReservation(query: string): Promise<{
+  reservation: Reservation | null;
+  alternatives: Reservation[];
+}> {
+  return lookupReservationList(query, (filters) =>
+    reservationsApi.getMyList(filters),
+  );
 }
 
 export interface MawkibOwnerReservationStats {
@@ -75,10 +111,13 @@ export function getPendingReservations(
   reservations: Reservation[],
   limit = 5,
 ): Reservation[] {
-  return sortByNewest(reservations.filter((r) => r.status === 'Pending')).slice(
-    0,
-    limit,
-  );
+  const pending = sortByNewest(reservations.filter((r) => r.status === 'Pending'));
+  const selected = pending.slice(0, limit);
+  return selected.sort((a, b) => {
+    const aTime = new Date(a.createdAt ?? 0).getTime();
+    const bTime = new Date(b.createdAt ?? 0).getTime();
+    return aTime - bTime;
+  });
 }
 
 export function getRecentReservationsForOwner(

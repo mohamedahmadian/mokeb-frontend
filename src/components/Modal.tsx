@@ -6,9 +6,18 @@ interface ModalProps {
   title: string;
   children: ReactNode;
   size?: 'md' | 'lg' | 'xl';
+  /** بالاتر از مودال‌های معمولی — برای مودال تودرتو مثل انتخاب موقعیت روی نقشه */
+  elevated?: boolean;
 }
 
-export function Modal({ open, onClose, title, children, size = 'md' }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  size = 'md',
+  elevated = false,
+}: ModalProps) {
   useEffect(() => {
     if (!open) return;
 
@@ -31,7 +40,9 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
     size === 'xl' ? 'max-w-5xl' : size === 'lg' ? 'max-w-2xl' : 'max-w-lg';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
+    <div
+      className={`fixed inset-0 flex items-end justify-center sm:items-center sm:p-4 ${elevated ? 'z-[60]' : 'z-50'}`}
+    >
       <div
         className="absolute inset-0 bg-black/40"
         onClick={onClose}

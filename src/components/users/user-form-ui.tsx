@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type KeyboardEvent, type ReactNode, type Ref } from 'react';
 import { NavIcon, type NavIconName } from '../ui/NavIcons';
 import { guestTheme } from '../../lib/guest-theme';
 import {
@@ -23,6 +23,8 @@ export function PasswordInput({
   hint,
   minLength = 4,
   pinMode = false,
+  inputRef,
+  onKeyDown,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -31,6 +33,8 @@ export function PasswordInput({
   hint?: string;
   minLength?: number;
   pinMode?: boolean;
+  inputRef?: Ref<HTMLInputElement>;
+  onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void;
 }) {
   const [visible, setVisible] = useState(false);
 
@@ -43,10 +47,12 @@ export function PasswordInput({
       <FieldLabel label="رمز عبور" required={required} hint={hint} />
       <div className="relative">
         <input
+          ref={inputRef}
           type={visible ? 'text' : 'password'}
           required={required}
           value={value}
           onChange={(e) => handleChange(e.target.value)}
+          onKeyDown={onKeyDown}
           className={`${guestTheme.input} pl-11`}
           placeholder={placeholder ?? (pinMode ? 'مثلاً 1234' : undefined)}
           minLength={required ? minLength : undefined}

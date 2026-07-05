@@ -17,6 +17,7 @@ import { RemainingCapacityHint } from "./RemainingCapacityHint";
 import {
   countDaysInclusive,
   defaultCapacityRange,
+  getCapacityDateBounds,
   isRangeWithinBounds,
   todayGregorian,
 } from "../../lib/date-range";
@@ -33,6 +34,8 @@ interface MawkibCapacityViewModalProps {
   onClose: () => void;
   mawkibId: number;
   mawkibName: string;
+  serviceStartDate?: string | null;
+  serviceEndDate?: string | null;
   /** Use authenticated API for non-public mawkibs (admin/owner). */
   authenticated?: boolean;
   /** Show hover «رزرو» on day cards — guest pages use public reserve URL; panel uses /reservations/new. */
@@ -258,15 +261,12 @@ export function MawkibCapacityViewModal({
   onClose,
   mawkibId,
   mawkibName,
+  serviceStartDate,
+  serviceEndDate,
   authenticated = false,
   guestReserveLinks = false,
 }: MawkibCapacityViewModalProps) {
   const navigate = useNavigate();
-  const defaults = useMemo(() => defaultCapacityRange(), [open]);
-  const [startDate, setStartDate] = useState(defaults.startDate);
-  const [endDate, setEndDate] = useState(defaults.endDate);
-  const [appliedRange, setAppliedRange] = useState(defaults);
-  const [validationError, setValidationError] = useState("");
 
   const { data: horizon } = useQuery({
     queryKey: ["mawkib-inventory-horizon"],
@@ -275,14 +275,29 @@ export function MawkibCapacityViewModal({
     staleTime: 5 * 60_000,
   });
 
+  const dateBounds = useMemo(
+    () => getCapacityDateBounds(serviceStartDate, serviceEndDate, horizon),
+    [serviceStartDate, serviceEndDate, horizon],
+  );
+
+  const defaults = useMemo(
+    () => defaultCapacityRange(dateBounds ?? undefined),
+    [open, dateBounds],
+  );
+
+  const [startDate, setStartDate] = useState(defaults.startDate);
+  const [endDate, setEndDate] = useState(defaults.endDate);
+  const [appliedRange, setAppliedRange] = useState(defaults);
+  const [validationError, setValidationError] = useState("");
+
   useEffect(() => {
     if (!open) return;
-    const range = defaultCapacityRange();
+    const range = defaultCapacityRange(dateBounds ?? undefined);
     setStartDate(range.startDate);
     setEndDate(range.endDate);
     setAppliedRange(range);
     setValidationError("");
-  }, [open, mawkibId]);
+  }, [open, mawkibId, dateBounds]);
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: [
@@ -304,11 +319,11 @@ export function MawkibCapacityViewModal({
             appliedRange.startDate,
             appliedRange.endDate,
           ),
-    enabled: open && mawkibId > 0,
+    enabled: open && mawkibId > 0 && !!dateBounds,
   });
 
   const validateAndApply = () => {
-    if (!horizon) {
+    if (!dateBounds) {
       setAppliedRange({ startDate, endDate });
       void refetch();
       return;
@@ -320,10 +335,17 @@ export function MawkibCapacityViewModal({
     }
 
     if (
-      !isRangeWithinBounds(startDate, endDate, horizon.minDate, horizon.maxDate)
+      !isRangeWithinBounds(
+        startDate,
+        endDate,
+        dateBounds.minDate,
+        dateBounds.maxDate,
+      )
     ) {
       setValidationError(
-        `بازه مجاز: ${formatPersianDate(horizon.minDate)} تا ${formatPersianDate(horizon.maxDate)} (${formatPersianNumber(horizon.horizonDays)} روز آینده)`,
+        dateBounds.isServicePeriod
+          ? `بازه مجاز بر اساس ارائه خدمت موکب: ${formatPersianDate(dateBounds.minDate)} تا ${formatPersianDate(dateBounds.maxDate)}`
+          : `بازه مجاز: ${formatPersianDate(dateBounds.minDate)} تا ${formatPersianDate(dateBounds.maxDate)} (${formatPersianNumber(horizon?.horizonDays ?? 0)} روز آینده)`,
       );
       return;
     }
@@ -366,13 +388,34 @@ export function MawkibCapacityViewModal({
       size="xl"
     >
       <div className="space-y-4">
-        {horizon && (
+        {dateBounds && (
           <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-            بازه قابل مشاهده: از امروز تا{" "}
-            <span className="font-medium text-slate-700">
-              {formatPersianDate(horizon.maxDate)}
-            </span>{" "}
-            ({formatPersianNumber(horizon.horizonDays)} روز آینده)
+            {dateBounds.isServicePeriod ? (
+              <>
+                بازه ارائه خدمت موکب:{" "}
+                <span className="font-medium text-slate-700">
+                  {formatPersianDate(dateBounds.minDate)}
+                </span>{" "}
+                تا{" "}
+                <span className="font-medium text-slate-700">
+                  {formatPersianDate(dateBounds.maxDate)}
+                </span>
+              </>
+            ) : (
+              <>
+                بازه قابل مشاهده: از امروز تا{" "}
+                <span className="font-medium text-slate-700">
+                  {formatPersianDate(dateBounds.maxDate)}
+                </span>{" "}
+                ({formatPersianNumber(horizon?.horizonDays ?? 0)} روز آینده)
+              </>
+            )}
+          </p>
+        )}
+
+        {!dateBounds && open && (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            بازه ارائه خدمت برای این موکب تعریف نشده است.
           </p>
         )}
 
@@ -381,20 +424,25 @@ export function MawkibCapacityViewModal({
             label="از تاریخ"
             value={startDate}
             onChange={setStartDate}
-            minDate={horizon?.minDate}
+            minDate={dateBounds?.minDate}
+            maxDate={dateBounds?.maxDate}
+            disabled={!dateBounds}
             inputClassName={filterInputClass}
           />
           <PersianDateInput
             label="تا تاریخ"
             value={endDate}
             onChange={setEndDate}
-            minDate={startDate || horizon?.minDate}
+            minDate={startDate || dateBounds?.minDate}
+            maxDate={dateBounds?.maxDate}
+            disabled={!dateBounds}
             inputClassName={filterInputClass}
           />
           <button
             type="button"
             onClick={validateAndApply}
-            className={`${btnPrimary} w-full sm:w-auto`}
+            disabled={!dateBounds}
+            className={`${btnPrimary} w-full sm:w-auto disabled:cursor-not-allowed disabled:opacity-50`}
           >
             نمایش
           </button>

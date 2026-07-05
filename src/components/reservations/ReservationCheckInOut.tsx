@@ -43,8 +43,18 @@ export function ReservationCheckInOut({
 
   const hasCheckIn = !!reservation.actualCheckInAt;
   const hasCheckOut = !!reservation.actualCheckOutAt;
-  const canCheckIn = !hasCheckIn && !hasCheckOut;
-  const canCheckOut = hasCheckIn && !hasCheckOut;
+  const canCheckIn =
+    reservation.status === 'Confirmed' && !hasCheckIn && !hasCheckOut;
+  const canCheckOut =
+    reservation.status === 'Confirmed' && hasCheckIn && !hasCheckOut;
+
+  const checkoutDateBounds = {
+    min: reservation.reservationDate.slice(0, 10),
+    max: (reservation.reservationEndDate ?? reservation.reservationDate).slice(
+      0,
+      10,
+    ),
+  };
 
   const handleConfirm = async (recordedAt: string) => {
     if (!modal) return;
@@ -202,6 +212,9 @@ export function ReservationCheckInOut({
           modal?.type === 'check-in'
             ? reservation.actualCheckInAt
             : reservation.actualCheckOutAt
+        }
+        checkoutDateBounds={
+          modal?.type === 'check-out' ? checkoutDateBounds : undefined
         }
         variant={variant}
         onClose={() => setModal(null)}

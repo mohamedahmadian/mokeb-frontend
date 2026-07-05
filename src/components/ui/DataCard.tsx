@@ -8,6 +8,7 @@ interface DataCardRow {
 interface DataCardProps {
   title: string;
   subtitle?: string;
+  leading?: ReactNode;
   badge?: ReactNode;
   rows: DataCardRow[];
   actions?: ReactNode;
@@ -18,6 +19,7 @@ interface DataCardProps {
 export function DataCard({
   title,
   subtitle,
+  leading,
   badge,
   rows,
   actions,
@@ -42,11 +44,14 @@ export function DataCard({
       tabIndex={onClick ? 0 : undefined}
     >
       <div className="mb-3 flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="truncate font-medium text-slate-800">{title}</h3>
-          {subtitle && (
-            <p className="mt-0.5 truncate text-xs text-slate-500">{subtitle}</p>
-          )}
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          {leading}
+          <div className="min-w-0">
+            <h3 className="truncate font-medium text-slate-800">{title}</h3>
+            {subtitle && (
+              <p className="mt-0.5 truncate text-xs text-slate-500">{subtitle}</p>
+            )}
+          </div>
         </div>
         {badge}
       </div>

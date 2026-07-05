@@ -6,7 +6,7 @@ import gregorian from 'react-date-object/calendars/gregorian';
 import gregorian_en from 'react-date-object/locales/gregorian_en';
 import { DatePickerClearWrap, withClearPadding } from './DatePickerClearWrap';
 import { filterInputClass } from '../../lib/styles';
-import { formatTimeFromIso } from '../../lib/format-time';
+import { formatTimeFromIso, normalizeTimeValue } from '../../lib/format-time';
 import 'react-multi-date-picker/styles/colors/teal.css';
 
 interface PersianDateInputProps {
@@ -17,6 +17,7 @@ interface PersianDateInputProps {
   label?: string;
   clearable?: boolean;
   minDate?: string;
+  maxDate?: string;
   inputClassName?: string;
   disabled?: boolean;
 }
@@ -45,6 +46,13 @@ export function toLocalGregorianDateString(value: string): string {
   return `${y}-${m}-${d}`;
 }
 
+/** تبدیل ارقام لاتین به فارسی — برای نمایش درست با فونت Vazir */
+const PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
+
+export function toPersianDigits(value: string): string {
+  return value.replace(/\d/g, (digit) => PERSIAN_DIGITS[Number(digit)] ?? digit);
+}
+
 export function formatPersianDate(value: string): string {
   const date = fromGregorianString(value);
   return date ? date.format('DD MMMM YYYY') : '—';
@@ -53,6 +61,43 @@ export function formatPersianDate(value: string): string {
 /** تبدیل ISO datetime به تاریخ شمسی با در نظر گرفتن timezone محلی */
 export function formatPersianDateFromIso(value: string): string {
   return formatPersianDate(toLocalGregorianDateString(value));
+}
+
+/** تاریخ شمسی به فرمت 1368/01/01 */
+export function formatPersianSlashDateFromGregorian(
+  value?: string | null,
+): string {
+  if (!value) return '—';
+  const date = fromGregorianString(value.slice(0, 10));
+  if (!date) return '—';
+  const y = date.year;
+  const m = String(date.month.number).padStart(2, '0');
+  const day = String(date.day).padStart(2, '0');
+  return toPersianDigits(`${y}/${m}/${day}`);
+}
+
+/** تاریخ شمسی + ساعت ۲۴ساعته — مثلاً 1368/01/01 22:50 */
+export function formatPersianSlashDateTimeFromGregorian(
+  dateValue: string,
+  time24?: string | null,
+): string {
+  const datePart = formatPersianSlashDateFromGregorian(dateValue);
+  if (datePart === '—') return '—';
+  const time = normalizeTimeValue(time24);
+  return time ? toPersianDigits(`${datePart} ${time}`) : datePart;
+}
+
+/** ISO → تاریخ شمسی 1368/01/01 22:50 */
+export function formatPersianSlashDateTimeFromIso(value?: string | null): string {
+  if (!value) return '—';
+  const datePart = formatPersianSlashDateFromGregorian(
+    toLocalGregorianDateString(value),
+  );
+  if (datePart === '—') return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return datePart;
+  const time = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  return toPersianDigits(`${datePart} ${time}`);
 }
 
 /** تاریخ شمسی + ساعت محلی از ISO */
@@ -72,6 +117,7 @@ export function PersianDateInput({
   label,
   clearable = true,
   minDate,
+  maxDate,
   inputClassName,
   disabled = false,
 }: PersianDateInputProps) {
@@ -84,12 +130,18 @@ export function PersianDateInput({
     [minDate],
   );
 
+  const maxDateValue = useMemo(
+    () => (maxDate ? fromGregorianString(maxDate) : undefined),
+    [maxDate],
+  );
+
   const picker = (
     <DatePicker
       calendar={persian}
       locale={persian_fa}
       value={pickerValue}
       minDate={minDateValue}
+      maxDate={maxDateValue}
       disabled={disabled}
       onChange={(date) => {
         if (!date || Array.isArray(date)) {

@@ -46,6 +46,8 @@ type MawkibCardSource = Pick<
   | 'parking'
   | 'internet'
   | 'familyFriendly'
+  | 'elevator'
+  | 'stairs'
   | 'telegramChannel'
   | 'whatsapp'
   | 'bale'

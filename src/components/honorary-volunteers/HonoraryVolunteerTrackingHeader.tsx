@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { copyTextToClipboard } from '../../lib/copy-to-clipboard';
 import { QRCodeSVG } from 'qrcode.react';
 import { guestDetailTheme } from '../../lib/guest-theme';
 import { buildHonoraryVolunteerTrackUrl } from '../../lib/honorary-volunteer-track';
@@ -16,12 +17,10 @@ export function HonoraryVolunteerTrackingHeader({
   const [copied, setCopied] = useState(false);
 
   const handleCopyCode = async () => {
-    try {
-      await navigator.clipboard.writeText(trackingCode);
+    const ok = await copyTextToClipboard(trackingCode);
+    if (ok) {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
     }
   };
 

@@ -1,8 +1,12 @@
-import api from './api';
-import type { MawkibCapacitySnapshot } from './capacity';
-import type { Reservation } from '../types';
+import api from "./api";
+import type { MawkibCapacitySnapshot } from "./capacity";
+import type { Reservation } from "../types";
 
-export type ReservationStatus = 'Pending' | 'Confirmed' | 'Cancelled' | 'Completed';
+export type ReservationStatus =
+  | "Pending"
+  | "Confirmed"
+  | "Cancelled"
+  | "Completed";
 
 export interface ReservationFilters {
   mawkibId?: number;
@@ -11,10 +15,34 @@ export interface ReservationFilters {
   reservationDateTo?: string;
   pilgrimName?: string;
   pilgrimMobile?: string;
+  pilgrimNationalId?: string;
   trackingCode?: string;
   pilgrimUserId?: number;
   guestCountMin?: number;
   guestCountMax?: number;
+  createdAtFrom?: string;
+  createdAtTo?: string;
+  mawkibName?: string;
+  sortOrder?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
+  all?: boolean;
+}
+
+export interface PaginatedReservationsResponse {
+  items: Reservation[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export const DEFAULT_RESERVATIONS_PAGE_SIZE = 10;
+export const WAITING_LIST_PAGE_SIZE = 20;
+
+export interface PendingCountsByMawkib {
+  total: number;
+  byMawkib: { mawkibId: number; mawkibName: string; count: number }[];
 }
 
 export interface CreateReservationPayload {
@@ -36,7 +64,11 @@ function buildParams(filters?: ReservationFilters) {
   const params = new URLSearchParams();
   if (!filters) return params;
   Object.entries(filters).forEach(([key, value]) => {
-    if (value !== undefined && value !== '') {
+    if (typeof value === "boolean") {
+      if (value) params.set(key, "true");
+      return;
+    }
+    if (value !== undefined && value !== "") {
       params.set(key, String(value));
     }
   });
@@ -46,19 +78,65 @@ function buildParams(filters?: ReservationFilters) {
 export const reservationsApi = {
   getAdminList: (filters?: ReservationFilters) =>
     api
-      .get<Reservation[]>('/reservations/admin', { params: buildParams(filters) })
+      .get<
+        Reservation[]
+      >("/reservations/admin", { params: buildParams(filters) })
+      .then((r) => r.data),
+
+  getAdminListPaginated: (filters?: ReservationFilters) =>
+    api
+      .get<PaginatedReservationsResponse>("/reservations/admin", {
+        params: buildParams(filters),
+      })
+      .then((r) => r.data),
+
+  getAdminListForExport: (
+    filters?: Omit<ReservationFilters, "page" | "pageSize">,
+  ) =>
+    api
+      .get<Reservation[]>("/reservations/admin", {
+        params: buildParams({ ...filters, all: true }),
+      })
       .then((r) => r.data),
 
   getMyList: (filters?: ReservationFilters) =>
     api
-      .get<Reservation[]>('/reservations/my', { params: buildParams(filters) })
+      .get<Reservation[]>("/reservations/my", { params: buildParams(filters) })
+      .then((r) => r.data),
+
+  getMyListPaginated: (filters?: ReservationFilters) =>
+    api
+      .get<PaginatedReservationsResponse>("/reservations/my", {
+        params: buildParams(filters),
+      })
+      .then((r) => r.data),
+
+  getMyListForExport: (
+    filters?: Omit<ReservationFilters, "page" | "pageSize">,
+  ) =>
+    api
+      .get<Reservation[]>("/reservations/my", {
+        params: buildParams({ ...filters, all: true }),
+      })
+      .then((r) => r.data),
+
+  getPendingCounts: () =>
+    api
+      .get<PendingCountsByMawkib>("/reservations/pending-counts")
+      .then((r) => r.data),
+
+  getLatestForPilgrimCard: (pilgrimUserId: number, ownerScope = false) =>
+    api
+      .get<Reservation | null>(`/reservations/pilgrim-card/${pilgrimUserId}`, {
+        params: ownerScope ? { ownerScope: "true" } : {},
+      })
       .then((r) => r.data),
 
   getOne: (id: number) =>
     api.get<Reservation>(`/reservations/${id}`).then((r) => r.data),
 
   create: (payload: CreateReservationPayload) =>
-    api.post<Reservation>('/reservations', payload).then((r) => r.data),
+    api.post<Reservation>("/reservations", payload).then((r) => r.data),
 
   updateStatus: (id: number, status: ReservationStatus) =>
     api
@@ -70,6 +148,14 @@ export const reservationsApi = {
       .patch<Reservation>(`/reservations/${id}/cancel`, { note })
       .then((r) => r.data),
 
+  extend: (
+    id: number,
+    payload?: { reservationEndDate?: string; stayDays?: number },
+  ) =>
+    api
+      .post<Reservation>(`/reservations/${id}/extend`, payload ?? {})
+      .then((r) => r.data),
+
   remove: (id: number) =>
     api
       .delete<{ id: number; message: string }>(`/reservations/${id}`)
@@ -77,7 +163,9 @@ export const reservationsApi = {
 
   getCapacity: (mawkibId: number, date: string) =>
     api
-      .get<MawkibCapacitySnapshot>(`/mawkibs/${mawkibId}/capacity`, { params: { date } })
+      .get<MawkibCapacitySnapshot>(`/mawkibs/${mawkibId}/capacity`, {
+        params: { date },
+      })
       .then((r) => r.data),
 
   checkIn: (id: number, recordedAt?: string) =>
@@ -101,10 +189,14 @@ export const reservationsApi = {
       .then((r) => r.data),
 
   createReview: (id: number, content: string) =>
-    api.post<Reservation>(`/reservations/${id}/review`, { content }).then((r) => r.data),
+    api
+      .post<Reservation>(`/reservations/${id}/review`, { content })
+      .then((r) => r.data),
 
   updateReview: (id: number, content: string) =>
-    api.patch<Reservation>(`/reservations/${id}/review`, { content }).then((r) => r.data),
+    api
+      .patch<Reservation>(`/reservations/${id}/review`, { content })
+      .then((r) => r.data),
 
   replyToReview: (id: number, adminReply: string) =>
     api
@@ -133,12 +225,17 @@ export const reservationsApi = {
     },
   ) =>
     api
-      .patch<Reservation>(`/reservations/${id}/delivered-items/${itemId}`, payload)
+      .patch<Reservation>(
+        `/reservations/${id}/delivered-items/${itemId}`,
+        payload,
+      )
       .then((r) => r.data),
 
   receiveDeliveredItem: (id: number, itemId: number) =>
     api
-      .patch<Reservation>(`/reservations/${id}/delivered-items/${itemId}/receive`)
+      .patch<Reservation>(
+        `/reservations/${id}/delivered-items/${itemId}/receive`,
+      )
       .then((r) => r.data),
 
   removeDeliveredItem: (id: number, itemId: number) =>

@@ -6,19 +6,28 @@ import {
 } from "../mawkibs/MawkibExtraFields";
 import {
   formatCapacityFractionLatin,
+  formatPersianNumber,
   mawkibAvailableFemale,
   mawkibAvailableMale,
 } from "../../lib/capacity";
+import {
+  DEFAULT_CHECK_IN_TIME,
+  DEFAULT_CHECK_OUT_TIME,
+  formatTimeFa,
+} from "../../lib/format-time";
 import { RemainingCapacityHint } from "./RemainingCapacityHint";
 import {
   mawkibCityLabel,
   mawkibCountryLabel,
 } from "../../lib/mawkib-locations";
-import { guestTheme } from "../../lib/guest-theme";
+import { btnSecondary } from "../../lib/styles";
 import {
   ONLINE_RESERVATION_DISABLED_LABEL,
   isMawkibOnlineReservationEnabled,
 } from "../../lib/mawkib-online-reservation";
+import { MawkibGallerySection } from "./MawkibGallerySection";
+import { MawkibNameWithLogo } from "./MawkibThumbnail";
+import { MawkibRulesList } from "./MawkibRulesList";
 import type { Mawkib } from "../../types";
 import { MawkibLocationMapTrigger } from "./MawkibLocationMapTrigger";
 
@@ -229,6 +238,15 @@ const icons = {
       />
     </Icon>
   ),
+  photo: (
+    <Icon>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z"
+      />
+    </Icon>
+  ),
   check: (
     <Icon className="h-4 w-4">
       <path
@@ -261,6 +279,8 @@ const AMENITY_ICONS: Record<
   parking: icons.location,
   internet: icons.link,
   familyFriendly: icons.user,
+  elevator: icons.home,
+  stairs: icons.home,
 };
 
 const SOCIAL_ICONS: Record<
@@ -274,7 +294,13 @@ const SOCIAL_ICONS: Record<
   websiteUrl: icons.link,
 };
 
-function IconBadge({ icon, size = "md" }: { icon: ReactNode; size?: "sm" | "md" }) {
+function IconBadge({
+  icon,
+  size = "md",
+}: {
+  icon: ReactNode;
+  size?: "sm" | "md";
+}) {
   const box = size === "sm" ? "h-6 w-6 rounded-md" : "h-7 w-7 rounded-lg";
   return (
     <span
@@ -335,6 +361,41 @@ function PairFieldRow({
   );
 }
 
+function DualIconPairFieldRow({
+  leftIcon,
+  leftLabel,
+  leftValue,
+  rightIcon,
+  rightLabel,
+  rightValue,
+}: {
+  leftIcon: ReactNode;
+  leftLabel: string;
+  leftValue: ReactNode;
+  rightIcon: ReactNode;
+  rightLabel: string;
+  rightValue: ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-2 py-2 sm:grid-cols-2 sm:gap-3">
+      <div className="flex min-w-0 items-start gap-2">
+        <IconBadge icon={leftIcon} />
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-medium text-slate-400">{leftLabel}</p>
+          <div className="text-sm font-medium text-slate-800">{leftValue}</div>
+        </div>
+      </div>
+      <div className="flex min-w-0 items-start gap-2 sm:border-s sm:border-slate-100 sm:ps-3">
+        <IconBadge icon={rightIcon} />
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-medium text-slate-400">{rightLabel}</p>
+          <div className="text-sm text-slate-800">{rightValue}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FieldRow({
   icon,
   label,
@@ -347,7 +408,9 @@ function FieldRow({
   stacked?: boolean;
 }) {
   return (
-    <div className={`flex gap-2 py-2 ${stacked ? "items-start" : "items-center"}`}>
+    <div
+      className={`flex gap-2 py-2 ${stacked ? "items-start" : "items-center"}`}
+    >
       <IconBadge icon={icon} />
       <div className="min-w-0 flex-1">
         <p className="text-[10px] font-medium text-slate-400">{label}</p>
@@ -362,33 +425,64 @@ function CapacityDetailRow({
   label,
   available,
   total,
+  compact = false,
+  noCapacityMessage,
 }: {
   icon: ReactNode;
   label: string;
   available: number;
   total: number;
+  compact?: boolean;
+  noCapacityMessage?: string;
 }) {
   const hasAvailability = available > 0;
+  const showNoCapacityMessage = total === 0 && noCapacityMessage;
 
   return (
-    <div className="flex min-w-0 items-start gap-1.5 rounded-lg bg-[#f0f4fa] px-2 py-2 ring-1 ring-[#e8eef6]">
+    <div
+      className={`flex min-w-0 items-start gap-1 rounded-lg bg-[#f0f4fa] ring-1 ring-[#e8eef6] ${
+        compact ? "max-w-[9.5rem] px-1.5 py-1" : "gap-1.5 px-2 py-2"
+      }`}
+    >
       <IconBadge icon={icon} size="sm" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[10px] text-slate-500">{label}</p>
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs sm:text-sm">
-          <span
-            className={`shrink-0 font-mono font-bold tabular-nums ${hasAvailability ? "text-[#4a6fa5]" : "text-amber-600"}`}
-            title="رزرو شده / ظرفیت کل"
+        <p
+          className={`truncate text-slate-500 ${compact ? "text-[9px]" : "text-[10px]"}`}
+        >
+          {label}
+        </p>
+        {showNoCapacityMessage ? (
+          <p
+            className={`font-semibold leading-snug text-slate-600 ${
+              compact ? "text-[10px]" : "text-xs"
+            }`}
           >
-            {formatCapacityFractionLatin(available, total)}
-          </span>
-          <RemainingCapacityHint
-            available={available}
-            numerals="latin"
-            className="text-slate-500"
-            fullClassName="text-[10px] font-semibold text-red-600 sm:text-[11px]"
-          />
-        </div>
+            {noCapacityMessage}
+          </p>
+        ) : (
+          <div
+            className={`flex flex-wrap items-center gap-x-1 gap-y-0.5 ${
+              compact ? "text-[10px]" : "text-xs sm:text-sm"
+            }`}
+          >
+            <span
+              className={`shrink-0 font-mono font-bold tabular-nums ${hasAvailability ? "text-[#4a6fa5]" : "text-amber-600"}`}
+              title="رزرو شده / ظرفیت کل"
+            >
+              {formatCapacityFractionLatin(available, total)}
+            </span>
+            <RemainingCapacityHint
+              available={available}
+              numerals="latin"
+              className="text-slate-500"
+              fullClassName={
+                compact
+                  ? "text-[9px] font-semibold text-red-600"
+                  : "text-[10px] font-semibold text-red-600 sm:text-[11px]"
+              }
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -397,6 +491,8 @@ function CapacityDetailRow({
 function hasText(value?: string | null) {
   return Boolean(value?.trim());
 }
+
+const detailActionButtonClass = `${btnSecondary} inline-flex shrink-0 items-center justify-center gap-1.5 px-3 py-2 text-xs sm:text-sm`;
 
 interface MawkibPublicDetailProps {
   mawkib: Mawkib;
@@ -421,27 +517,37 @@ export function MawkibPublicDetail({
           role="alert"
           className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-7 text-slate-700"
         >
-          {ONLINE_RESERVATION_DISABLED_LABEL} — امکان ثبت درخواست رزرو آنلاین برای این
-          موکب وجود ندارد. برای هماهنگی با موکب‌دار تماس بگیرید.
+          {ONLINE_RESERVATION_DISABLED_LABEL} — امکان ثبت درخواست رزرو آنلاین
+          برای این موکب وجود ندارد. برای هماهنگی با موکب‌دار تماس بگیرید.
         </div>
       )}
       <DetailSection icon={icons.home} title="موکب">
-        <PairFieldRow
-          icon={icons.home}
+        <DualIconPairFieldRow
+          leftIcon={icons.home}
           leftLabel="نام موکب"
-          leftValue={mawkib.name}
+          leftValue={
+            <MawkibNameWithLogo name={mawkib.name} imageUrl={mawkib.imageUrl} />
+          }
+          rightIcon={icons.phone}
           rightLabel="شماره تماس"
-          rightValue={<span className="font-mono">{mawkib.phoneNumber}</span>}
+          rightValue={
+            <span className="font-mono" dir="ltr">
+              {mawkib.phoneNumber}
+            </span>
+          }
         />
         {mawkib.owner && (
-          <PairFieldRow
-            icon={icons.user}
+          <DualIconPairFieldRow
+            leftIcon={icons.user}
             leftLabel="مسئول موکب"
             leftValue={mawkib.owner.fullName}
+            rightIcon={icons.phone}
             rightLabel="موبایل مسئول"
             rightValue={
               mawkib.owner.mobileNumber ? (
-                <span className="font-mono">{mawkib.owner.mobileNumber}</span>
+                <span className="font-mono" dir="ltr">
+                  {mawkib.owner.mobileNumber}
+                </span>
               ) : (
                 <span className="text-slate-400">—</span>
               )
@@ -451,57 +557,89 @@ export function MawkibPublicDetail({
       </DetailSection>
 
       <DetailSection icon={icons.calendar} title="ظرفیت و زمان‌بندی">
-        <div className="grid grid-cols-2 gap-2 py-2">
-          <CapacityDetailRow
-            icon={icons.male}
-            label="ظرفیت آقایان"
-            available={mawkibAvailableMale(mawkib)}
-            total={mawkib.maleCapacity}
-          />
-          <CapacityDetailRow
-            icon={icons.female}
-            label="ظرفیت بانوان"
-            available={mawkibAvailableFemale(mawkib)}
-            total={mawkib.femaleCapacity}
-          />
+        <div className="flex items-center justify-between gap-2 py-2">
+          <div className="flex min-w-0 flex-wrap justify-start gap-1">
+            <CapacityDetailRow
+              compact
+              icon={icons.male}
+              label="ظرفیت آقایان"
+              available={mawkibAvailableMale(mawkib)}
+              total={mawkib.maleCapacity}
+            />
+            <CapacityDetailRow
+              compact
+              icon={icons.female}
+              label="ظرفیت بانوان"
+              available={mawkibAvailableFemale(mawkib)}
+              total={mawkib.femaleCapacity}
+              noCapacityMessage={
+                mawkib.femaleCapacity === 0 ? "عدم پذیرش بانوان" : undefined
+              }
+            />
+          </div>
+          {onViewCapacity && (
+            <button
+              type="button"
+              onClick={onViewCapacity}
+              className={detailActionButtonClass}
+            >
+              تقویم ظرفیت موکب
+            </button>
+          )}
         </div>
-        {onViewCapacity && (
-          <button
-            type="button"
-            onClick={onViewCapacity}
-            className={`${guestTheme.btnPrimary} mb-1 w-full`}
-          >
-            مشاهده ظرفیت موکب
-          </button>
-        )}
-        {mawkib.serviceStartDate && (
-          <FieldRow
+        {(mawkib.serviceStartDate || mawkib.serviceEndDate) && (
+          <PairFieldRow
             icon={icons.calendar}
-            label="شروع خدمات"
-            value={formatPersianDate(mawkib.serviceStartDate.slice(0, 10))}
-          />
-        )}
-        {mawkib.serviceEndDate && (
-          <FieldRow
-            icon={icons.calendar}
-            label="پایان خدمات"
-            value={formatPersianDate(mawkib.serviceEndDate.slice(0, 10))}
+            leftLabel="شروع خدمات"
+            leftValue={
+              mawkib.serviceStartDate ? (
+                formatPersianDate(mawkib.serviceStartDate.slice(0, 10))
+              ) : (
+                <span className="text-slate-400">—</span>
+              )
+            }
+            rightLabel="پایان خدمات"
+            rightValue={
+              mawkib.serviceEndDate ? (
+                formatPersianDate(mawkib.serviceEndDate.slice(0, 10))
+              ) : (
+                <span className="text-slate-400">—</span>
+              )
+            }
           />
         )}
         {mawkib.maxReservationDays != null && mawkib.maxReservationDays > 0 && (
           <FieldRow
             icon={icons.clock}
             label="حداکثر روز رزرو"
-            value={`${mawkib.maxReservationDays} روز`}
+            value={`${formatPersianNumber(mawkib.maxReservationDays)} روز`}
           />
         )}
+        <PairFieldRow
+          icon={icons.clock}
+          leftLabel="ساعت ورود پیش‌فرض"
+          leftValue={
+            <span dir="ltr" className="font-mono font-bold">
+              {formatTimeFa(mawkib.defaultCheckInTime ?? DEFAULT_CHECK_IN_TIME)}
+            </span>
+          }
+          rightLabel="ساعت خروج پیش‌فرض"
+          rightValue={
+            <span dir="ltr" className="font-mono font-bold">
+              {formatTimeFa(
+                mawkib.defaultCheckOutTime ?? DEFAULT_CHECK_OUT_TIME,
+              )}
+            </span>
+          }
+        />
       </DetailSection>
 
       <DetailSection icon={icons.location} title="موقعیت مکانی">
-        <PairFieldRow
-          icon={icons.globe}
+        <DualIconPairFieldRow
+          leftIcon={icons.globe}
           leftLabel="کشور"
           leftValue={mawkibCountryLabel(mawkib.country)}
+          rightIcon={icons.city}
           rightLabel="شهر زیارتی"
           rightValue={
             mawkib.mawkibCity ? (
@@ -515,7 +653,11 @@ export function MawkibPublicDetail({
           icon={icons.address}
           label="آدرس"
           stacked
-          value={<p className="whitespace-pre-wrap leading-relaxed">{mawkib.address}</p>}
+          value={
+            <p className="whitespace-pre-wrap leading-relaxed">
+              {mawkib.address}
+            </p>
+          }
         />
         {hasText(mawkib.distanceToShrine) && (
           <FieldRow
@@ -524,38 +666,35 @@ export function MawkibPublicDetail({
             value={mawkib.distanceToShrine}
           />
         )}
-        {(mawkib.latitude != null || mawkib.longitude != null) && (
+        {(hasText(mawkib.distanceToBusStation) ||
+          hasText(mawkib.distanceToMetro)) && (
           <PairFieldRow
-            icon={icons.coordinates}
-            leftLabel="عرض جغرافیایی"
+            icon={icons.location}
+            leftLabel="فاصله تا ایستگاه اتوبوس"
             leftValue={
-              mawkib.latitude != null ? (
-                <span className="font-mono" dir="ltr">
-                  {mawkib.latitude}
-                </span>
+              hasText(mawkib.distanceToBusStation) ? (
+                mawkib.distanceToBusStation
               ) : (
                 <span className="text-slate-400">—</span>
               )
             }
-            rightLabel="طول جغرافیایی"
+            rightLabel="فاصله تا مترو"
             rightValue={
-              mawkib.longitude != null ? (
-                <span className="font-mono" dir="ltr">
-                  {mawkib.longitude}
-                </span>
+              hasText(mawkib.distanceToMetro) ? (
+                mawkib.distanceToMetro
               ) : (
                 <span className="text-slate-400">—</span>
               )
             }
           />
         )}
-        <div id="mawkib-map" className="py-1 scroll-mt-24">
-          <p className="mb-2 text-xs text-slate-500">موقعیت روی نقشه</p>
+        <div id="mawkib-map" className="flex justify-center py-2 scroll-mt-24">
           <MawkibLocationMapTrigger
             latitude={mawkib.latitude}
             longitude={mawkib.longitude}
             mawkibName={mawkib.name}
             defaultOpen={focusMap}
+            className="max-w-sm"
           />
         </div>
       </DetailSection>
@@ -577,6 +716,12 @@ export function MawkibPublicDetail({
         </DetailSection>
       )}
 
+      {(mawkib.imageUrl || (mawkib.images?.length ?? 0) > 0) && (
+        <DetailSection icon={icons.photo} title="تصاویر موکب">
+          <MawkibGallerySection mawkib={mawkib} />
+        </DetailSection>
+      )}
+
       {hasText(mawkib.services) && (
         <DetailSection icon={icons.services} title="خدمات">
           <FieldRow
@@ -584,7 +729,9 @@ export function MawkibPublicDetail({
             label="خدمات موکب"
             stacked
             value={
-              <p className="whitespace-pre-wrap leading-relaxed">{mawkib.services}</p>
+              <p className="whitespace-pre-wrap leading-relaxed">
+                {mawkib.services}
+              </p>
             }
           />
         </DetailSection>
@@ -597,7 +744,9 @@ export function MawkibPublicDetail({
             label="توضیحات"
             stacked
             value={
-              <p className="whitespace-pre-wrap leading-relaxed">{mawkib.description}</p>
+              <p className="whitespace-pre-wrap leading-relaxed">
+                {mawkib.description}
+              </p>
             }
           />
         </DetailSection>
@@ -605,14 +754,7 @@ export function MawkibPublicDetail({
 
       {hasText(mawkib.rules) && (
         <DetailSection icon={icons.rules} title="قوانین موکب">
-          <FieldRow
-            icon={icons.rules}
-            label="قوانین"
-            stacked
-            value={
-              <p className="whitespace-pre-wrap leading-relaxed">{mawkib.rules}</p>
-            }
-          />
+          <MawkibRulesList rules={mawkib.rules} />
         </DetailSection>
       )}
 

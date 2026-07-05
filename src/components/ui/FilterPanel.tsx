@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { btnPrimary, btnSecondary } from '../../lib/styles';
+import { useState, type ReactNode } from "react";
+import { btnPrimary, btnSecondary } from "../../lib/styles";
 
 interface FilterPanelProps {
   title?: string;
@@ -10,11 +10,11 @@ interface FilterPanelProps {
 }
 
 export function FilterPanel({
-  title = 'فیلترها',
+  title = "فیلترها",
   children,
   onApply,
   onReset,
-  applyLabel = 'اعمال فیلتر',
+  applyLabel = "جستجو",
 }: FilterPanelProps) {
   const [open, setOpen] = useState(false);
 
@@ -27,12 +27,17 @@ export function FilterPanel({
       >
         <h2 className="text-sm font-semibold text-slate-700">{title}</h2>
         <svg
-          className={`h-5 w-5 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`h-5 w-5 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
         </svg>
       </button>
 
@@ -41,7 +46,7 @@ export function FilterPanel({
       </h2>
 
       <form
-        className={`${open ? 'mt-3 block' : 'hidden'} md:block`}
+        className={`${open ? "mt-3 block" : "hidden"} md:block`}
         onSubmit={(e) => {
           e.preventDefault();
           onApply();

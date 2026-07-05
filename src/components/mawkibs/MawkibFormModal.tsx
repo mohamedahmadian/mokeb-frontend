@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { Modal } from "../Modal";
+import {
+  DEFAULT_MAWKIB_DEFAULT_RESERVATION_DAYS,
+  DEFAULT_MAWKIB_MAX_RESERVATION_DAYS,
+} from "../../lib/date-range";
 import { MAWKIB_STATUS_OPTIONS } from "../../lib/constants";
 import { PersianDateInput } from "../ui/PersianDateInput";
+import { PersianTimeInput } from "../ui/PersianTimeInput";
 import { NavIcon } from "../ui/NavIcons";
 import { MawkibOwnerFilterSelect } from "./MawkibOwnerFilterSelect";
 import {
@@ -12,11 +17,10 @@ import {
   type MawkibExtraFormValues,
 } from "./MawkibExtraFields";
 import {
-  IconClock,
   IconPhone,
-  IconPhoto,
   MawkibFormHero,
 } from "./mawkib-form-ui";
+import { MawkibGalleryUpload, MawkibImageUpload } from "./MawkibImageUpload";
 import { MawkibLocationMapTrigger } from "./MawkibLocationMapTrigger";
 import { MawkibCardPrintButton } from "./MawkibCardPrintButton";
 import { MawkibRulesPrintButton } from "./MawkibRulesPrintButton";
@@ -50,6 +54,8 @@ interface MawkibFormModalProps {
   isAdmin: boolean;
   currentUserId?: number;
   readOnly?: boolean;
+  /** مخفی کردن تنظیمات رزرو آنلاین و تأیید خودکار (مثلاً برای زائر) */
+  hideReservationPolicy?: boolean;
 }
 
 interface FormState {
@@ -66,11 +72,15 @@ interface FormState {
   maleCapacity: string;
   femaleCapacity: string;
   imageUrl: string;
+  galleryImageUrls: string[];
   ownerUserId: string;
   status: MawkibStatus;
   defaultCheckInTime: string;
   defaultCheckOutTime: string;
   onlineReservationEnabled: boolean;
+  autoApprovePilgrimReservations: boolean;
+  recordCheckInOnReservationConfirm: boolean;
+  skipCapacityCheckEnabled: boolean;
   extra: MawkibExtraFormValues;
 }
 
@@ -88,11 +98,15 @@ const emptyForm: FormState = {
   maleCapacity: "0",
   femaleCapacity: "0",
   imageUrl: "",
+  galleryImageUrls: [],
   ownerUserId: "",
   status: "Approved",
   defaultCheckInTime: DEFAULT_CHECK_IN_TIME,
   defaultCheckOutTime: DEFAULT_CHECK_OUT_TIME,
   onlineReservationEnabled: true,
+  autoApprovePilgrimReservations: false,
+  recordCheckInOnReservationConfirm: false,
+  skipCapacityCheckEnabled: false,
   extra: emptyMawkibExtraFields(),
 };
 
@@ -109,6 +123,7 @@ export function MawkibFormModal({
   isAdmin,
   currentUserId,
   readOnly = false,
+  hideReservationPolicy = false,
 }: MawkibFormModalProps) {
   const isEdit = !!mawkib;
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -139,12 +154,18 @@ export function MawkibFormModal({
         maleCapacity: mawkib.maleCapacity.toString(),
         femaleCapacity: mawkib.femaleCapacity.toString(),
         imageUrl: mawkib.imageUrl ?? "",
+        galleryImageUrls: mawkib.images?.map((image) => image.url) ?? [],
         ownerUserId: (mawkib.ownerUserId ?? mawkib.owner?.id ?? "").toString(),
         status: mawkib.status,
         defaultCheckInTime: mawkib.defaultCheckInTime ?? DEFAULT_CHECK_IN_TIME,
         defaultCheckOutTime:
           mawkib.defaultCheckOutTime ?? DEFAULT_CHECK_OUT_TIME,
         onlineReservationEnabled: mawkib.onlineReservationEnabled !== false,
+        autoApprovePilgrimReservations:
+          mawkib.autoApprovePilgrimReservations === true,
+        recordCheckInOnReservationConfirm:
+          mawkib.recordCheckInOnReservationConfirm === true,
+        skipCapacityCheckEnabled: mawkib.skipCapacityCheckEnabled === true,
         extra: mawkibExtraFieldsFromMawkib(mawkib),
       });
     } else {
@@ -171,9 +192,26 @@ export function MawkibFormModal({
 
     const maxDays = form.extra.maxReservationDays.trim()
       ? parseInt(form.extra.maxReservationDays, 10)
-      : undefined;
+      : DEFAULT_MAWKIB_MAX_RESERVATION_DAYS;
     if (form.extra.maxReservationDays.trim() && (!maxDays || maxDays < 1)) {
       toast.error("حداکثر بازه رزرو باید عددی بزرگ‌تر از صفر باشد");
+      return null;
+    }
+
+    const defaultDays = form.extra.defaultReservationDays.trim()
+      ? parseInt(form.extra.defaultReservationDays, 10)
+      : DEFAULT_MAWKIB_DEFAULT_RESERVATION_DAYS;
+    if (
+      form.extra.defaultReservationDays.trim() &&
+      (!defaultDays || defaultDays < 1)
+    ) {
+      toast.error("تعداد روزهای رزرو پیش‌فرض باید عددی بزرگ‌تر از صفر باشد");
+      return null;
+    }
+    if (defaultDays && maxDays && defaultDays > maxDays) {
+      toast.error(
+        "روزهای پیش‌فرض نمی‌تواند بیشتر از حداکثر بازه زمانی رزرو باشد",
+      );
       return null;
     }
 
@@ -192,10 +230,14 @@ export function MawkibFormModal({
       serviceEndDate: form.serviceEndDate || undefined,
       maleCapacity,
       femaleCapacity,
-      imageUrl: form.imageUrl || undefined,
+      imageUrl: isEdit ? form.imageUrl.trim() || null : form.imageUrl.trim() || undefined,
+      galleryImageUrls: form.galleryImageUrls,
       defaultCheckInTime: form.defaultCheckInTime || DEFAULT_CHECK_IN_TIME,
       defaultCheckOutTime: form.defaultCheckOutTime || DEFAULT_CHECK_OUT_TIME,
       onlineReservationEnabled: form.onlineReservationEnabled,
+      autoApprovePilgrimReservations: form.autoApprovePilgrimReservations,
+      recordCheckInOnReservationConfirm: form.recordCheckInOnReservationConfirm,
+      skipCapacityCheckEnabled: form.skipCapacityCheckEnabled,
       ...mawkibExtraFieldsToPayload(form.extra),
     };
 
@@ -375,23 +417,21 @@ export function MawkibFormModal({
             </div>
           </label>
 
-          <label className="block">
-            <FieldLabel label="لینک تصویر" hint="اختیاری" />
-            <div className="relative">
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#4a6fa5]">
-                <IconPhoto />
-              </span>
-              <input
-                type="url"
-                value={form.imageUrl}
-                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                className={`${inputClass} pr-11`}
-                placeholder="https://..."
-                dir="ltr"
-                {...fieldProps}
-              />
-            </div>
-          </label>
+          <MawkibImageUpload
+            value={form.imageUrl || null}
+            onChange={(imageUrl) =>
+              setForm({ ...form, imageUrl: imageUrl ?? "" })
+            }
+            disabled={readOnly}
+          />
+
+          <MawkibGalleryUpload
+            value={form.galleryImageUrls}
+            onChange={(galleryImageUrls) =>
+              setForm({ ...form, galleryImageUrls })
+            }
+            disabled={readOnly}
+          />
         </FormSection>
 
         <FormSection title="موقعیت" icon={<MapPinIcon />}>
@@ -409,7 +449,7 @@ export function MawkibFormModal({
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
-              <FieldLabel label="عرض جغرافیایی" hint="اختیاری" />
+              <FieldLabel label="عرض جغرافیایی" />
               <input
                 type="number"
                 step="any"
@@ -421,7 +461,7 @@ export function MawkibFormModal({
               />
             </label>
             <label className="block">
-              <FieldLabel label="طول جغرافیایی" hint="اختیاری" />
+              <FieldLabel label="طول جغرافیایی" />
               <input
                 type="number"
                 step="any"
@@ -452,7 +492,7 @@ export function MawkibFormModal({
                 }
                 mawkibName={form.name || undefined}
               />
-            ) : isEdit ? (
+            ) : (
               <MawkibLocationMapTrigger
                 editable
                 latitude={
@@ -475,20 +515,6 @@ export function MawkibFormModal({
                     longitude: lng.toFixed(6),
                   }))
                 }
-              />
-            ) : (
-              <MawkibLocationMapTrigger
-                latitude={
-                  form.latitude && Number.isFinite(parseFloat(form.latitude))
-                    ? parseFloat(form.latitude)
-                    : null
-                }
-                longitude={
-                  form.longitude && Number.isFinite(parseFloat(form.longitude))
-                    ? parseFloat(form.longitude)
-                    : null
-                }
-                mawkibName={form.name || undefined}
               />
             )}
           </div>
@@ -556,67 +582,168 @@ export function MawkibFormModal({
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block">
+            <div>
               <FieldLabel
                 label="ساعت ورود پیش‌فرض"
                 hint="معمولاً ساعت تحویل اسکان (مثلاً ۱۴:۰۰)"
               />
-              <div className="relative">
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#4a6fa5]">
-                  <IconClock />
-                </span>
-                <input
-                  type="time"
-                  value={form.defaultCheckInTime}
-                  onChange={(e) =>
-                    setForm({ ...form, defaultCheckInTime: e.target.value })
-                  }
-                  className={`${inputClass} pr-11`}
-                  {...fieldProps}
-                />
-              </div>
-            </label>
-            <label className="block">
+              <PersianTimeInput
+                value={form.defaultCheckInTime}
+                onChange={(defaultCheckInTime) =>
+                  setForm({ ...form, defaultCheckInTime })
+                }
+                inputClassName={inputClass}
+                disabled={readOnly}
+              />
+            </div>
+            <div>
               <FieldLabel
                 label="ساعت خروج پیش‌فرض"
                 hint="معمولاً ساعت تخلیه (مثلاً ۱۱:۰۰)"
               />
-              <div className="relative">
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#4a6fa5]">
-                  <IconClock />
-                </span>
-                <input
-                  type="time"
-                  value={form.defaultCheckOutTime}
-                  onChange={(e) =>
-                    setForm({ ...form, defaultCheckOutTime: e.target.value })
-                  }
-                  className={`${inputClass} pr-11`}
-                  {...fieldProps}
-                />
-              </div>
+              <PersianTimeInput
+                value={form.defaultCheckOutTime}
+                onChange={(defaultCheckOutTime) =>
+                  setForm({ ...form, defaultCheckOutTime })
+                }
+                inputClassName={inputClass}
+                disabled={readOnly}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block">
+              <FieldLabel label="حداکثر بازه زمانی رزرو (روز)" />
+              <input
+                type="number"
+                min={1}
+                value={form.extra.maxReservationDays}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    extra: { ...form.extra, maxReservationDays: e.target.value },
+                  })
+                }
+                className={inputClass}
+                placeholder={String(DEFAULT_MAWKIB_MAX_RESERVATION_DAYS)}
+                {...fieldProps}
+              />
+            </label>
+            <label className="block">
+              <FieldLabel label="تعداد روزهای رزرو پیش‌فرض" />
+              <input
+                type="number"
+                min={1}
+                value={form.extra.defaultReservationDays}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    extra: {
+                      ...form.extra,
+                      defaultReservationDays: e.target.value,
+                    },
+                  })
+                }
+                className={inputClass}
+                placeholder={String(DEFAULT_MAWKIB_DEFAULT_RESERVATION_DAYS)}
+                {...fieldProps}
+              />
             </label>
           </div>
 
-          <label className="mt-1 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-            <input
-              type="checkbox"
-              checked={form.onlineReservationEnabled}
-              onChange={(e) =>
-                setForm({ ...form, onlineReservationEnabled: e.target.checked })
-              }
-              disabled={readOnly}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-[#4a6fa5] focus:ring-[#4a6fa5]"
-            />
-            <span className="text-sm leading-relaxed text-slate-700">
-              <span className="font-medium">امکان رزرو آنلاین</span>
-              <span className="mt-1 block text-xs text-slate-500">
-                در صورت غیرفعال بودن، زائران و مهمانان نمی‌توانند این موکب را
-                به‌صورت آنلاین رزرو نمایند و عملیات رزرو صرفا ت وسط موکب دار
-                محترم انجام خواهد شد
-              </span>
-            </span>
-          </label>
+          {!hideReservationPolicy && (
+            <>
+              <label className="mt-1 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={form.onlineReservationEnabled}
+                  onChange={(e) =>
+                    setForm({ ...form, onlineReservationEnabled: e.target.checked })
+                  }
+                  disabled={readOnly}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-[#4a6fa5] focus:ring-[#4a6fa5]"
+                />
+                <span className="text-sm leading-relaxed text-slate-700">
+                  <span className="font-medium">امکان رزرو آنلاین</span>
+                  <span className="mt-1 block text-xs text-slate-500">
+                    در صورت غیرفعال بودن، زائران و مهمانان نمی‌توانند این موکب را
+                    به‌صورت آنلاین رزرو نمایند و عملیات رزرو صرفا ت وسط موکب دار
+                    محترم انجام خواهد شد
+                  </span>
+                </span>
+              </label>
+
+              <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={form.autoApprovePilgrimReservations}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      autoApprovePilgrimReservations: e.target.checked,
+                    })
+                  }
+                  disabled={readOnly}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-[#4a6fa5] focus:ring-[#4a6fa5]"
+                />
+                <span className="text-sm leading-relaxed text-slate-700">
+                  <span className="font-medium">تأیید خودکار رزرو زائر</span>
+                  <span className="mt-1 block text-xs text-slate-500">
+                    با انتخاب این گزینه، کلیه رزروهای ثبت‌شده توسط زائرین در بخش
+                    رزرو مهمان به‌صورت خودکار تأیید می‌شوند و نیازی به تأیید شما
+                    نیست.
+                  </span>
+                </span>
+              </label>
+
+              <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={form.recordCheckInOnReservationConfirm}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      recordCheckInOnReservationConfirm: e.target.checked,
+                    })
+                  }
+                  disabled={readOnly}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-[#4a6fa5] focus:ring-[#4a6fa5]"
+                />
+                <span className="text-sm leading-relaxed text-slate-700">
+                  <span className="font-medium">
+                    ثبت ساعت ورود در هنگام تأیید وضعیت رزرو
+                  </span>
+                  <span className="mt-1 block text-xs text-slate-500">
+                    با فعال بودن این گزینه، هنگام تأیید نهایی رزرو، ساعت ورود
+                    زائر به‌صورت خودکار با زمان تأیید وضعیت ثبت می‌شود.
+                  </span>
+                </span>
+              </label>
+
+              <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={form.skipCapacityCheckEnabled}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      skipCapacityCheckEnabled: e.target.checked,
+                    })
+                  }
+                  disabled={readOnly}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-[#4a6fa5] focus:ring-[#4a6fa5]"
+                />
+                <span className="text-sm leading-relaxed text-slate-700">
+                  <span className="font-medium">رزرو بدون بررسی ظرفیت</span>
+                  <span className="mt-1 block text-xs text-slate-500">
+                    با فعال بودن این گزینه، در فرم رزرو سریع گزینه «ثبت بدون
+                    بررسی ظرفیت» به‌صورت خودکار فعال می‌شود.
+                  </span>
+                </span>
+              </label>
+            </>
+          )}
         </FormSection>
 
         <FormSection
@@ -624,7 +751,7 @@ export function MawkibFormModal({
           icon={<NavIcon name="book" className="h-4 w-4" />}
         >
           <label className="block">
-            <FieldLabel label="توضیحات" hint="اختیاری" />
+            <FieldLabel label="توضیحات" />
             <textarea
               value={form.description}
               onChange={(e) =>
@@ -637,22 +764,7 @@ export function MawkibFormModal({
           </label>
 
           <label className="block">
-            <FieldLabel
-              label="امکانات"
-              hint="اختیاری — اسکان، پارکینگ، حمام..."
-            />
-            <textarea
-              value={form.facilities}
-              onChange={(e) => setForm({ ...form, facilities: e.target.value })}
-              rows={2}
-              className={inputClass}
-              placeholder="اسکان، پارکینگ، حمام..."
-              {...fieldProps}
-            />
-          </label>
-
-          <label className="block">
-            <FieldLabel label="خدمات" hint="اختیاری — غذا، درمانگاه..." />
+            <FieldLabel label="خدمات" />
             <textarea
               value={form.services}
               onChange={(e) => setForm({ ...form, services: e.target.value })}
@@ -667,6 +779,10 @@ export function MawkibFormModal({
         <MawkibExtraFields
           values={form.extra}
           onChange={(extra) => setForm((prev) => ({ ...prev, extra }))}
+          facilities={form.facilities}
+          onFacilitiesChange={(facilities) =>
+            setForm((prev) => ({ ...prev, facilities }))
+          }
           readOnly={readOnly}
         />
 

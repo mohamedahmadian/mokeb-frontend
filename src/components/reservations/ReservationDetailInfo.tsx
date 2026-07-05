@@ -1,10 +1,14 @@
 import { CompanionsDisplay } from "./CompanionsDisplay";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { formatPersianDateFromIso } from "../ui/PersianDateInput";
+import { formatPersianDateTimeFromIso } from "../ui/PersianDateInput";
 import { formatPersianDateRange } from "../ui/PersianDateRangePicker";
-import { formatGuestCount } from "../../lib/capacity";
+import { GuestCountBadges } from "./GuestCountBadges";
 import { formatDateTimeFa, formatTimeFa } from "../../lib/format-time";
+import {
+  formatReservationStatusUpdatedBy,
+  getReservationStatusActionLabel,
+} from "../../lib/reservation-status";
 import { RESERVATION_STATUS_LABELS } from "../../lib/constants";
 import type { Reservation } from "../../types";
 
@@ -167,6 +171,29 @@ const icons = {
       />
     </Icon>
   ),
+  travelOrigin: (
+    <Icon>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
+      />
+    </Icon>
+  ),
+  statusUpdatedBy: (
+    <Icon>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"
+      />
+    </Icon>
+  ),
 };
 
 function InfoTile({
@@ -239,13 +266,15 @@ export function ReservationStatusBanner({
   reservation: Reservation;
 }) {
   const styles = statusStyles[reservation.status];
+  const statusActionLabel = getReservationStatusActionLabel(reservation);
+  const statusUpdatedByText = formatReservationStatusUpdatedBy(reservation);
 
   return (
     <div
       className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm`}
     >
       <div
-        className={`flex items-center justify-between gap-3 bg-gradient-to-l px-4 py-4 sm:px-5 ${styles.banner}`}
+        className={`flex items-start justify-between gap-3 bg-gradient-to-l px-4 py-4 sm:px-5 ${styles.banner}`}
       >
         <div className="flex items-center gap-3">
           <div
@@ -258,13 +287,44 @@ export function ReservationStatusBanner({
             <p className="mt-0.5 text-sm font-semibold text-slate-800">
               {RESERVATION_STATUS_LABELS[reservation.status]}
             </p>
+            {statusUpdatedByText && statusActionLabel && (
+              <p className="mt-1 text-xs text-slate-600">
+                {statusActionLabel}{" "}
+                <span className="font-semibold text-slate-800">
+                  {reservation.lastStatusUpdatedBy?.fullName}
+                </span>
+                {reservation.lastStatusUpdatedAt && (
+                  <span className="text-slate-500">
+                    {" "}
+                    · {formatDateTimeFa(reservation.lastStatusUpdatedAt)}
+                  </span>
+                )}
+              </p>
+            )}
           </div>
         </div>
-        <span
-          className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${styles.badge}`}
-        >
-          {RESERVATION_STATUS_LABELS[reservation.status]}
-        </span>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${styles.badge}`}
+          >
+            {RESERVATION_STATUS_LABELS[reservation.status]}
+          </span>
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-200/90 shadow-sm backdrop-blur-sm"
+            dir="ltr"
+            title="کد رزرو"
+          >
+            <span className="font-mono tracking-wide">
+              {reservation.trackingCode}
+            </span>
+            <span
+              className="font-sans text-[10px] font-medium text-slate-500"
+              dir="rtl"
+            >
+              کد رزرو :
+            </span>
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -284,7 +344,9 @@ export function ReservationDetailInfo({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      {showStatusBanner && <ReservationStatusBanner reservation={reservation} />}
+      {showStatusBanner && (
+        <ReservationStatusBanner reservation={reservation} />
+      )}
 
       <div className={`space-y-3 p-4 sm:p-5 ${showStatusBanner ? "" : ""}`}>
         {mawkibDetailsHref ? (
@@ -363,11 +425,13 @@ export function ReservationDetailInfo({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <InfoTile
             icon={icons.guests}
-            label="تعداد نفرات"
-            value={formatGuestCount(
-              reservation.maleGuestCount,
-              reservation.femaleGuestCount,
-            )}
+            label="تعداد"
+            value={
+              <GuestCountBadges
+                male={reservation.maleGuestCount}
+                female={reservation.femaleGuestCount}
+              />
+            }
           />
           <InfoTile
             icon={icons.calendar}
@@ -422,7 +486,7 @@ export function ReservationDetailInfo({
             <InfoTile
               icon={icons.registered}
               label="تاریخ ثبت"
-              value={formatPersianDateFromIso(reservation.createdAt)}
+              value={formatPersianDateTimeFromIso(reservation.createdAt)}
             />
           )}
           <InfoTile
@@ -432,6 +496,36 @@ export function ReservationDetailInfo({
             className={!reservation.createdAt ? "sm:col-span-2" : ""}
           />
         </div>
+
+        {reservation.travelOrigin?.trim() && (
+          <InfoTile
+            icon={icons.travelOrigin}
+            label="مبدا سفر"
+            value={reservation.travelOrigin.trim()}
+            iconClassName={isGuest ? guestIconClass : undefined}
+          />
+        )}
+
+        {reservation.lastStatusUpdatedBy && (
+          <InfoTile
+            icon={icons.statusUpdatedBy}
+            label={
+              getReservationStatusActionLabel(reservation) ??
+              "به‌روزرسانی شده توسط"
+            }
+            value={
+              <div>
+                <p>{reservation.lastStatusUpdatedBy.fullName}</p>
+                {reservation.lastStatusUpdatedAt && (
+                  <p className="mt-1 text-xs font-normal text-slate-500">
+                    {formatDateTimeFa(reservation.lastStatusUpdatedAt)}
+                  </p>
+                )}
+              </div>
+            }
+            iconClassName={isGuest ? guestIconClass : undefined}
+          />
+        )}
 
         {reservation.companions && (
           <InfoTile

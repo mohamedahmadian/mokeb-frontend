@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ROLE_LABELS, getApiErrorMessage } from '../lib/constants';
 import { toast } from '../lib/toast';
 import { usersApi, type UpdateUserPayload } from '../lib/users';
+import { userGenderLabel } from '../lib/user-gender';
 import type { RoleName } from '../types';
 
 const roleBadgeStyles: Record<string, string> = {
@@ -120,7 +121,7 @@ export function ProfilePage() {
       usersApi.update(id, payload),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
-      updateStoredUser({ fullName: data.fullName });
+      updateStoredUser({ fullName: data.fullName, imageUrl: data.imageUrl ?? null });
       toast.success('پروفایل با موفقیت به‌روزرسانی شد');
     },
   });
@@ -191,6 +192,11 @@ export function ProfilePage() {
             icon={<IconMapPin />}
             label="استان و شهر"
             value={locationValue}
+          />
+          <ProfileInfoField
+            icon={<IconUser />}
+            label="جنسیت"
+            value={userGenderLabel(profile.gender)}
           />
           <ProfileInfoField
             icon={<IconShield />}

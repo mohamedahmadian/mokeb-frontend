@@ -50,23 +50,6 @@ const footerGroups: FooterGroup[] = [
       },
     ],
   },
-  {
-    title: "سامانه خادمین",
-    icon: "honorary",
-    links: [
-      {
-        to: "/guest/honorary-volunteer/register",
-        label: "ثبت‌نام خادم",
-        icon: "honoraryRegister",
-      },
-      { to: "/login", label: "ورود به سامانه خادمین", icon: "login" },
-      {
-        to: "/guest/honorary-volunteer/track",
-        label: "پیگیری درخواست خدمت",
-        icon: "honoraryTrack",
-      },
-    ],
-  },
 ];
 
 function FooterLinkGroup({ title, icon, links }: FooterGroup) {
@@ -104,7 +87,7 @@ export function PublicFooter() {
   return (
     <footer className="mt-auto border-t border-slate-200/80 bg-white">
       <div className="mx-auto max-w-6xl px-4 py-10 sm:py-12">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {footerGroups.map((group) => (
             <FooterLinkGroup key={group.title} {...group} />
           ))}
