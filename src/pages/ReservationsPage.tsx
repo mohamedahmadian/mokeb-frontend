@@ -25,11 +25,7 @@ import {
   toLocalGregorianDateString,
   toPersianDigits,
 } from "../components/ui/PersianDateInput";
-import {
-  DEFAULT_CHECK_IN_TIME,
-  DEFAULT_CHECK_OUT_TIME,
-  formatTimeFromIso,
-} from "../lib/format-time";
+import { formatTimeFromIso } from "../lib/format-time";
 import { useAuth } from "../contexts/AuthContext";
 import {
   RESERVATION_STATUS_LABELS,
@@ -138,14 +134,10 @@ function ReservationDateCell({
   date,
   actualAt,
   timeLabel,
-  plannedTime,
-  defaultTime,
 }: {
   date: string;
   actualAt?: string | null;
   timeLabel: string;
-  plannedTime?: string | null;
-  defaultTime?: string | null;
 }) {
   const time = formatTimeFromIso(actualAt);
 
@@ -710,8 +702,6 @@ export function ReservationsPage() {
                       date={r.reservationDate}
                       actualAt={r.actualCheckInAt}
                       timeLabel="ورود"
-                      plannedTime={r.plannedCheckInTime}
-                      defaultTime={r.mawkib.defaultCheckInTime ?? DEFAULT_CHECK_IN_TIME}
                     />
                   ),
                 },
@@ -722,8 +712,6 @@ export function ReservationsPage() {
                       date={r.reservationEndDate ?? r.reservationDate}
                       actualAt={r.actualCheckOutAt}
                       timeLabel="خروج"
-                      plannedTime={r.plannedCheckOutTime}
-                      defaultTime={r.mawkib.defaultCheckOutTime ?? DEFAULT_CHECK_OUT_TIME}
                     />
                   ),
                 },
@@ -799,8 +787,6 @@ export function ReservationsPage() {
                       date={r.reservationDate}
                       actualAt={r.actualCheckInAt}
                       timeLabel="ورود"
-                      plannedTime={r.plannedCheckInTime}
-                      defaultTime={r.mawkib.defaultCheckInTime ?? DEFAULT_CHECK_IN_TIME}
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -808,8 +794,6 @@ export function ReservationsPage() {
                       date={r.reservationEndDate ?? r.reservationDate}
                       actualAt={r.actualCheckOutAt}
                       timeLabel="خروج"
-                      plannedTime={r.plannedCheckOutTime}
-                      defaultTime={r.mawkib.defaultCheckOutTime ?? DEFAULT_CHECK_OUT_TIME}
                     />
                   </td>
                   <td className="px-4 py-3">

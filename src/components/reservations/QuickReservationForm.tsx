@@ -325,7 +325,7 @@ export function QuickReservationForm({
             </div>
           </div>
           <MawkibCapacityPills
-            mawkib={mawkibForCapacityDisplay}
+            mawkib={mawkibForCapacityDisplay ?? mawkib}
             compact
             stacked
             fitContent
