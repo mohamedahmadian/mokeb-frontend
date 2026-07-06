@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { MawkibCapacityViewModal } from "../components/mawkibs/MawkibCapacityViewModal";
 import { MawkibPublicDetail } from "../components/mawkibs/MawkibPublicDetail";
 import { MawkibCardPrintButton } from "../components/mawkibs/MawkibCardPrintButton";
+import { MawkibRulesPrintButton } from "../components/mawkibs/MawkibRulesPrintButton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { NavIcon } from "../components/ui/NavIcons";
 import {
@@ -12,6 +13,7 @@ import {
   mawkibActionIconClass,
 } from "../lib/mawkib-action-buttons";
 import { mawkibToCardData } from "../lib/mawkib-card";
+import { mawkibToRulesPrintData } from "../lib/mawkib-rules-print";
 import { btnSecondary } from "../lib/styles";
 import { mawkibsApi } from "../lib/mawkibs";
 
@@ -75,6 +77,10 @@ export function MawkibViewDetailPage() {
             </Link>
             <MawkibCardPrintButton
               data={mawkibToCardData(mawkib)}
+              className={mawkibActionBtnPrimary}
+            />
+            <MawkibRulesPrintButton
+              data={mawkibToRulesPrintData(mawkib)}
               className={mawkibActionBtnPrimary}
             />
           </div>

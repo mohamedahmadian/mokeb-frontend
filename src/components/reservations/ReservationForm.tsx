@@ -177,6 +177,8 @@ export function ReservationForm({
     !isAdmin &&
     !isMawkibOwner;
   const canManagePilgrim = isPanel && !isPilgrim;
+  const canSetCustomTrackingCode =
+    isPanel && (isAdmin || isMawkibOwner) && canManagePilgrim;
 
   const [fullName, setFullName] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
@@ -217,6 +219,7 @@ export function ReservationForm({
   const [submitting, setSubmitting] = useState(false);
   const [rulesModalOpen, setRulesModalOpen] = useState(false);
   const [skipCapacityCheck, setSkipCapacityCheck] = useState(false);
+  const [trackingCode, setTrackingCode] = useState("");
   const [mawkibSearchQuery, setMawkibSearchQuery] = useState("");
   const [galleryMawkib, setGalleryMawkib] = useState<Mawkib | null>(null);
   const [detailMawkib, setDetailMawkib] = useState<Mawkib | null>(null);
@@ -240,6 +243,7 @@ export function ReservationForm({
   );
   const preselectedDatesBootstrappedRef = useRef(false);
   const guestFastDatesBootstrappedRef = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (initialMawkibId != null) {
@@ -846,6 +850,7 @@ export function ReservationForm({
         plannedCheckInTime: plannedCheckInTime || undefined,
         plannedCheckOutTime: plannedCheckOutTime || undefined,
         skipCapacityCheck: skipCapacityCheck || undefined,
+        trackingCode: trackingCode.trim() || undefined,
       });
 
       queryClient.invalidateQueries({ queryKey: ["reservations-admin"] });
@@ -993,6 +998,7 @@ export function ReservationForm({
         />
       )}
       <form
+        ref={formRef}
         onSubmit={handleSubmit}
         className={`${guestTheme.cardLg} space-y-6 ${guestPreselectedMawkib ? "mt-4" : ""}`}
       >
@@ -1039,6 +1045,26 @@ export function ReservationForm({
                   mobileNumber={selectedPilgrim.mobileNumber}
                   city={selectedPilgrim.city}
                 />
+              )}
+              {canSetCustomTrackingCode && (
+                <label className="block max-w-[10.5rem]">
+                  <span className="mb-1.5 block text-sm text-slate-600">کد رزرو</span>
+                  <input
+                    type="text"
+                    value={trackingCode}
+                    onChange={(e) => setTrackingCode(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      e.preventDefault();
+                      formRef.current?.requestSubmit();
+                    }}
+                    className={`${reservationFormInputClass} !min-h-9 !py-2 !text-sm`}
+                    placeholder="خالی = خودکار"
+                    dir="ltr"
+                    autoComplete="off"
+                    maxLength={64}
+                  />
+                </label>
               )}
             </div>
           ) : showGuestPersonalFields ? (
@@ -1095,6 +1121,10 @@ export function ReservationForm({
                 onProvinceChange={setProvince}
                 onCityChange={setCity}
                 onNationalIdCardImageUrlChange={setNationalIdCardImageUrl}
+                showCustomTrackingCode={canSetCustomTrackingCode}
+                trackingCode={trackingCode}
+                onTrackingCodeChange={setTrackingCode}
+                onTrackingCodeEnter={() => formRef.current?.requestSubmit()}
               />
             )
           ) : null}

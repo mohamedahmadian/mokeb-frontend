@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { MawkibFeedbackDetailModal } from "../mawkib-feedback/MawkibFeedbackDetailModal";
 import { MawkibCardPrintButton } from "../mawkibs/MawkibCardPrintButton";
+import { MawkibRulesPrintButton } from "../mawkibs/MawkibRulesPrintButton";
 import { MawkibCapacityViewModal } from "../mawkibs/MawkibCapacityViewModal";
 import { MawkibCapacityMiniDonuts } from "../mawkibs/MawkibCapacityMiniDonut";
 import { MawkibCapacityPills } from "../mawkibs/MawkibInfoCard";
@@ -13,6 +14,7 @@ import { ReservationTrackLookup } from "./ReservationTrackLookup";
 import { NavIcon, type NavIconName } from "../ui/NavIcons";
 import { mawkibCityLabel } from "../../lib/mawkib-locations";
 import { mawkibToCardData } from "../../lib/mawkib-card";
+import { mawkibToRulesPrintData } from "../../lib/mawkib-rules-print";
 import { getApiErrorMessage } from "../../lib/constants";
 import { dashboardApi } from "../../lib/dashboard";
 import {
@@ -172,9 +174,13 @@ function PendingFeedbackRow({
 function MawkibQuickCard({
   mawkib,
   onViewCapacity,
+  presentMale,
+  presentFemale,
 }: {
   mawkib: Mawkib;
   onViewCapacity: () => void;
+  presentMale: number;
+  presentFemale: number;
 }) {
   const quickBtn =
     "inline-flex min-w-0 flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-medium transition sm:px-2.5 sm:text-[11px]";
@@ -212,7 +218,13 @@ function MawkibQuickCard({
             </div>
           </div>
 
-          <MawkibCapacityPills mawkib={mawkib} compact fitContent />
+          <MawkibCapacityPills
+            mawkib={mawkib}
+            compact
+            fitContent
+            presentMale={presentMale}
+            presentFemale={presentFemale}
+          />
         </div>
       </div>
 
@@ -248,8 +260,14 @@ function MawkibQuickCard({
           >
             تقویم ظرفیت
           </button>
+        </div>
+        <div className="grid grid-cols-2 gap-1.5">
           <MawkibCardPrintButton
             data={mawkibToCardData(mawkib)}
+            className={`${quickBtn} border border-[#c5d4e8] bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6]`}
+          />
+          <MawkibRulesPrintButton
+            data={mawkibToRulesPrintData(mawkib)}
             className={`${quickBtn} border border-[#c5d4e8] bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6]`}
           />
         </div>
@@ -415,10 +433,8 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
       )}
 
       <ReservationTrackLookup
-        onAttendanceSuccess={(type) => {
-          if (type === "check-out") {
-            invalidateReservationData();
-          }
+        onAttendanceSuccess={() => {
+          invalidateReservationData();
         }}
       />
 
@@ -435,6 +451,8 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
                 key={mawkib.id}
                 mawkib={mawkib}
                 onViewCapacity={() => setCapacityMawkib(mawkib)}
+                presentMale={mawkib.presentMaleCount ?? 0}
+                presentFemale={mawkib.presentFemaleCount ?? 0}
               />
             ))}
           </div>

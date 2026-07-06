@@ -3,6 +3,7 @@ import { MAWKIB_AMENITY_FIELDS } from "./MawkibExtraFields";
 import { formatPersianDate } from "../ui/PersianDateInput";
 import {
   formatCapacityFractionLatin,
+  formatLatinNumber,
   mawkibAvailableFemale,
   mawkibAvailableMale,
 } from "../../lib/capacity";
@@ -165,6 +166,7 @@ function CapacityPill({
   tone,
   compact = false,
   noCapacityMessage,
+  presentCount,
   className = "",
 }: {
   icon: ReactNode;
@@ -174,6 +176,7 @@ function CapacityPill({
   tone: "male" | "female";
   compact?: boolean;
   noCapacityMessage?: string;
+  presentCount?: number;
   className?: string;
 }) {
   const hasAvailability = available > 0;
@@ -227,6 +230,15 @@ function CapacityPill({
           />
         </span>
       )}
+      {presentCount !== undefined && !showNoCapacityMessage && (
+        <span
+          className={`font-medium opacity-90 ${
+            compact ? "text-[9px]" : "text-[10px]"
+          }`}
+        >
+          {formatLatinNumber(presentCount)} نفر حاضر
+        </span>
+      )}
     </span>
   );
 }
@@ -246,6 +258,8 @@ export function MawkibCapacityPills({
   fitContent = false,
   maleClassName = "",
   femaleClassName = "",
+  presentMale,
+  presentFemale,
 }: {
   mawkib: Mawkib;
   compact?: boolean;
@@ -253,6 +267,8 @@ export function MawkibCapacityPills({
   fitContent?: boolean;
   maleClassName?: string;
   femaleClassName?: string;
+  presentMale?: number;
+  presentFemale?: number;
 }) {
   const capacity = mawkibCapacitySnapshot(mawkib);
 
@@ -276,6 +292,7 @@ export function MawkibCapacityPills({
         total={capacity.maleCapacity}
         tone="male"
         className={maleClassName}
+        presentCount={presentMale}
       />
       <CapacityPill
         compact={compact}
@@ -288,6 +305,7 @@ export function MawkibCapacityPills({
         noCapacityMessage={
           capacity.femaleCapacity === 0 ? "عدم پذیرش بانوان" : undefined
         }
+        presentCount={presentFemale}
       />
     </div>
   );

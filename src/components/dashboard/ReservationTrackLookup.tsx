@@ -1,11 +1,15 @@
+import { ConfirmDialog } from "../ConfirmDialog";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { formatPersianDateRange } from "../ui/PersianDateRangePicker";
 import { NavIcon } from "../ui/NavIcons";
 import { ReservationDeliveredItemsButton } from "../reservations/ReservationDeliveredItemsButton";
 import { PilgrimCardViewButton } from "../reservations/PilgrimCardViewButton";
+import { ReservationMealPlanLink } from "../reservations/ReservationMealPlanLink";
 import { ReservationUserCardPrintButton } from "../reservations/ReservationUserCardPrintButton";
 import { MawkibCardPrintButton } from "../mawkibs/MawkibCardPrintButton";
+import { ExtendReservationModal } from "../reservations/ExtendReservationModal";
 import { reservationMawkibToCardData } from "../../lib/mawkib-card";
 import {
   ReservationAttendanceModal,
@@ -13,10 +17,22 @@ import {
 } from "../reservations/ReservationAttendanceModal";
 import { GuestCountBadges } from "../reservations/GuestCountBadges";
 import { RESERVATION_STATUS_LABELS } from "../../lib/constants";
-import { formatTimeFa, formatTimeFromIso } from "../../lib/format-time";
+import { formatTimeFa, formatTimeFromIso, buildRecordedAtFromDateAndTime, currentTimeInputValue, todayLocalGregorianDateString } from "../../lib/format-time";
+import { reservationEventsApi } from "../../lib/reservation-events-api";
+import {
+  getPresenceCardClass,
+  PresenceBadge,
+  tempInActionBtn,
+  tempOutActionBtn,
+} from "../reservations/reservation-presence-ui";
 import { lookupOwnerReservation } from "../../lib/mawkib-owner-dashboard";
 import type { lookupAdminReservation } from "../../lib/admin-dashboard";
 import { reservationsApi } from "../../lib/reservations";
+import {
+  canExtendReservation,
+  extensionSuccessMessage,
+} from "../../lib/reservation-extend";
+import { useAuth } from "../../contexts/AuthContext";
 import { btnAction, btnPrimary, inputClass } from "../../lib/styles";
 import { toast, toastApiError } from "../../lib/toast";
 import type { Reservation } from "../../types";
@@ -78,21 +94,33 @@ function InfoCell({
 function TrackResultRow({
   reservation,
   onOpenAttendance,
+  onRequestCheckOut,
+  onRecordTempEvent,
   onReservationUpdate,
+  onRequestExtend,
   attendanceLoading,
+  extendLoadingId,
   detailsLinkRef,
   highlightDetails = false,
   showCheckIn = true,
   showCheckInOutTimes = true,
+  isAdmin = false,
+  isMawkibOwner = false,
 }: {
   reservation: Reservation;
   onOpenAttendance: (id: number, type: AttendanceType) => void;
+  onRequestCheckOut: (id: number) => void;
+  onRecordTempEvent: (id: number, eventType: "TEMP_OUT" | "TEMP_IN") => void;
   onReservationUpdate: (reservation: Reservation) => void;
+  onRequestExtend: (id: number) => void;
   attendanceLoading: boolean;
+  extendLoadingId: number | null;
   detailsLinkRef?: RefObject<HTMLAnchorElement | null>;
   highlightDetails?: boolean;
   showCheckIn?: boolean;
   showCheckInOutTimes?: boolean;
+  isAdmin?: boolean;
+  isMawkibOwner?: boolean;
 }) {
   const endDate = reservation.reservationEndDate ?? reservation.reservationDate;
   const hasActualCheckIn = !!reservation.actualCheckInAt;
@@ -119,14 +147,24 @@ function TrackResultRow({
     reservation.status === "Confirmed" &&
     !!reservation.actualCheckInAt &&
     !reservation.actualCheckOutAt;
+
+  const showPresence =
+    reservation.status === "Confirmed" || reservation.status === "Completed";
+  const presence = reservation.presenceState;
+  const canTempOut = showCheckIn && presence === "PRESENT";
+  const canTempIn = showCheckIn && presence === "TEMPORARILY_OUT";
   const stayRange = formatPersianDateRange(
     reservation.reservationDate.slice(0, 10),
     endDate.slice(0, 10),
   );
+  const canExtend = canExtendReservation(reservation);
+  const showExtend = canExtend && (isAdmin || isMawkibOwner);
+  const extendBtnClass = `${dashboardSecondaryBtn} border-[#c5d4e8] bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6]`;
 
   return (
-    <div className="p-3 sm:p-4">
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+    <section className={getPresenceCardClass(showPresence ? presence : undefined)}>
+      <div className="p-3 sm:p-4">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-2.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#e8eef6] text-[#4a6fa5]">
             <NavIcon name="pilgrims" className="h-4 w-4" strokeWidth={1.75} />
@@ -141,7 +179,10 @@ function TrackResultRow({
             </p>
           </div>
         </div>
-        <StatusBadge status={reservation.status} />
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          {showPresence && presence && <PresenceBadge presence={presence} />}
+          <StatusBadge status={reservation.status} />
+        </div>
       </div>
 
       <div
@@ -204,6 +245,12 @@ function TrackResultRow({
           <NavIcon name="info" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
           مشاهده جزئیات
         </Link>
+        <ReservationMealPlanLink
+          reservation={reservation}
+          isAdmin={isAdmin}
+          isMawkibOwner={isMawkibOwner}
+          className={`${dashboardSecondaryBtn} border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100`}
+        />
         {showCheckIn && canCheckIn && (
           <button
             type="button"
@@ -213,17 +260,6 @@ function TrackResultRow({
           >
             <NavIcon name="login" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
             {attendanceLoading ? "..." : "ثبت ورود"}
-          </button>
-        )}
-        {showCheckIn && canCheckOut && (
-          <button
-            type="button"
-            onClick={() => onOpenAttendance(reservation.id, "check-out")}
-            disabled={attendanceLoading}
-            className={`${btnPrimary} inline-flex shrink-0 items-center justify-center gap-1.5 !min-h-8 !px-2.5 !py-1.5 !text-[11px]`}
-          >
-            <NavIcon name="logout" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-            {attendanceLoading ? "..." : "ثبت خروج"}
           </button>
         )}
         <ReservationDeliveredItemsButton
@@ -245,8 +281,73 @@ function TrackResultRow({
           data={reservationMawkibToCardData(reservation.mawkib)}
           className={dashboardSecondaryBtn}
         />
+        {showExtend && (
+          <button
+            type="button"
+            onClick={() => onRequestExtend(reservation.id)}
+            disabled={extendLoadingId === reservation.id}
+            className={extendBtnClass}
+          >
+            <svg
+              className="h-3.5 w-3.5 shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              aria-hidden
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            {extendLoadingId === reservation.id ? "..." : "تمدید رزرو"}
+          </button>
+        )}
+        {(canTempOut || canTempIn || (showCheckIn && canCheckOut)) && (
+          <div className="ms-auto flex flex-wrap gap-2">
+            {canTempOut && (
+              <button
+                type="button"
+                onClick={() => onRecordTempEvent(reservation.id, "TEMP_OUT")}
+                disabled={attendanceLoading}
+                className={tempOutActionBtn}
+                title="خروج موقت"
+              >
+                <NavIcon name="logout" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                {attendanceLoading ? "..." : "خروج موقت"}
+              </button>
+            )}
+            {canTempIn && (
+              <button
+                type="button"
+                onClick={() => onRecordTempEvent(reservation.id, "TEMP_IN")}
+                disabled={attendanceLoading}
+                className={tempInActionBtn}
+                title="ورود موقت"
+              >
+                <NavIcon name="login" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                {attendanceLoading ? "..." : "ورود موقت"}
+              </button>
+            )}
+            {showCheckIn && canCheckOut && (
+              <button
+                type="button"
+                onClick={() => onRequestCheckOut(reservation.id)}
+                disabled={attendanceLoading}
+                className={dashboardSecondaryBtn}
+                title="خروج نهایی"
+              >
+                <NavIcon name="logout" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                {attendanceLoading ? "..." : "خروج نهایی"}
+              </button>
+            )}
+          </div>
+        )}
       </div>
-    </div>
+      </div>
+    </section>
   );
 }
 
@@ -269,6 +370,10 @@ export function ReservationTrackLookup({
   onAttendanceSuccess,
 }: ReservationTrackLookupProps = {}) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = user?.roles.includes('Admin') ?? false;
+  const isMawkibOwner = user?.roles.includes('MawkibOwner') ?? false;
   const searchInputRef = useRef<HTMLInputElement>(null);
   const detailsLinkRef = useRef<HTMLAnchorElement>(null);
   const [query, setQuery] = useState("");
@@ -278,6 +383,9 @@ export function ReservationTrackLookup({
     id: number;
     type: AttendanceType;
   } | null>(null);
+  const [checkOutConfirmId, setCheckOutConfirmId] = useState<number | null>(null);
+  const [extendReservationId, setExtendReservationId] = useState<number | null>(null);
+  const [extendingId, setExtendingId] = useState<number | null>(null);
   const [results, setResults] = useState<Reservation[]>([]);
   const [searched, setSearched] = useState(false);
 
@@ -324,6 +432,40 @@ export function ReservationTrackLookup({
     setAttendanceModal({ id, type });
   };
 
+  const handleRequestCheckOut = (id: number) => {
+    setCheckOutConfirmId(id);
+  };
+
+  const handleConfirmCheckOutRequest = () => {
+    if (checkOutConfirmId === null) return;
+    setAttendanceModal({ id: checkOutConfirmId, type: "check-out" });
+    setCheckOutConfirmId(null);
+  };
+
+  const checkOutConfirmReservation = results.find((r) => r.id === checkOutConfirmId);
+  const extendReservation = results.find((r) => r.id === extendReservationId);
+
+  const handleExtendSubmit = async (reservationEndDate: string) => {
+    if (extendReservationId === null) return;
+    setExtendingId(extendReservationId);
+    try {
+      const created = await reservationsApi.extend(extendReservationId, {
+        reservationEndDate,
+      });
+      queryClient.invalidateQueries({ queryKey: ["reservations-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["reservations-my"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      toast.success(extensionSuccessMessage(created.status));
+      setExtendReservationId(null);
+      navigate(`/reservations/${created.id}`);
+    } catch (err) {
+      toastApiError(err, "خطا در ثبت تمدید رزرو");
+      throw err;
+    } finally {
+      setExtendingId(null);
+    }
+  };
+
   const handleConfirmAttendance = async (recordedAt: string) => {
     if (!attendanceModal) return;
     const { id, type } = attendanceModal;
@@ -341,10 +483,45 @@ export function ReservationTrackLookup({
           ? "ساعت ورود زائر گرامی با موفقیت در سیستم ثبت شد"
           : "ساعت خروج زائر گرامی با موفقیت در سیستم ثبت شد",
       );
+      if (type === "check-out" && updated.mealPlanNotice) {
+        toast.warning(updated.mealPlanNotice);
+      }
+      await queryClient.invalidateQueries({ queryKey: ["reservation-events", id] });
       onAttendanceSuccess?.(type);
     } catch (err) {
       toastApiError(err, type === "check-in" ? "خطا در ثبت ورود" : "خطا در ثبت خروج");
       throw err;
+    } finally {
+      setCheckingInId(null);
+    }
+  };
+
+  const handleRecordTempEvent = async (
+    id: number,
+    eventType: "TEMP_OUT" | "TEMP_IN",
+  ) => {
+    setCheckingInId(id);
+    try {
+      const recordedAt = buildRecordedAtFromDateAndTime(
+        todayLocalGregorianDateString(),
+        currentTimeInputValue(),
+      );
+      const result = await reservationEventsApi.record(id, { eventType, recordedAt });
+      if (result.reservation && typeof result.reservation === "object" && "id" in result.reservation) {
+        setResults((prev) =>
+          prev.map((item) =>
+            item.id === id ? { ...item, ...(result.reservation as Reservation) } : item,
+          ),
+        );
+      }
+      toast.success(
+        eventType === "TEMP_OUT"
+          ? "خروج موقت ثبت شد"
+          : "ورود موقت ثبت شد",
+      );
+      onAttendanceSuccess?.(eventType === "TEMP_OUT" ? "check-out" : "check-in");
+    } catch (err) {
+      toastApiError(err, "خطا در ثبت رویداد");
     } finally {
       setCheckingInId(null);
     }
@@ -430,24 +607,39 @@ export function ReservationTrackLookup({
       {results.length > 0 && (
         <div className="space-y-3">
           {results.map((reservation, index) => (
-            <section
-              key={reservation.id}
-              className="w-full overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm"
-            >
               <TrackResultRow
+                key={reservation.id}
                 reservation={reservation}
                 onOpenAttendance={handleOpenAttendance}
+                onRequestCheckOut={handleRequestCheckOut}
+                onRecordTempEvent={handleRecordTempEvent}
                 onReservationUpdate={handleReservationUpdate}
+                onRequestExtend={setExtendReservationId}
                 attendanceLoading={checkingInId === reservation.id}
+                extendLoadingId={extendingId}
                 detailsLinkRef={index === 0 ? detailsLinkRef : undefined}
                 highlightDetails={index === 0}
                 showCheckIn={showCheckIn}
                 showCheckInOutTimes={showCheckInOutTimes}
+                isAdmin={isAdmin}
+                isMawkibOwner={isMawkibOwner}
               />
-            </section>
           ))}
         </div>
       )}
+      <ConfirmDialog
+        open={checkOutConfirmId !== null}
+        onClose={() => setCheckOutConfirmId(null)}
+        onConfirm={handleConfirmCheckOutRequest}
+        title="خروج نهایی"
+        message={
+          checkOutConfirmReservation
+            ? `آیا از ثبت خروج نهایی «${checkOutConfirmReservation.pilgrim.fullName}» مطمئن هستید؟ پس از خروج نهایی، رزرو تکمیل می‌شود.`
+            : "آیا از ثبت خروج نهایی مطمئن هستید؟"
+        }
+        confirmLabel="خروج نهایی"
+        variant="danger"
+      />
       <ReservationAttendanceModal
         open={attendanceModal !== null}
         type={attendanceModal?.type ?? "check-in"}
@@ -464,6 +656,14 @@ export function ReservationTrackLookup({
         onClose={() => setAttendanceModal(null)}
         onConfirm={handleConfirmAttendance}
       />
+      {extendReservation && (
+        <ExtendReservationModal
+          open={extendReservationId !== null}
+          reservation={extendReservation}
+          onClose={() => setExtendReservationId(null)}
+          onSubmit={handleExtendSubmit}
+        />
+      )}
     </div>
   );
 }

@@ -17,6 +17,10 @@ export interface ReservationFilters {
   pilgrimMobile?: string;
   pilgrimNationalId?: string;
   trackingCode?: string;
+  /** Dashboard track lookup — searches code, mobile, and national ID (OR). */
+  lookupQuery?: string;
+  /** With lookupQuery: return only the best-matching reservation. */
+  lookupSingle?: boolean;
   pilgrimUserId?: number;
   guestCountMin?: number;
   guestCountMax?: number;
@@ -58,6 +62,7 @@ export interface CreateReservationPayload {
   plannedCheckInTime?: string;
   plannedCheckOutTime?: string;
   skipCapacityCheck?: boolean;
+  trackingCode?: string;
 }
 
 function buildParams(filters?: ReservationFilters) {

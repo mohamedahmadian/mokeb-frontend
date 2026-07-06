@@ -28,6 +28,13 @@ const GUEST_COLORS = {
   female: '#db2777',
 };
 
+const PRESENCE_COLORS: Record<string, string> = {
+  'حاضر در موکب': '#10b981',
+  'خروج موقت': '#f43f5e',
+  'هنوز وارد نشده': '#94a3b8',
+  'خارج شده': '#64748b',
+};
+
 function HighlightPill({
   label,
   value,
@@ -63,7 +70,7 @@ export function ReservationsReportPage() {
     return <ReportErrorState message="بارگذاری گزارش رزروها با خطا مواجه شد." />;
   }
 
-  const { summary, scope, capacity, statusBreakdown, highlights } = data;
+  const { summary, scope, capacity, presence, presenceBreakdown, statusBreakdown, highlights } = data;
   const topBusyDays = [...data.busyDays]
     .sort((a, b) => b.count - a.count)
     .slice(0, 7);
@@ -88,11 +95,32 @@ export function ReservationsReportPage() {
     color: item.label === 'آقایان' ? GUEST_COLORS.male : GUEST_COLORS.female,
   }));
 
+  const presenceSegments = presenceBreakdown
+    .filter((item) => item.count > 0)
+    .map((item) => ({
+      label: item.label,
+      value: item.count,
+      color: PRESENCE_COLORS[item.label] ?? '#94a3b8',
+    }));
+
+  const presentGenderSegments = [
+    {
+      label: 'آقایان',
+      value: presence.presentMaleGuests,
+      color: GUEST_COLORS.male,
+    },
+    {
+      label: 'بانوان',
+      value: presence.presentFemaleGuests,
+      color: GUEST_COLORS.female,
+    },
+  ];
+
   return (
     <div className="mx-auto max-w-7xl">
       <ReportPageHeader
         title={scope === 'mine' ? 'گزارش رزروهای من' : 'گزارش رزرواسیون'}
-        subtitle="آمار کلی، وضعیت رزروها، ظرفیت و توزیع جنسیتی"
+        subtitle="آمار کلی، وضعیت رزروها، ظرفیت، حضور و توزیع جنسیتی"
         scope={scope}
         icon={<NavIcon name="reservations" className="h-6 w-6 text-white" />}
       />
@@ -146,6 +174,33 @@ export function ReservationsReportPage() {
         />
       </div>
 
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <ReportStatCard
+          label="حاضر در موکب"
+          value={presence.presentTotalGuests}
+          tone="teal"
+          subtitle={`${formatPersianNumber(presence.presentReservationCount)} رزرو — ${formatPersianNumber(presence.presentMaleGuests)} آقا / ${formatPersianNumber(presence.presentFemaleGuests)} خانم`}
+          icon={<NavIcon name="pilgrims" className="h-5 w-5" />}
+        />
+        <ReportStatCard
+          label="خروج موقت"
+          value={presence.temporarilyOutTotalGuests}
+          tone="rose"
+          subtitle={`${formatPersianNumber(presence.temporarilyOutReservationCount)} رزرو`}
+        />
+        <ReportStatCard
+          label="ظرفیت اشغال (رزرو)"
+          value={capacity.occupiedCapacity}
+          tone="amber"
+          subtitle={`${formatPersianNumber(capacity.occupancyPercent)}٪ از ${formatPersianNumber(capacity.totalCapacity)}`}
+        />
+        <ReportStatCard
+          label="ظرفیت باقی‌مانده"
+          value={capacity.remainingCapacity}
+          tone="blue"
+        />
+      </div>
+
       <div className="mb-6 grid gap-4 lg:grid-cols-2">
         <ReportChartCard
           title="گزارش وضعیت رزرو"
@@ -166,8 +221,48 @@ export function ReservationsReportPage() {
         </ReportChartCard>
 
         <ReportChartCard
+          title="گزارش حضور"
+          subtitle="وضعیت فعلی رزروهای تأییدشده بر اساس ثبت ورود/خروج"
+          icon={<NavIcon name="pilgrims" className="h-5 w-5" />}
+        >
+          {presenceSegments.length > 0 ? (
+            <DonutChart
+              segments={presenceSegments}
+              centerLabel="رزرو تأیید"
+              centerValue={
+                presenceBreakdown.reduce((sum, item) => sum + item.count, 0)
+              }
+            />
+          ) : (
+            <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-400">
+              رزرو تأییدشده‌ای برای نمایش حضور وجود ندارد
+            </p>
+          )}
+        </ReportChartCard>
+      </div>
+
+      <div className="mb-6 grid gap-4 lg:grid-cols-2">
+        <ReportChartCard
+          title="حاضرین بر اساس جنسیت"
+          subtitle="مهمانانی که الان در موکب حضور دارند"
+          icon={<NavIcon name="users" className="h-5 w-5" />}
+        >
+          {presentGenderSegments.some((s) => s.value > 0) ? (
+            <DonutChart
+              segments={presentGenderSegments}
+              centerLabel="حاضر"
+              centerValue={presence.presentTotalGuests}
+            />
+          ) : (
+            <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-400">
+              در حال حاضر مهمان حاضری ثبت نشده است
+            </p>
+          )}
+        </ReportChartCard>
+
+        <ReportChartCard
           title="گزارش ظرفیت"
-          subtitle="وضعیت اشغال ظرفیت موکب‌ها (امروز)"
+          subtitle="وضعیت اشغال ظرفیت موکب‌ها (رزرو امروز)"
           icon={<NavIcon name="mawkibs" className="h-5 w-5" />}
         >
           <div className="grid gap-3 sm:grid-cols-2">
@@ -177,7 +272,7 @@ export function ReservationsReportPage() {
               tone="blue"
             />
             <ReportStatCard
-              label="اشغال شده"
+              label="اشغال شده (رزرو)"
               value={capacity.occupiedCapacity}
               tone="amber"
             />
@@ -187,7 +282,7 @@ export function ReservationsReportPage() {
               tone="teal"
             />
             <div className="overflow-hidden rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-4 shadow-sm">
-              <p className="text-sm font-medium text-slate-600">درصد اشغال کل</p>
+              <p className="text-sm font-medium text-slate-600">درصد اشغال رزرو</p>
               <p className="mt-1 text-3xl font-extrabold text-violet-800">
                 {formatPersianNumber(capacity.occupancyPercent)}٪
               </p>
@@ -198,14 +293,19 @@ export function ReservationsReportPage() {
 
       <ReportChartCard
         title="گزارش موکب‌ها"
-        subtitle="ظرفیت، تعداد رزرو و درصد اشغال هر موکب"
+        subtitle="ظرفیت، رزرو، حضور و درصد اشغال هر موکب"
         icon={<NavIcon name="mawkibs" className="h-5 w-5" />}
         className="mb-6"
       >
-        <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <HighlightPill
             label="بیشترین رزرو"
             value={highlights.mostReserved?.mawkibName ?? '—'}
+            tone="teal"
+          />
+          <HighlightPill
+            label="بیشترین حضور"
+            value={highlights.mostPresent?.mawkibName ?? '—'}
             tone="teal"
           />
           <HighlightPill
@@ -234,7 +334,8 @@ export function ReservationsReportPage() {
                   <th className="px-4 py-3 text-center font-semibold">ظرفیت</th>
                   <th className="px-4 py-3 text-center font-semibold">رزرو</th>
                   <th className="px-4 py-3 text-center font-semibold">تأیید</th>
-                  <th className="px-4 py-3 text-center font-semibold">درصد اشغال</th>
+                  <th className="px-4 py-3 text-center font-semibold">حاضر</th>
+                  <th className="px-4 py-3 text-center font-semibold">اشغال رزرو</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -251,6 +352,17 @@ export function ReservationsReportPage() {
                     </td>
                     <td className="px-4 py-3 text-center text-slate-700">
                       {formatPersianNumber(row.confirmedCount)}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span
+                        className={`inline-flex min-w-[3.5rem] justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                          row.presentTotalGuests > 0
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}
+                      >
+                        {formatPersianNumber(row.presentTotalGuests)}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span

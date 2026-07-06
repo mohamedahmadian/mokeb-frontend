@@ -1,68 +1,13 @@
-import { useRef, useState, type CSSProperties, type RefObject } from 'react';
+import { useRef, useState } from 'react';
 import type { Reservation } from '../../types';
-import { getPilgrimCardWeekdayAccentForStayStart } from '../../lib/pilgrim-card-weekday';
 import { downloadPilgrimCardImage } from '../../lib/pilgrim-card-download';
 import { btnSecondary } from '../../lib/styles';
 import { toast } from '../../lib/toast';
-import { ReservationUserCardPrintContent } from './ReservationUserCardPrintButton';
-import { pilgrimCardScreenCss } from './pilgrim-card-styles';
-
-const HIDDEN_ROOT_CLASS = 'pilgrim-card-download-root';
+import { PilgrimCardCapture } from './PilgrimCardCapture';
 
 interface PilgrimCardDownloadButtonProps {
   reservation: Reservation;
   className?: string;
-}
-
-function PilgrimCardDownloadCapture({
-  reservation,
-  cardShellRef,
-}: {
-  reservation: Reservation;
-  cardShellRef: RefObject<HTMLDivElement | null>;
-}) {
-  const weekdayAccent = getPilgrimCardWeekdayAccentForStayStart(
-    reservation.reservationDate,
-  );
-  const shellStyle = {
-    '--pilgrim-weekday-color': weekdayAccent.color,
-    '--pilgrim-weekday-border': weekdayAccent.borderColor,
-    '--pilgrim-weekday-accent': weekdayAccent.accentColor,
-    '--pilgrim-weekday-text': weekdayAccent.textOnColor,
-    fontFamily: "'Vazir', Tahoma, sans-serif",
-  } as CSSProperties;
-
-  return (
-    <>
-      <style>{pilgrimCardScreenCss(HIDDEN_ROOT_CLASS)}</style>
-      <div
-        aria-hidden
-        className="pointer-events-none fixed top-0 -left-[10000px] z-[-1]"
-      >
-        <div className={HIDDEN_ROOT_CLASS}>
-          <div
-            ref={cardShellRef}
-            className="pilgrim-card-shell"
-            data-weekday={weekdayAccent.id}
-            style={shellStyle}
-          >
-            <span
-              className="pilgrim-card__weekday-dot"
-              aria-hidden
-              title={weekdayAccent.label}
-            />
-            <div
-              className="pilgrim-card__weekday-banner"
-              aria-label={`روز شروع اقامت: ${weekdayAccent.label}`}
-            >
-              {weekdayAccent.label}
-            </div>
-            <ReservationUserCardPrintContent reservation={reservation} />
-          </div>
-        </div>
-      </div>
-    </>
-  );
 }
 
 export function PilgrimCardDownloadButton({
@@ -92,10 +37,7 @@ export function PilgrimCardDownloadButton({
 
   return (
     <>
-      <PilgrimCardDownloadCapture
-        reservation={reservation}
-        cardShellRef={cardShellRef}
-      />
+      <PilgrimCardCapture reservation={reservation} cardShellRef={cardShellRef} />
       <button
         type="button"
         onClick={() => void handleDownload()}

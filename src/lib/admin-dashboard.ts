@@ -15,13 +15,25 @@ export function getPendingMawkibs(mawkibs: Mawkib[], limit = 5): Mawkib[] {
     .slice(0, limit);
 }
 
-export async function lookupAdminReservation(query: string): Promise<{
+export async function lookupAdminReservation(
+  query: string,
+  options?: { single?: boolean },
+): Promise<{
   reservation: Reservation | null;
   alternatives: Reservation[];
 }> {
-  return lookupReservationList(query, (filters) =>
-    reservationsApi.getAdminList(filters),
+  return lookupReservationList(
+    query,
+    (filters) => reservationsApi.getAdminList(filters),
+    options,
   );
+}
+
+export async function lookupAdminReservationSingle(
+  query: string,
+): Promise<Reservation | null> {
+  const result = await lookupAdminReservation(query, { single: true });
+  return result.reservation;
 }
 
 export async function fetchPendingMawkibs(limit = 5): Promise<Mawkib[]> {

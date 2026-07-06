@@ -4,6 +4,7 @@ import { guestTheme } from '../../lib/guest-theme';
 import { btnSecondary } from '../../lib/styles';
 import type { Reservation } from '../../types';
 import { ReservationDeliveredItemsButton } from './ReservationDeliveredItemsButton';
+import { ReservationMealPlanLink } from './ReservationMealPlanLink';
 import { PilgrimCardViewButton } from './PilgrimCardViewButton';
 import { PilgrimCardDownloadButton } from './PilgrimCardDownloadButton';
 import { ReservationUserCardPrintButton } from './ReservationUserCardPrintButton';
@@ -52,6 +53,7 @@ export function ReservationToolsCard({
   const isAdmin = user?.roles.includes('Admin') ?? false;
   const isMawkibOwner = user?.roles.includes('MawkibOwner') ?? false;
   const showDeliveredItems = variant === 'panel' && (isAdmin || isMawkibOwner);
+  const showMealPlanLink = showDeliveredItems;
 
   const buttonClass =
     variant === 'guest'
@@ -66,13 +68,21 @@ export function ReservationToolsCard({
   return (
     <ToolsCardShell variant={variant}>
       {showDeliveredItems && reservationId != null && (
-        <div className="w-full">
+        <div className="flex w-full flex-wrap gap-2">
           <ReservationDeliveredItemsButton
             reservation={reservation}
             reservationId={reservationId}
             onUpdate={onDeliveredItemsUpdate}
-            className={buttonClass}
+            className={`${buttonClass} min-w-0 flex-1 sm:flex-none`}
           />
+          {showMealPlanLink && (
+            <ReservationMealPlanLink
+              reservation={reservation}
+              isAdmin={isAdmin}
+              isMawkibOwner={isMawkibOwner}
+              className={`${buttonClass} min-w-0 flex-1 sm:flex-none`}
+            />
+          )}
         </div>
       )}
       <div className={pilgrimCardsRowClass}>
@@ -83,7 +93,7 @@ export function ReservationToolsCard({
         <PilgrimCardViewButton
           trackingCode={reservation.trackingCode}
           reservation={reservation}
-          presentation={variant === 'guest' ? 'link' : 'modal'}
+          presentation="modal"
           className={buttonClass}
         />
         <ReservationUserCardPrintButton

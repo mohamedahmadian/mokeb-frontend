@@ -53,6 +53,9 @@ export interface MawkibTodayGuestItem {
   totalGuests: number;
   maleCapacity: number;
   femaleCapacity: number;
+  presentMaleGuests: number;
+  presentFemaleGuests: number;
+  presentTotalGuests: number;
 }
 
 export interface MawkibsReport {
@@ -68,6 +71,9 @@ export interface MawkibsReport {
     todayMaleGuests: number;
     todayFemaleGuests: number;
     todayTotalGuests: number;
+    presentMaleGuests: number;
+    presentFemaleGuests: number;
+    presentTotalGuests: number;
     pendingRegistrationRequestCount: number;
     rejectedRegistrationRequestCount: number;
   };
@@ -86,6 +92,20 @@ export interface ReservationsReportMawkibRow {
   reservationCount: number;
   confirmedCount: number;
   occupancyPercent: number;
+  presentMaleGuests: number;
+  presentFemaleGuests: number;
+  presentTotalGuests: number;
+}
+
+export interface ReservationsReportPresence {
+  presentMaleGuests: number;
+  presentFemaleGuests: number;
+  presentTotalGuests: number;
+  temporarilyOutMaleGuests: number;
+  temporarilyOutFemaleGuests: number;
+  temporarilyOutTotalGuests: number;
+  presentReservationCount: number;
+  temporarilyOutReservationCount: number;
 }
 
 export interface ReservationsReport {
@@ -115,6 +135,8 @@ export interface ReservationsReport {
     remainingCapacity: number;
     occupancyPercent: number;
   };
+  presence: ReservationsReportPresence;
+  presenceBreakdown: ReportCountItem[];
   statusBreakdown: ReportCountItem[];
   genderBreakdown: ReportCountItem[];
   todayGenderBreakdown: ReportCountItem[];
@@ -122,6 +144,7 @@ export interface ReservationsReport {
   highlights: {
     mostReserved: ReservationsReportMawkibRow | null;
     leastReserved: ReservationsReportMawkibRow | null;
+    mostPresent: ReservationsReportMawkibRow | null;
     fullCapacityMawkibs: ReservationsReportMawkibRow[];
     noReservationMawkibs: ReservationsReportMawkibRow[];
   };

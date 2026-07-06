@@ -17,6 +17,7 @@ import {
   FeedbackSidebarSection,
   resolveFeedbackNavVariant,
 } from "./FeedbackNav";
+import { MealPlansSidebarSection } from "./MealPlansNav";
 import {
   ReportsSidebarSection,
   getReportsSectionInsertIndex,
@@ -101,6 +102,15 @@ function buildNavItems(user: { roles: RoleName[] } | null): NavItem[] {
     { to: "/users", label: "کاربران", icon: "users", roles: ["Admin"] },
   ];
 
+  if (isAdmin || isMawkibOwner) {
+    items.splice(1, 0, {
+      to: '/attendance',
+      label: 'ورود و خروج',
+      icon: 'login',
+      roles: ['Admin', 'MawkibOwner'],
+    });
+  }
+
   if (isAdmin) {
     items.push({
       to: "/admin/crons",
@@ -131,6 +141,7 @@ function buildNavItems(user: { roles: RoleName[] } | null): NavItem[] {
 
 function isNavItemActive(item: NavItem, pathname: string): boolean {
   if (item.to === "/dashboard") return pathname === "/dashboard";
+  if (item.to === "/attendance") return pathname === "/attendance";
   if (item.to === "/mawkibs/map") {
     return pathname === "/mawkibs/map" || /^\/mawkibs\/\d+\/view/.test(pathname);
   }
@@ -270,6 +281,9 @@ export function AdminLayout() {
     user?.roles.some((role) => MAP_SEARCH_NAV_ITEM.roles.includes(role)) ??
     false;
   const showMawkibOwnersReport = user?.roles.includes("Admin") ?? false;
+  const showMealPlansNav =
+    (user?.roles.includes("Admin") ?? false) ||
+    (user?.roles.includes("MawkibOwner") ?? false);
   const portalSectionsInsertIndex = getPortalSectionsInsertIndex(visibleNav);
   const reportsSectionInsertIndex = getReportsSectionInsertIndex(visibleNav);
   const roleHonorificLabel = getPrimaryRoleHonorificLabel(user?.roles);
@@ -334,6 +348,12 @@ export function AdminLayout() {
                   onNavigate={onNavigate}
                 />
               )}
+              {showMealPlansNav && (
+                <MealPlansSidebarSection
+                  collapsed={collapsed}
+                  onNavigate={onNavigate}
+                />
+              )}
               {feedbackNavVariant && (
                 <FeedbackSidebarSection
                   collapsed={collapsed}
@@ -361,6 +381,7 @@ export function AdminLayout() {
       {portalSectionsInsertIndex >= visibleNav.length &&
         (showMawkibOwnerNav ||
           showCooperationNav ||
+          showMealPlansNav ||
           feedbackNavVariant ||
           showReportsNav) && (
           <>
@@ -376,6 +397,12 @@ export function AdminLayout() {
                 collapsed={collapsed}
                 showNewRequest={false}
                 showServantsList={showHonoraryServantsList}
+                onNavigate={onNavigate}
+              />
+            )}
+            {showMealPlansNav && (
+              <MealPlansSidebarSection
+                collapsed={collapsed}
                 onNavigate={onNavigate}
               />
             )}

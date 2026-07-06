@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatPersianDateRange } from '../ui/PersianDateRangePicker';
 import { NavIcon } from '../ui/NavIcons';
@@ -59,6 +59,7 @@ export function QuickReservationForm({
   const { user } = useAuth();
   const isAdmin = user?.roles.includes('Admin') ?? false;
   const isMawkibOwner = user?.roles.includes('MawkibOwner') ?? false;
+  const canSetCustomTrackingCode = isAdmin || isMawkibOwner;
   const canBypassCapacity = isAdmin || isMawkibOwner;
   const today = todayDateString();
 
@@ -76,6 +77,8 @@ export function QuickReservationForm({
   const [maleGuestCount, setMaleGuestCount] = useState(1);
   const [femaleGuestCount, setFemaleGuestCount] = useState(0);
   const [skipCapacityCheck, setSkipCapacityCheck] = useState(false);
+  const [trackingCode, setTrackingCode] = useState('');
+  const formRef = useRef<HTMLFormElement>(null);
   const [dateStart, setDateStart] = useState(today);
   const [dateEnd, setDateEnd] = useState(() => defaultReservationEndDate(today, 1));
   const [submitting, setSubmitting] = useState(false);
@@ -269,6 +272,7 @@ export function QuickReservationForm({
         plannedCheckInTime: mawkib.defaultCheckInTime ?? DEFAULT_CHECK_IN_TIME,
         plannedCheckOutTime: mawkib.defaultCheckOutTime ?? DEFAULT_CHECK_OUT_TIME,
         skipCapacityCheck: skipCapacityCheck || undefined,
+        trackingCode: trackingCode.trim() || undefined,
       });
 
       queryClient.invalidateQueries({ queryKey: ['reservations-admin'] });
@@ -301,7 +305,7 @@ export function QuickReservationForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className={`${guestTheme.cardLg} space-y-6`}>
+    <form ref={formRef} onSubmit={handleSubmit} className={`${guestTheme.cardLg} space-y-6`}>
       <div className="rounded-xl border border-[#c5d4e8] bg-[#f0f4fa]/60 px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -351,6 +355,7 @@ export function QuickReservationForm({
           nationalIdCardImageUrl={nationalIdCardImageUrl}
           submitting={submitting}
           mobileLabel="تلفن همراه"
+          autoFocusMobile
           showLocation={false}
           optionalFields="hidden"
           onFullNameChange={setFullName}
@@ -362,6 +367,10 @@ export function QuickReservationForm({
           onPassportNumberChange={setPassportNumber}
           onPasswordChange={setPassword}
           onNationalIdCardImageUrlChange={setNationalIdCardImageUrl}
+          showCustomTrackingCode={canSetCustomTrackingCode}
+          trackingCode={trackingCode}
+          onTrackingCodeChange={setTrackingCode}
+          onTrackingCodeEnter={() => formRef.current?.requestSubmit()}
         />
       </section>
 
@@ -464,6 +473,7 @@ export function QuickReservationForm({
             submitting={submitting}
             province={province}
             city={city}
+            hideNationalId={canSetCustomTrackingCode}
             onNationalIdChange={setNationalId}
             onGenderChange={setGender}
             onBirthDateChange={setBirthDate}

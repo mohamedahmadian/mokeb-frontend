@@ -70,7 +70,7 @@ export function PilgrimCardScreenView({
           >
             {weekdayAccent.label}
           </div>
-          <ReservationUserCardPrintContent reservation={reservation} />
+          <ReservationUserCardPrintContent reservation={reservation} interactive />
         </div>
       </div>
 

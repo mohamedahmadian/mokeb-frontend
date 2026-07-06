@@ -1,16 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { GuestPageHeader, GuestShell } from '../components/guest/GuestShell';
 import { TrackModeSwitch, type TrackMode } from '../components/guest/TrackModeSwitch';
-import { ReservationCheckInOut } from '../components/reservations/ReservationCheckInOut';
 import { ReservationToolsCard } from '../components/reservations/ReservationToolsCard';
 import { ReservationDetailInfo } from '../components/reservations/ReservationDetailInfo';
-import { ReservationTrackingHeader } from '../components/reservations/ReservationTrackingHeader';
 import { formatPersianDateRange } from '../components/ui/PersianDateRangePicker';
 import { RESERVATION_STATUS_LABELS } from '../lib/constants';
 import { guestApi } from '../lib/guest';
 import { guestTheme } from '../lib/guest-theme';
-import { getTrackingCodeFromSearchParams, pilgrimCardPath } from '../lib/reservation-track';
+import { getTrackingCodeFromSearchParams } from '../lib/reservation-track';
 import { toast, toastApiError } from '../lib/toast';
 import type { Reservation } from '../types';
 
@@ -78,11 +76,9 @@ function ReservationListCard({
 function ReservationDetails({
   reservation,
   detailRef,
-  onReservationUpdate,
 }: {
   reservation: Reservation;
   detailRef?: RefObject<HTMLDivElement | null>;
-  onReservationUpdate: (reservation: Reservation) => void;
 }) {
   const mawkibHref = `/guest/mawkibs/${reservation.mawkib.id}?trackingCode=${encodeURIComponent(reservation.trackingCode)}`;
 
@@ -93,28 +89,10 @@ function ReservationDetails({
         variant="guest"
         mawkibDetailsHref={mawkibHref}
       />
-      <ReservationCheckInOut
-        reservation={reservation}
-        variant="guest"
-        onUpdate={onReservationUpdate}
-      />
       <ReservationToolsCard
         reservation={reservation}
         variant="guest"
       />
-      <ReservationTrackingHeader
-        trackingCode={reservation.trackingCode}
-        compact
-        variant="guest"
-      />
-      <div className="flex justify-center">
-        <Link
-          to={pilgrimCardPath(reservation.trackingCode)}
-          className={`${guestTheme.btnPrimary} w-full sm:w-auto`}
-        >
-          مشاهده زائر کارت
-        </Link>
-      </div>
     </div>
   );
 }
@@ -163,20 +141,6 @@ export function TrackReservationPage() {
     const trimmed = mobile.trim();
     if (!trimmed) {
       toast.error('لطفاً شماره موبایل را وارد کنید');
-      return;
-    }
-
-    const digitsOnly = trimmed.replace(/[۰-۹٠-٩]/g, (ch) => {
-      const persian = '۰۱۲۳۴۵۶۷۸۹';
-      const arabic = '٠١٢٣٤٥٦٧٨٩';
-      const persianIndex = persian.indexOf(ch);
-      if (persianIndex >= 0) return String(persianIndex);
-      const arabicIndex = arabic.indexOf(ch);
-      return arabicIndex >= 0 ? String(arabicIndex) : ch;
-    }).replace(/\D/g, '');
-
-    if (digitsOnly.length < 10) {
-      toast.error('لطفاً شماره موبایل را به‌صورت کامل وارد کنید');
       return;
     }
 
@@ -258,17 +222,10 @@ export function TrackReservationPage() {
     }
   };
 
-  const handleReservationUpdate = useCallback((updated: Reservation) => {
-    setReservation(updated);
-    setMobileResults((prev) =>
-      prev.map((item) => (item.id === updated.id ? updated : item)),
-    );
-  }, []);
-
   const subtitle =
     mode === 'code'
       ? 'کد رزرو خود را وارد کنید تا جزئیات نمایش داده شود'
-      : 'شماره موبایل کامل خود را وارد کنید تا ۲ رزرو اخیر نمایش داده شود';
+      : 'شماره موبایل خود را وارد کنید تا ۲ رزرو اخیر نمایش داده شود';
 
   return (
     <GuestShell maxWidth="md">
@@ -304,7 +261,7 @@ export function TrackReservationPage() {
                 autoComplete="tel"
               />
               <p className="mt-1.5 text-xs text-slate-400">
-                شماره موبایل باید کامل باشد (مثلاً 09121234567) — ۲ رزرو اخیر نمایش داده می‌شود
+                ۲ رزرو اخیر با این شماره موبایل نمایش داده می‌شود
               </p>
             </label>
           )}
@@ -322,7 +279,6 @@ export function TrackReservationPage() {
           <ReservationDetails
             reservation={reservation}
             detailRef={codeDetailRef}
-            onReservationUpdate={handleReservationUpdate}
           />
         )}
 
@@ -351,7 +307,6 @@ export function TrackReservationPage() {
           <ReservationDetails
             reservation={reservation}
             detailRef={mobileDetailRef}
-            onReservationUpdate={handleReservationUpdate}
           />
         )}
       </div>

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CancelReservationModal } from '../components/reservations/CancelReservationModal';
 import { ExtendReservationModal } from '../components/reservations/ExtendReservationModal';
-import { ReservationCheckInOut } from '../components/reservations/ReservationCheckInOut';
+import { ReservationAttendanceNavigateCard } from '../components/reservations/ReservationAttendanceNavigateCard';
 import { ReservationDetailInfo, ReservationStatusBanner } from '../components/reservations/ReservationDetailInfo';
 import { ReservationReviewSection } from '../components/reservations/ReservationReviewSection';
 import { ReservationToolsCard } from '../components/reservations/ReservationToolsCard';
@@ -201,15 +201,7 @@ export function ReservationDetailPage() {
         />
 
         {(isAdmin || isMawkibOwner) && (
-          <ReservationCheckInOut
-            reservation={reservation}
-            variant="panel"
-            onUpdate={(updated) => {
-              queryClient.setQueryData(['reservation', reservationId], updated);
-              queryClient.invalidateQueries({ queryKey: ['reservations-admin'] });
-              queryClient.invalidateQueries({ queryKey: ['reservations-my'] });
-            }}
-          />
+          <ReservationAttendanceNavigateCard reservation={reservation} />
         )}
 
         <ReservationToolsCard

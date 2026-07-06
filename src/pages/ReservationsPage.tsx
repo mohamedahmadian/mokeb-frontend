@@ -112,12 +112,11 @@ function RequestDateCell({ createdAt }: { createdAt: string }) {
   if (datePart === "—") return <>—</>;
 
   const date = new Date(createdAt);
-  const time =
-    Number.isNaN(date.getTime())
-      ? ""
-      : toPersianDigits(
-          `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`,
-        );
+  const time = Number.isNaN(date.getTime())
+    ? ""
+    : toPersianDigits(
+        `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`,
+      );
 
   return (
     <div
@@ -152,6 +151,22 @@ function ReservationDateCell({
           </span>
         </p>
       )}
+    </div>
+  );
+}
+
+function PilgrimCell({ pilgrim }: { pilgrim: Reservation["pilgrim"] }) {
+  return (
+    <div>
+      <div>{pilgrim.fullName}</div>
+      {pilgrim.mobileNumber ? (
+        <div
+          dir="ltr"
+          className="mt-0.5 text-xs text-slate-500 tabular-nums font-[Vazir,ui-sans-serif,system-ui,sans-serif]"
+        >
+          {pilgrim.mobileNumber}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -221,7 +236,11 @@ export function ReservationsPage() {
     ? ["reservations-admin", appliedFilters, page]
     : ["reservations-my", appliedFilters, page];
 
-  const { data: reservationsPage, isLoading, refetch } = useQuery({
+  const {
+    data: reservationsPage,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey,
     queryFn: () => {
       const params = {
@@ -396,11 +415,13 @@ export function ReservationsPage() {
   const actionIconClass = "h-3.5 w-3.5 shrink-0";
 
   const renderActions = (r: Reservation) => {
-    const canReview =
-      isPilgrim && canPilgrimReviewReservation(r, user?.id);
+    const canReview = isPilgrim && canPilgrimReviewReservation(r, user?.id);
     const showRegisterReview = !isPilgrim && canReview && !r.review;
     const showEditReview =
-      !isPilgrim && canReview && r.review && canEditReservationReview(r, user?.id);
+      !isPilgrim &&
+      canReview &&
+      r.review &&
+      canEditReservationReview(r, user?.id);
 
     const detailsButton = (
       <Link
@@ -691,6 +712,18 @@ export function ReservationsPage() {
                       },
                     ]
                   : []),
+                ...(!isPilgrim && r.pilgrim.mobileNumber
+                  ? [
+                      {
+                        label: "موبایل",
+                        value: (
+                          <span dir="ltr" className="tabular-nums">
+                            {r.pilgrim.mobileNumber}
+                          </span>
+                        ),
+                      },
+                    ]
+                  : []),
                 {
                   label: "تعداد",
                   value: renderGuestCount(r.maleGuestCount, r.femaleGuestCount),
@@ -726,13 +759,9 @@ export function ReservationsPage() {
         <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
-              {isPilgrim && (
-                <th className="px-4 py-3 text-right">درخواست</th>
-              )}
+              {isPilgrim && <th className="px-4 py-3 text-right">درخواست</th>}
               <th className="px-4 py-3 text-right">موکب</th>
-              {!isPilgrim && (
-                <th className="px-4 py-3 text-right">زائر</th>
-              )}
+              {!isPilgrim && <th className="px-4 py-3 text-right">زائر</th>}
               <th className="px-4 py-3 text-right">تعداد</th>
               <th className="px-4 py-3 text-right">تاریخ شروع</th>
               <th className="px-4 py-3 text-right">تاریخ پایان</th>
@@ -777,7 +806,9 @@ export function ReservationsPage() {
                   )}
                   <td className="px-4 py-3">{r.mawkib.name}</td>
                   {!isPilgrim && (
-                    <td className="px-4 py-3">{r.pilgrim.fullName}</td>
+                    <td className="px-4 py-3">
+                      <PilgrimCell pilgrim={r.pilgrim} />
+                    </td>
                   )}
                   <td className="px-4 py-3 whitespace-nowrap">
                     {renderGuestCount(r.maleGuestCount, r.femaleGuestCount)}

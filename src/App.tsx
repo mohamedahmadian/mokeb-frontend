@@ -47,6 +47,9 @@ import { MawkibOwnersReportPage } from "./pages/reports/MawkibOwnersReportPage";
 import { MawkibsReportPage } from "./pages/reports/MawkibsReportPage";
 import { ReservationsReportPage } from "./pages/reports/ReservationsReportPage";
 import { CronsPage } from "./pages/CronsPage";
+import { ReservationAttendancePage } from "./pages/ReservationAttendancePage";
+import { MealPlansPage } from "./pages/MealPlansPage";
+import { PresentAttendeesReportPage } from "./pages/PresentAttendeesReportPage";
 import { AboutPage } from "./pages/AboutPage";
 import { ContactPage } from "./pages/ContactPage";
 import { FaqPage } from "./pages/FaqPage";
@@ -173,6 +176,15 @@ export default function App() {
                     <RoleRoute allowedRoles={["Admin", "MawkibOwner"]} />
                   }
                 >
+                  <Route
+                    path="/attendance"
+                    element={<ReservationAttendancePage />}
+                  />
+                  <Route path="/meal-plans" element={<MealPlansPage />} />
+                  <Route
+                    path="/meal-plans/present-attendees"
+                    element={<PresentAttendeesReportPage />}
+                  />
                   <Route
                     path="/reservations/waiting-list"
                     element={<WaitingListPage />}

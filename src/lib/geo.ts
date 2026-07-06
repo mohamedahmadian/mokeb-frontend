@@ -20,6 +20,10 @@ export const COUNTRY_CENTERS: Record<MawkibCountry, LatLng> = {
 export const DEFAULT_MAP_CENTER: LatLng = { lat: 32.5, lng: 50.0 };
 export const DEFAULT_MAP_ZOOM = 6;
 
+/** Default map pin when creating a new mawkib (Mashhad area). */
+export const DEFAULT_MAWKIB_LATITUDE = 36.287991;
+export const DEFAULT_MAWKIB_LONGITUDE = 59.615883;
+
 export function getMapCenter(options: {
   mawkibCity?: MawkibCity | '';
   country?: MawkibCountry | '';
@@ -48,6 +52,24 @@ export function hasValidCoords(
     Number.isFinite(latitude) &&
     Number.isFinite(longitude)
   );
+}
+
+/** QR / deep-link that opens native map apps (Google Maps, Neshan, etc.) — not the Mokeb website. */
+export function buildMawkibLocationMapUrl(
+  latitude: number,
+  longitude: number,
+  label?: string,
+): string {
+  const lat = latitude.toFixed(6);
+  const lng = longitude.toFixed(6);
+  const coords = `${lat},${lng}`;
+
+  if (label?.trim()) {
+    const safeLabel = encodeURIComponent(label.trim());
+    return `geo:0,0?q=${coords}(${safeLabel})`;
+  }
+
+  return `geo:${coords}`;
 }
 
 export interface LatLngBounds {

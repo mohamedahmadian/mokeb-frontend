@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
-import { Modal } from '../Modal';
-import { NavIcon } from '../ui/NavIcons';
-import { guestTheme } from '../../lib/guest-theme';
-import { btnSecondary } from '../../lib/styles';
+import { useEffect, useState } from "react";
+import { Modal } from "../Modal";
+import { NavIcon } from "../ui/NavIcons";
+import { guestTheme } from "../../lib/guest-theme";
+import { btnSecondary } from "../../lib/styles";
 
 interface MawkibRulesAcceptanceModalProps {
   open: boolean;
@@ -31,7 +31,7 @@ export function MawkibRulesAcceptanceModal({
     <Modal open={open} onClose={onClose} title="قوانین موکب" size="lg">
       <div className="space-y-5">
         <p className="text-sm leading-relaxed text-slate-600">
-          پیش از ثبت درخواست رزرو در موکب{' '}
+          پیش از ثبت درخواست رزرو در موکب{" "}
           <span className="font-semibold text-[#4a6fa5]">{mawkibName}</span>،
           لطفاً قوانین زیر را با دقت مطالعه کنید.
         </p>
@@ -42,7 +42,9 @@ export function MawkibRulesAcceptanceModal({
               <NavIcon name="book" className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-sm font-semibold text-slate-800">قوانین و مقررات</p>
+              <p className="text-sm font-semibold text-slate-800">
+                قوانین و مقررات
+              </p>
               <p className="text-xs text-slate-500">{mawkibName}</p>
             </div>
           </div>
@@ -86,7 +88,7 @@ export function MawkibRulesAcceptanceModal({
                 در حال ثبت...
               </>
             ) : (
-              'ثبت درخواست رزرو'
+              "ثبت درخواست رزرو"
             )}
           </button>
         </div>

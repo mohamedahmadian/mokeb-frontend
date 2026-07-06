@@ -24,7 +24,11 @@ import { MawkibGalleryUpload, MawkibImageUpload } from "./MawkibImageUpload";
 import { MawkibLocationMapTrigger } from "./MawkibLocationMapTrigger";
 import { MawkibCardPrintButton } from "./MawkibCardPrintButton";
 import { MawkibRulesPrintButton } from "./MawkibRulesPrintButton";
-import { mawkibToCardData } from "../../lib/mawkib-card";
+import { buildMawkibCardDataFromForm } from "../../lib/mawkib-card";
+import {
+  DEFAULT_MAWKIB_LATITUDE,
+  DEFAULT_MAWKIB_LONGITUDE,
+} from "../../lib/geo";
 import { buildMawkibRulesPrintDataFromForm } from "../../lib/mawkib-rules-print";
 import { FieldLabel, FormSection, MapPinIcon } from "../users/user-form-ui";
 import type { Mawkib, MawkibStatus } from "../../types";
@@ -81,14 +85,15 @@ interface FormState {
   autoApprovePilgrimReservations: boolean;
   recordCheckInOnReservationConfirm: boolean;
   skipCapacityCheckEnabled: boolean;
+  mealPlanManagementEnabled: boolean;
   extra: MawkibExtraFormValues;
 }
 
 const emptyForm: FormState = {
   name: "",
   address: "",
-  latitude: "",
-  longitude: "",
+  latitude: DEFAULT_MAWKIB_LATITUDE.toString(),
+  longitude: DEFAULT_MAWKIB_LONGITUDE.toString(),
   phoneNumber: "",
   description: "",
   facilities: "",
@@ -107,6 +112,7 @@ const emptyForm: FormState = {
   autoApprovePilgrimReservations: false,
   recordCheckInOnReservationConfirm: false,
   skipCapacityCheckEnabled: false,
+  mealPlanManagementEnabled: false,
   extra: emptyMawkibExtraFields(),
 };
 
@@ -166,6 +172,7 @@ export function MawkibFormModal({
         recordCheckInOnReservationConfirm:
           mawkib.recordCheckInOnReservationConfirm === true,
         skipCapacityCheckEnabled: mawkib.skipCapacityCheckEnabled === true,
+        mealPlanManagementEnabled: mawkib.mealPlanManagementEnabled === true,
         extra: mawkibExtraFieldsFromMawkib(mawkib),
       });
     } else {
@@ -238,6 +245,7 @@ export function MawkibFormModal({
       autoApprovePilgrimReservations: form.autoApprovePilgrimReservations,
       recordCheckInOnReservationConfirm: form.recordCheckInOnReservationConfirm,
       skipCapacityCheckEnabled: form.skipCapacityCheckEnabled,
+      mealPlanManagementEnabled: form.mealPlanManagementEnabled,
       ...mawkibExtraFieldsToPayload(form.extra),
     };
 
@@ -742,6 +750,29 @@ export function MawkibFormModal({
                   </span>
                 </span>
               </label>
+
+              <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={form.mealPlanManagementEnabled}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      mealPlanManagementEnabled: e.target.checked,
+                    })
+                  }
+                  disabled={readOnly}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-[#4a6fa5] focus:ring-[#4a6fa5]"
+                />
+                <span className="text-sm leading-relaxed text-slate-700">
+                  <span className="font-medium">مدیریت برنامه غذایی</span>
+                  <span className="mt-1 block text-xs text-slate-500">
+                    با فعال بودن این گزینه، هنگام ثبت هر رزرو جدید، برنامه غذایی
+                    مرتبط با مدت حضور زائر به‌صورت خودکار ایجاد می‌شود و امکان
+                    مدیریت سرو و تحویل غذا فراهم خواهد بود.
+                  </span>
+                </span>
+              </label>
             </>
           )}
         </FormSection>
@@ -816,7 +847,10 @@ export function MawkibFormModal({
             {isEdit && mawkib && (
               <div className="flex w-full flex-col gap-2 sm:mr-auto sm:w-auto sm:flex-row">
                 <MawkibCardPrintButton
-                  data={mawkibToCardData(mawkib)}
+                  data={buildMawkibCardDataFromForm(mawkib, {
+                    latitude: form.latitude,
+                    longitude: form.longitude,
+                  })}
                   className={`${btnSecondary} w-full sm:w-auto`}
                 />
                 <MawkibRulesPrintButton
@@ -824,6 +858,8 @@ export function MawkibFormModal({
                     name: form.name,
                     phoneNumber: form.phoneNumber,
                     rules: form.extra.rules,
+                    latitude: form.latitude,
+                    longitude: form.longitude,
                   })}
                   className={`${btnSecondary} w-full border-[#c5d4e8] bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6] sm:w-auto`}
                 />
@@ -862,7 +898,10 @@ export function MawkibFormModal({
             </button>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <MawkibCardPrintButton
-                data={mawkibToCardData(mawkib)}
+                data={buildMawkibCardDataFromForm(mawkib, {
+                  latitude: form.latitude,
+                  longitude: form.longitude,
+                })}
                 className={`${btnPrimary} w-full sm:w-auto`}
               />
               <MawkibRulesPrintButton
@@ -870,6 +909,8 @@ export function MawkibFormModal({
                   name: form.name,
                   phoneNumber: form.phoneNumber,
                   rules: form.extra.rules,
+                  latitude: form.latitude,
+                  longitude: form.longitude,
                 })}
                 className={`${btnSecondary} w-full border-[#c5d4e8] bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6] sm:w-auto`}
               />

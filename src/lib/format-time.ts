@@ -191,6 +191,7 @@ export function clampDateString(
 export function buildRecordedAtFromDateAndTime(
   dateStr: string,
   time: string,
+  refDate = new Date(),
 ): string {
   const [y, m, d] = dateStr.split('-').map(Number);
   const match = time.match(/^(\d{1,2}):(\d{2})/);
@@ -202,5 +203,9 @@ export function buildRecordedAtFromDateAndTime(
   if (h < 0 || h > 23 || min < 0 || min > 59) {
     throw new Error('زمان نامعتبر است');
   }
-  return new Date(y, m - 1, d, h, min, 0, 0).toISOString();
+  const sameMinute =
+    h === refDate.getHours() && min === refDate.getMinutes();
+  const seconds = sameMinute ? refDate.getSeconds() : 0;
+  const ms = sameMinute ? refDate.getMilliseconds() : 0;
+  return new Date(y, m - 1, d, h, min, seconds, ms).toISOString();
 }

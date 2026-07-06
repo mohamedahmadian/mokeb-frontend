@@ -1,17 +1,17 @@
-import { useId, type ReactNode } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
-import { formatPersianNumber } from '../../lib/capacity';
-import { buildGuestMawkibUrl } from '../../lib/guest-mawkib';
-import type { MawkibCardData } from '../../lib/mawkib-card';
-import { btnSecondary } from '../../lib/styles';
+import { useId, type ReactNode } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import { formatPersianNumber } from "../../lib/capacity";
+import { buildMawkibLocationMapUrl, hasValidCoords } from "../../lib/geo";
+import type { MawkibCardData } from "../../lib/mawkib-card";
+import { btnSecondary } from "../../lib/styles";
 import {
   PrintCardHeroImage,
   PRINT_CARD_HERO_IMAGE_CSS,
-} from './PrintCardHeroImage';
+} from "./PrintCardHeroImage";
 
-const CARD_TEAL = '#1a3f3f';
-const CARD_TEAL_LIGHT = '#e8f3f3';
-const PRINT_BODY_CLASS = 'printing-mawkib-card';
+const CARD_TEAL = "#1a3f3f";
+const CARD_TEAL_LIGHT = "#e8f3f3";
+const PRINT_BODY_CLASS = "printing-mawkib-card";
 
 function capacityDisplay(male?: number, female?: number) {
   const m = male ?? 0;
@@ -34,7 +34,9 @@ function capacityDisplay(male?: number, female?: number) {
           {formatPersianNumber(f)}
         </span>
       )}
-      <span className="mawkib-card__capacity-total">({formatPersianNumber(total)})</span>
+      <span className="mawkib-card__capacity-total">
+        ({formatPersianNumber(total)})
+      </span>
     </span>
   );
 }
@@ -52,7 +54,7 @@ function StatColumn({
   icon: ReactNode;
   label: string;
   value: ReactNode;
-  valueDir?: 'ltr' | 'rtl';
+  valueDir?: "ltr" | "rtl";
 }) {
   return (
     <div className="mawkib-card__stat">
@@ -75,7 +77,7 @@ function DetailRow({
   icon: ReactNode;
   label: string;
   value: string;
-  valueDir?: 'ltr' | 'rtl';
+  valueDir?: "ltr" | "rtl";
   subValue?: string;
 }) {
   return (
@@ -88,16 +90,18 @@ function DetailRow({
         <span className="mawkib-card__detail-value" dir={valueDir}>
           {value}
         </span>
-        {subValue && <span className="mawkib-card__detail-subvalue">{subValue}</span>}
+        {subValue && (
+          <span className="mawkib-card__detail-subvalue">{subValue}</span>
+        )}
       </div>
     </div>
   );
 }
 
 const iconProps = {
-  fill: 'none',
-  viewBox: '0 0 24 24',
-  stroke: 'currentColor',
+  fill: "none",
+  viewBox: "0 0 24 24",
+  stroke: "currentColor",
   strokeWidth: 1.6,
 } as const;
 
@@ -234,11 +238,15 @@ function ServiceDatesRow({
       <div className="mawkib-card__service-dates">
         <div className="mawkib-card__service-date-col">
           <span className="mawkib-card__service-date-label">شروع</span>
-          <span className="mawkib-card__service-date-value">{startDate ?? '—'}</span>
+          <span className="mawkib-card__service-date-value">
+            {startDate ?? "—"}
+          </span>
         </div>
         <div className="mawkib-card__service-date-col">
           <span className="mawkib-card__service-date-label">پایان</span>
-          <span className="mawkib-card__service-date-value">{endDate ?? '—'}</span>
+          <span className="mawkib-card__service-date-value">
+            {endDate ?? "—"}
+          </span>
         </div>
       </div>
     </div>
@@ -271,35 +279,39 @@ function IconGlobe() {
 
 function hasDisplayValue(value?: string) {
   const trimmed = value?.trim();
-  return Boolean(trimmed && trimmed !== '—');
+  return Boolean(trimmed && trimmed !== "—");
 }
 
 function CountryCityPhoneRow({ data }: { data: MawkibCardData }) {
   const columns = [
     hasDisplayValue(data.countryLabel) && {
-      key: 'country',
-      label: 'کشور',
+      key: "country",
+      label: "کشور",
       value: data.countryLabel!,
     },
     hasDisplayValue(data.cityLabel) && {
-      key: 'city',
-      label: 'شهر',
+      key: "city",
+      label: "شهر",
       value: data.cityLabel!,
     },
     hasDisplayValue(data.ownerMobile) && {
-      key: 'ownerMobile',
-      label: 'تلفن مسئول',
+      key: "ownerMobile",
+      label: "تلفن مسئول",
       value: data.ownerMobile,
-      valueDir: 'ltr' as const,
+      valueDir: "ltr" as const,
     },
-  ].filter((column): column is Exclude<typeof column, false> => Boolean(column));
+  ].filter((column): column is Exclude<typeof column, false> =>
+    Boolean(column),
+  );
 
   if (columns.length === 0) return null;
 
   return (
     <div
       className="mawkib-card__meta-cols"
-      style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}
+      style={{
+        gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))`,
+      }}
     >
       {columns.map((column) => (
         <div key={column.key} className="mawkib-card__meta-col">
@@ -336,7 +348,10 @@ function AmenitiesRow({ amenities }: { amenities: string[] }) {
 }
 
 export function MawkibCardPrintContent({ data }: { data: MawkibCardData }) {
-  const mawkibMapUrl = buildGuestMawkibUrl(data.id, { focusMap: true });
+  const hasLocationQr = hasValidCoords(data.latitude, data.longitude);
+  const locationMapUrl = hasLocationQr
+    ? buildMawkibLocationMapUrl(data.latitude, data.longitude, data.name)
+    : null;
 
   return (
     <div className="mawkib-card">
@@ -363,7 +378,11 @@ export function MawkibCardPrintContent({ data }: { data: MawkibCardData }) {
           value={data.phoneNumber}
           valueDir="ltr"
         />
-        <StatColumn icon={<IconUser />} label="نام مسئول" value={data.ownerFullName} />
+        <StatColumn
+          icon={<IconUser />}
+          label="نام مسئول"
+          value={data.ownerFullName}
+        />
         <StatColumn
           icon={<IconUsers />}
           label="ظرفیت"
@@ -395,13 +414,17 @@ export function MawkibCardPrintContent({ data }: { data: MawkibCardData }) {
           ))}
         </div>
 
-        <div className="mawkib-card__location-row">
-          <div className="mawkib-card__location-qr">
-            <p className="mawkib-card__location-title">موقعیت موکب</p>
-            <QRCodeSVG value={mawkibMapUrl} size={104} level="M" />
-            <p className="mawkib-card__location-caption">اسکن برای مشاهده در نقشه</p>
+        {hasLocationQr && locationMapUrl && (
+          <div className="mawkib-card__location-row">
+            <div className="mawkib-card__location-qr">
+              <p className="mawkib-card__location-title">موقعیت موکب</p>
+              <QRCodeSVG value={locationMapUrl} size={104} level="M" />
+              <p className="mawkib-card__location-caption">
+                اسکن برای باز کردن نقشه (نشان و اسنپ ...)
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </section>
     </div>
   );
@@ -412,18 +435,21 @@ interface MawkibCardPrintButtonProps {
   className?: string;
 }
 
-export function MawkibCardPrintButton({ data, className }: MawkibCardPrintButtonProps) {
-  const printRootId = useId().replace(/:/g, '');
+export function MawkibCardPrintButton({
+  data,
+  className,
+}: MawkibCardPrintButtonProps) {
+  const printRootId = useId().replace(/:/g, "");
 
   const handlePrint = () => {
     document.body.classList.add(PRINT_BODY_CLASS);
 
     const cleanup = () => {
       document.body.classList.remove(PRINT_BODY_CLASS);
-      window.removeEventListener('afterprint', cleanup);
+      window.removeEventListener("afterprint", cleanup);
     };
 
-    window.addEventListener('afterprint', cleanup);
+    window.addEventListener("afterprint", cleanup);
     window.requestAnimationFrame(() => window.print());
   };
 

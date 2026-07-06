@@ -43,7 +43,10 @@ function isQuickReservationActive(
   search: string,
   mawkibId: number,
 ) {
-  if (pathname !== "/reservations/quick" && pathname !== "/reservations/today") {
+  if (
+    pathname !== "/reservations/quick" &&
+    pathname !== "/reservations/today"
+  ) {
     return false;
   }
   const id = parseInt(new URLSearchParams(search).get("mawkibId") ?? "", 10);
@@ -98,7 +101,9 @@ export function MawkibOwnerSidebarSection({
             className={`flex items-center ${collapsed ? "" : "gap-2.5 px-1"}`}
           >
             <NavIcon name="mawkibOwners" />
-            <span className={collapsed ? "sr-only" : undefined}>موکب‌داران</span>
+            <span className={collapsed ? "sr-only" : undefined}>
+              موکب‌داران
+            </span>
           </span>
         </NavLink>
       )}
@@ -132,7 +137,9 @@ export function MawkibOwnerSidebarSection({
               className={`flex items-center ${collapsed ? "" : "gap-2.5 px-1"}`}
             >
               <NavIcon name="todayReserve" />
-              <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
+              <span className={collapsed ? "sr-only" : "truncate"}>
+                {label}
+              </span>
             </span>
           </NavLink>
         );

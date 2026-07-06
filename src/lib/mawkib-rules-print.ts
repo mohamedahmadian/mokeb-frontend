@@ -20,6 +20,8 @@ export interface MawkibRulesPrintData {
   phoneNumber: string;
   ownerFullName: string;
   rules: string[];
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 function normalizeMawkibRuleLine(line: string): string {
@@ -59,7 +61,10 @@ export function normalizeMawkibRulesText(rules?: string | null): string | undefi
 }
 
 export function mawkibToRulesPrintData(
-  mawkib: Pick<Mawkib, 'id' | 'name' | 'phoneNumber' | 'owner' | 'rules'>,
+  mawkib: Pick<
+    Mawkib,
+    'id' | 'name' | 'phoneNumber' | 'owner' | 'rules' | 'latitude' | 'longitude'
+  >,
   rulesOverride?: string | null,
 ): MawkibRulesPrintData {
   const rulesText = rulesOverride ?? mawkib.rules;
@@ -70,6 +75,8 @@ export function mawkibToRulesPrintData(
     phoneNumber: mawkib.phoneNumber?.trim() || '—',
     ownerFullName: mawkib.owner?.fullName?.trim() || '—',
     rules: parseMawkibRulesLines(rulesText),
+    latitude: mawkib.latitude,
+    longitude: mawkib.longitude,
   };
 }
 
@@ -79,14 +86,24 @@ export function buildMawkibRulesPrintDataFromForm(
     name: string;
     phoneNumber: string;
     rules: string;
+    latitude?: string;
+    longitude?: string;
   },
 ): MawkibRulesPrintData {
+  const parseCoord = (value?: string) => {
+    if (!value?.trim()) return null;
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
   return {
     id: mawkib.id,
     name: form.name.trim() || mawkib.name,
     phoneNumber: form.phoneNumber.trim() || '—',
     ownerFullName: mawkib.owner?.fullName?.trim() || '—',
     rules: parseMawkibRulesLines(form.rules),
+    latitude: parseCoord(form.latitude) ?? mawkib.latitude ?? null,
+    longitude: parseCoord(form.longitude) ?? mawkib.longitude ?? null,
   };
 }
 

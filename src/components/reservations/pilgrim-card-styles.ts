@@ -345,6 +345,38 @@ ${r} .pilgrim-card__location-qr {
   text-align: center;
 }
 
+${r} .pilgrim-card__location-qr-code {
+  position: relative;
+  display: inline-flex;
+  line-height: 0;
+}
+
+${r} .pilgrim-card__location-qr-code svg {
+  display: block;
+  width: 4.5rem;
+  height: 4.5rem;
+}
+
+${r} .pilgrim-card__location-qr-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 0.25rem;
+}
+
+${r} .pilgrim-card__map-page-link {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+${r} .pilgrim-card__location-qr--interactive .pilgrim-card__location-qr-code:hover {
+  outline: 2px solid #93c5fd;
+  border-radius: 0.25rem;
+}
+
 ${r} .pilgrim-card__location-title {
   margin: 0;
   font-size: 0.72rem;
@@ -355,7 +387,28 @@ ${r} .pilgrim-card__location-title {
 ${r} .pilgrim-card__location-caption {
   margin: 0;
   font-size: 0.65rem;
+  font-weight: 500;
   color: #64748b;
+  line-height: 1.45;
+}
+
+${r} .pilgrim-card__map-link {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+${r} .pilgrim-card__map-link:hover {
+  color: #1d4ed8;
+}
+
+${r} .pilgrim-card__location-qr--interactive {
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+${r} .pilgrim-card__location-qr--interactive:hover {
+  border-color: #93c5fd;
+  background: #f8fafc;
 }
 
 ${r} .pilgrim-card__custom-note {

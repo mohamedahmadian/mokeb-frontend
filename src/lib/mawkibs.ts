@@ -63,6 +63,7 @@ export interface CreateMawkibPayload extends MawkibExtraFields {
   autoApprovePilgrimReservations?: boolean;
   recordCheckInOnReservationConfirm?: boolean;
   skipCapacityCheckEnabled?: boolean;
+  mealPlanManagementEnabled?: boolean;
 }
 
 export interface UpdateMawkibPayload extends MawkibExtraFields {
@@ -88,6 +89,7 @@ export interface UpdateMawkibPayload extends MawkibExtraFields {
   autoApprovePilgrimReservations?: boolean;
   recordCheckInOnReservationConfirm?: boolean;
   skipCapacityCheckEnabled?: boolean;
+  mealPlanManagementEnabled?: boolean;
 }
 
 export interface DeleteMawkibResponse {

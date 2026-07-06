@@ -24,6 +24,8 @@ export interface MawkibCardData {
   socialLinks: MawkibCardSocialLink[];
   serviceStartDate?: string;
   serviceEndDate?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 type MawkibCardSource = Pick<
@@ -55,6 +57,8 @@ type MawkibCardSource = Pick<
   | 'websiteUrl'
   | 'serviceStartDate'
   | 'serviceEndDate'
+  | 'latitude'
+  | 'longitude'
 >;
 
 function formatServiceDate(value?: string | null): string | undefined {
@@ -100,6 +104,8 @@ function buildMawkibCardData(mawkib: MawkibCardSource): MawkibCardData {
     socialLinks: activeSocialLinks(mawkib),
     serviceStartDate: formatServiceDate(mawkib.serviceStartDate),
     serviceEndDate: formatServiceDate(mawkib.serviceEndDate),
+    latitude: mawkib.latitude,
+    longitude: mawkib.longitude,
   };
 }
 
@@ -115,4 +121,21 @@ export function reservationMawkibToCardData(
 
 export function mawkibCardLocationLine(data: MawkibCardData): string | null {
   return locationLine(data.countryLabel, data.cityLabel);
+}
+
+function parseCoord(value?: string): number | null {
+  if (!value?.trim()) return null;
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function buildMawkibCardDataFromForm(
+  mawkib: Mawkib,
+  form?: { latitude?: string; longitude?: string },
+): MawkibCardData {
+  return {
+    ...mawkibToCardData(mawkib),
+    latitude: parseCoord(form?.latitude) ?? mawkib.latitude ?? null,
+    longitude: parseCoord(form?.longitude) ?? mawkib.longitude ?? null,
+  };
 }

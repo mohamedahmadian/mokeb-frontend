@@ -69,6 +69,8 @@ export interface Mawkib extends MawkibExtraFields {
   femaleCapacity: number;
   availableMaleCapacity?: number;
   availableFemaleCapacity?: number;
+  presentMaleCount?: number;
+  presentFemaleCount?: number;
   capacity?: number;
   imageUrl?: string | null;
   images?: MawkibImage[];
@@ -79,6 +81,7 @@ export interface Mawkib extends MawkibExtraFields {
   autoApprovePilgrimReservations?: boolean;
   recordCheckInOnReservationConfirm?: boolean;
   skipCapacityCheckEnabled?: boolean;
+  mealPlanManagementEnabled?: boolean;
   ownerUserId?: number;
   availableCapacity?: number;
   owner?: {
@@ -109,6 +112,7 @@ export interface Reservation {
   companions?: string | null;
   cancellationNote?: string | null;
   status: "Pending" | "Confirmed" | "Cancelled" | "Completed";
+  presenceState?: "NOT_ARRIVED" | "PRESENT" | "TEMPORARILY_OUT" | "LEFT";
   createdAt?: string;
   lastStatusUpdatedAt?: string | null;
   mawkib: {
@@ -123,13 +127,28 @@ export interface Reservation {
     defaultCheckOutTime?: string;
     defaultReservationDays?: number | null;
     maxReservationDays?: number | null;
+    mealPlanManagementEnabled?: boolean;
     owner?: { fullName: string; mobileNumber?: string };
   };
-  pilgrim: { id: number; fullName: string; mobileNumber: string };
+  pilgrim: { id: number; fullName: string; mobileNumber: string; nationalId?: string | null };
   reservedBy: { id: number; fullName: string; mobileNumber?: string };
   lastStatusUpdatedBy?: { id: number; fullName: string } | null;
   review?: ReservationReview | null;
   deliveredItems?: ReservationDeliveredItem[];
+  /** Present on check-out responses when today still has active meal plans. */
+  mealPlanNotice?: string;
+}
+
+export type MealType = 'Breakfast' | 'Lunch' | 'Dinner';
+
+export interface MealPlan {
+  id: number;
+  reservationId: number;
+  date: string;
+  mealType: MealType;
+  isRequired: boolean;
+  isServed: boolean;
+  servedAt?: string | null;
 }
 
 export type ReservationDeliveredItemStatus =

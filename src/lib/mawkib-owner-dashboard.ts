@@ -1,6 +1,7 @@
 import { reservationsApi } from './reservations';
 import type { Reservation } from '../types';
 import type { AdminUser } from '../types';
+import { rankReservationsByLookupQuery } from './reservation-lookup';
 
 export function normalizeLookupQuery(value: string): string {
   const persian = '۰۱۲۳۴۵۶۷۸۹';
@@ -15,26 +16,10 @@ export function normalizeLookupQuery(value: string): string {
     });
 }
 
-export function isMobileLookupQuery(value: string): boolean {
-  const trimmed = normalizeLookupQuery(value);
-  return trimmed.startsWith('0') || /^9\d{9}$/.test(trimmed);
-}
-
-export function isNationalIdLookupQuery(value: string): boolean {
-  const trimmed = normalizeLookupQuery(value);
-  if (!/^\d{10}$/.test(trimmed)) return false;
-  return !/^9\d{9}$/.test(trimmed);
-}
-
-export function normalizeMobileLookupQuery(value: string): string {
-  const trimmed = normalizeLookupQuery(value);
-  if (/^9\d{9}$/.test(trimmed)) return `0${trimmed}`;
-  return trimmed;
-}
-
 export async function lookupReservationList(
   query: string,
   fetchList: (filters: import('./reservations').ReservationFilters) => Promise<Reservation[]>,
+  options?: { single?: boolean },
 ): Promise<{
   reservation: Reservation | null;
   alternatives: Reservation[];
@@ -44,49 +29,45 @@ export async function lookupReservationList(
     return { reservation: null, alternatives: [] };
   }
 
-  if (isMobileLookupQuery(trimmed)) {
-    const results = await fetchList({
-      pilgrimMobile: normalizeMobileLookupQuery(trimmed),
-    });
-    if (results.length === 0) {
-      return { reservation: null, alternatives: [] };
-    }
-    const [first, ...rest] = results;
-    return { reservation: first, alternatives: rest };
-  }
+  const results = await fetchList({
+    lookupQuery: trimmed,
+    all: true,
+    ...(options?.single ? { lookupSingle: true } : {}),
+  });
 
-  if (isNationalIdLookupQuery(trimmed)) {
-    const results = await fetchList({ pilgrimNationalId: trimmed });
-    if (results.length === 0) {
-      return { reservation: null, alternatives: [] };
-    }
-    const [first, ...rest] = results;
-    return { reservation: first, alternatives: rest };
-  }
-
-  const results = await fetchList({ trackingCode: trimmed });
-  const exact =
-    results.find(
-      (item) => item.trackingCode.toLowerCase() === trimmed.toLowerCase(),
-    ) ?? results[0] ?? null;
-
-  if (!exact) {
+  if (results.length === 0) {
     return { reservation: null, alternatives: [] };
   }
 
-  return {
-    reservation: exact,
-    alternatives: results.filter((item) => item.id !== exact.id),
-  };
+  const ranked = rankReservationsByLookupQuery(results, trimmed);
+
+  if (options?.single) {
+    return { reservation: ranked[0] ?? null, alternatives: [] };
+  }
+
+  const [first, ...rest] = ranked;
+  return { reservation: first, alternatives: rest };
 }
 
-export async function lookupOwnerReservation(query: string): Promise<{
+export async function lookupOwnerReservation(
+  query: string,
+  options?: { single?: boolean },
+): Promise<{
   reservation: Reservation | null;
   alternatives: Reservation[];
 }> {
-  return lookupReservationList(query, (filters) =>
-    reservationsApi.getMyList(filters),
+  return lookupReservationList(
+    query,
+    (filters) => reservationsApi.getMyList(filters),
+    options,
   );
+}
+
+export async function lookupOwnerReservationSingle(
+  query: string,
+): Promise<Reservation | null> {
+  const result = await lookupOwnerReservation(query, { single: true });
+  return result.reservation;
 }
 
 export interface MawkibOwnerReservationStats {
