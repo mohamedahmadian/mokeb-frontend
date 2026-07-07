@@ -335,7 +335,10 @@ export function PilgrimsPage() {
               rows={[
                 { label: "کد ملی", value: pilgrim.nationalId ?? "—" },
                 { label: "جنسیت", value: userGenderLabel(pilgrim.gender) },
-                { label: "تاریخ تولد", value: formatBirthDate(pilgrim.birthDate) },
+                {
+                  label: "تاریخ تولد",
+                  value: formatBirthDate(pilgrim.birthDate),
+                },
                 { label: "شهر", value: pilgrim.city ?? "—" },
               ]}
               actions={renderActions(pilgrim)}
@@ -392,8 +395,12 @@ export function PilgrimsPage() {
                   <td className="px-4 py-3 font-mono">
                     {pilgrim.nationalId ?? "—"}
                   </td>
-                  <td className="px-4 py-3">{userGenderLabel(pilgrim.gender)}</td>
-                  <td className="px-4 py-3">{formatBirthDate(pilgrim.birthDate)}</td>
+                  <td className="px-4 py-3">
+                    {userGenderLabel(pilgrim.gender)}
+                  </td>
+                  <td className="px-4 py-3">
+                    {formatBirthDate(pilgrim.birthDate)}
+                  </td>
                   <td className="px-4 py-3">{pilgrim.city ?? "—"}</td>
                   <td className="px-4 py-3">
                     <span

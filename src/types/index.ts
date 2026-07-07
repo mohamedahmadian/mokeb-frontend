@@ -130,7 +130,12 @@ export interface Reservation {
     mealPlanManagementEnabled?: boolean;
     owner?: { fullName: string; mobileNumber?: string };
   };
-  pilgrim: { id: number; fullName: string; mobileNumber: string; nationalId?: string | null };
+  pilgrim: {
+    id: number;
+    fullName: string;
+    mobileNumber: string;
+    nationalId?: string | null;
+  };
   reservedBy: { id: number; fullName: string; mobileNumber?: string };
   lastStatusUpdatedBy?: { id: number; fullName: string } | null;
   review?: ReservationReview | null;
@@ -139,7 +144,7 @@ export interface Reservation {
   mealPlanNotice?: string;
 }
 
-export type MealType = 'Breakfast' | 'Lunch' | 'Dinner';
+export type MealType = "Breakfast" | "Lunch" | "Dinner";
 
 export interface MealPlan {
   id: number;

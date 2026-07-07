@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { QuickReservationForm } from '../components/reservations/QuickReservationForm';
 import { NavIcon } from '../components/ui/NavIcons';
@@ -5,6 +6,7 @@ import { NavIcon } from '../components/ui/NavIcons';
 export function QuickReservationPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [formKey, setFormKey] = useState(0);
   const mawkibIdParam = searchParams.get('mawkibId');
   const mawkibId = mawkibIdParam ? parseInt(mawkibIdParam, 10) : NaN;
 
@@ -22,8 +24,9 @@ export function QuickReservationPage() {
       </h1>
 
       <QuickReservationForm
+        key={formKey}
         mawkibId={mawkibId}
-        onSuccess={(reservationId) => navigate(`/reservations/${reservationId}`)}
+        onSuccess={() => setFormKey((current) => current + 1)}
         onCancel={() => navigate('/dashboard')}
       />
     </div>
