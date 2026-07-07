@@ -109,10 +109,10 @@ export function MawkibRulesPrintContent({
 }: {
   data: MawkibRulesPrintData;
 }) {
-  const hasLocationQr = hasValidCoords(data.latitude, data.longitude);
-  const locationMapUrl = hasLocationQr
-    ? buildMawkibLocationMapUrl(data.latitude, data.longitude, data.name)
-    : null;
+  const locationMapUrl =
+    hasValidCoords(data.latitude, data.longitude)
+      ? buildMawkibLocationMapUrl(data.latitude, data.longitude!, data.name)
+      : null;
 
   return (
     <article className="mawkib-rules-sheet">
@@ -159,7 +159,7 @@ export function MawkibRulesPrintContent({
       </section>
 
       <footer className="mawkib-rules-sheet__sheet-footer">
-        {hasLocationQr && locationMapUrl && (
+        {locationMapUrl && (
           <section className="mawkib-rules-sheet__location">
             <div className="mawkib-rules-sheet__location-qr">
               <QRCodeSVG value={locationMapUrl} size={96} level="M" />

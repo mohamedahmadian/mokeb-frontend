@@ -348,10 +348,10 @@ function AmenitiesRow({ amenities }: { amenities: string[] }) {
 }
 
 export function MawkibCardPrintContent({ data }: { data: MawkibCardData }) {
-  const hasLocationQr = hasValidCoords(data.latitude, data.longitude);
-  const locationMapUrl = hasLocationQr
-    ? buildMawkibLocationMapUrl(data.latitude, data.longitude, data.name)
-    : null;
+  const locationMapUrl =
+    hasValidCoords(data.latitude, data.longitude)
+      ? buildMawkibLocationMapUrl(data.latitude, data.longitude!, data.name)
+      : null;
 
   return (
     <div className="mawkib-card">
@@ -414,7 +414,7 @@ export function MawkibCardPrintContent({ data }: { data: MawkibCardData }) {
           ))}
         </div>
 
-        {hasLocationQr && locationMapUrl && (
+        {locationMapUrl && (
           <div className="mawkib-card__location-row">
             <div className="mawkib-card__location-qr">
               <p className="mawkib-card__location-title">موقعیت موکب</p>

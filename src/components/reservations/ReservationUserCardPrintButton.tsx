@@ -303,14 +303,13 @@ export function ReservationUserCardPrintContent({
     focusMap: true,
     trackingCode: reservation.trackingCode,
   });
-  const hasLocationQr = hasValidCoords(
+  const locationQrUrl = hasValidCoords(
     reservation.mawkib.latitude,
     reservation.mawkib.longitude,
-  );
-  const locationQrUrl = hasLocationQr
+  )
     ? buildMawkibLocationMapUrl(
         reservation.mawkib.latitude,
-        reservation.mawkib.longitude,
+        reservation.mawkib.longitude!,
         reservation.mawkib.name,
       )
     : null;

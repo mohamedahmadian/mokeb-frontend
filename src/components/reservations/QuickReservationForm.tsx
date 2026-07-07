@@ -400,7 +400,9 @@ export function QuickReservationForm({
           />
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-bold text-slate-800">{mawkib.name}</h2>
-            <MawkibCapacityPills mawkib={mawkibForCapacityDisplay ?? mawkib} className="mt-2" />
+            <div className="mt-2">
+              <MawkibCapacityPills mawkib={mawkibForCapacityDisplay ?? mawkib} />
+            </div>
           </div>
         </div>
       </section>

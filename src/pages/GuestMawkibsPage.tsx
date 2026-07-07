@@ -24,7 +24,7 @@ import { buildGuestReserveUrl } from "../lib/guest-reserve";
 import { isMawkibOnlineReservationEnabled } from "../lib/mawkib-online-reservation";
 import { MAWKIB_CITIES } from "../lib/mawkib-locations";
 import type { MawkibCity } from "../lib/mawkib-locations";
-import { mawkibsApi, DEFAULT_MAWKIBS_PAGE_SIZE } from "../lib/mawkibs";
+import { mawkibsApi, DEFAULT_MAWKIBS_PAGE_SIZE, type MawkibCapacityFilter } from "../lib/mawkibs";
 import type { Mawkib } from "../types";
 
 function IconSearch() {
@@ -98,7 +98,9 @@ export function GuestMawkibsPage() {
     () => ({
       ...(debouncedQuery ? { q: debouncedQuery } : {}),
       ...(mawkibCity ? { mawkibCity: mawkibCity as MawkibCity } : {}),
-      capacityFilter: (onlyAvailableCapacity ? "available" : "all") as const,
+      capacityFilter: (onlyAvailableCapacity
+        ? "available"
+        : "all") as MawkibCapacityFilter,
     }),
     [debouncedQuery, mawkibCity, onlyAvailableCapacity],
   );
