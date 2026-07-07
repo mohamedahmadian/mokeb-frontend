@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '../components/ui/PageHeader';
 import { NavIcon } from '../components/ui/NavIcons';
@@ -94,7 +94,7 @@ function matchesPresentAttendeeTableFilter(
   const normalizedQuery = normalizeLookupQuery(query);
   if (!normalizedQuery) return true;
 
-  const fields = [row.fullName, row.mobile, row.nationalId ?? ''];
+  const fields = [row.fullName, row.mobile, row.trackingCode, row.nationalId ?? ''];
   return fields.some((field) =>
     normalizeLookupQuery(field).includes(normalizedQuery),
   );
@@ -250,6 +250,7 @@ export function PresentAttendeesReportPage() {
   const [presenceFilter, setPresenceFilter] = useState<PresenceTableFilter>('all');
   const [genderFilter, setGenderFilter] = useState<GenderTableFilter>('all');
   const [servingReservationIds, setServingReservationIds] = useState<number[]>([]);
+  const didAutoSearch = useRef(false);
 
   const { data: mawkibs = [] } = useQuery({
     queryKey: ['mawkibs-filter', isAdmin ? 'admin' : 'my'],
@@ -258,13 +259,6 @@ export function PresentAttendeesReportPage() {
       return isAdmin ? mawkibsApi.getAdminList() : mawkibsApi.getMyList();
     },
   });
-
-  useEffect(() => {
-    if (mawkibId || mawkibs.length === 0) return;
-    if (mawkibs.length === 1) {
-      setMawkibId(String(mawkibs[0].id));
-    }
-  }, [mawkibs, mawkibId]);
 
   const filteredRows = useMemo(() => {
     if (!report) return [];
@@ -292,13 +286,14 @@ export function PresentAttendeesReportPage() {
     return { served, unserved };
   }, [report]);
 
-  const handleSearch = async (
+  const handleSearch = useCallback(async (
     event?: FormEvent,
-    overrides?: { mealType?: MealType },
+    overrides?: { mealType?: MealType; mawkibId?: string },
   ) => {
     event?.preventDefault();
 
-    if (!mawkibId) {
+    const searchMawkibId = overrides?.mawkibId ?? mawkibId;
+    if (!searchMawkibId) {
       toast.error('لطفاً موکب را انتخاب کنید');
       return;
     }
@@ -309,7 +304,7 @@ export function PresentAttendeesReportPage() {
     setSearched(true);
     try {
       const data = await presentAttendeesReportApi.get({
-        mawkibId: Number(mawkibId),
+        mawkibId: Number(searchMawkibId),
         date,
         mealType: searchMealType,
       });
@@ -326,7 +321,20 @@ export function PresentAttendeesReportPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [date, mealType, mawkibId]);
+
+  useEffect(() => {
+    if (mawkibId || mawkibs.length === 0) return;
+    if (mawkibs.length === 1) {
+      setMawkibId(String(mawkibs[0].id));
+    }
+  }, [mawkibs, mawkibId]);
+
+  useEffect(() => {
+    if (!mawkibId || didAutoSearch.current) return;
+    didAutoSearch.current = true;
+    void handleSearch(undefined, { mealType: 'Breakfast', mawkibId });
+  }, [mawkibId, handleSearch]);
 
   const handleDownload = () => {
     if (!report || report.rows.length === 0) {
@@ -484,7 +492,7 @@ export function PresentAttendeesReportPage() {
                       type="text"
                       value={tableFilter}
                       onChange={(event) => setTableFilter(event.target.value)}
-                      placeholder="جستجوی سریع در نام، موبایل یا کد ملی..."
+                      placeholder="جستجوی سریع در نام، موبایل، کد رزرو یا کد ملی..."
                       className={`${inputClass} !min-h-9 w-full !py-2 !ps-3 !pe-9 !text-sm text-right`}
                       dir="rtl"
                       inputMode="text"
@@ -519,12 +527,13 @@ export function PresentAttendeesReportPage() {
                 </div>
               ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-sm">
+                <table className="w-full min-w-[820px] text-sm">
                   <thead className="bg-slate-50 text-slate-600">
                     <tr>
                       <th className="px-3 py-3 text-right font-semibold">ردیف</th>
                       <th className="px-3 py-3 text-right font-semibold">نام و نام خانوادگی</th>
                       <th className="px-3 py-3 text-right font-semibold">تلفن همراه</th>
+                      <th className="px-3 py-3 text-right font-semibold">کد رزرو</th>
                       <th className="px-3 py-3 text-right font-semibold">کد ملی</th>
                       <th className="px-3 py-3 text-center font-semibold">حضور</th>
                       <th className="px-3 py-3 text-center font-semibold">تحویل</th>
@@ -544,6 +553,9 @@ export function PresentAttendeesReportPage() {
                         </td>
                         <td className="px-3 py-2.5 text-slate-700" dir="ltr">
                           {row.mobile || '—'}
+                        </td>
+                        <td className="px-3 py-2.5 text-slate-700" dir="ltr">
+                          {row.trackingCode || '—'}
                         </td>
                         <td className="px-3 py-2.5 text-slate-700" dir="ltr">
                           {row.nationalId || '—'}
