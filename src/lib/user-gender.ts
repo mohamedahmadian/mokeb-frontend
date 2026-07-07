@@ -14,3 +14,13 @@ export function userGenderLabel(gender?: UserGender | null): string {
 export function isUserGender(value: string): value is UserGender {
   return value === 'Male' || value === 'Female';
 }
+
+/** Single-guest quick reservation: 1 male → Male, 1 female → Female, else unspecified. */
+export function genderFromGuestCounts(
+  maleGuestCount: number,
+  femaleGuestCount: number,
+): UserGender | '' {
+  if (maleGuestCount === 1 && femaleGuestCount === 0) return 'Male';
+  if (maleGuestCount === 0 && femaleGuestCount === 1) return 'Female';
+  return '';
+}

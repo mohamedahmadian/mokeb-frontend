@@ -206,8 +206,8 @@ function matchesGenderTableFilter(
   row: PresentAttendeeRow,
   filter: GenderTableFilter,
 ): boolean {
-  if (filter === 'male') return row.maleGuestCount > 0;
-  if (filter === 'female') return row.femaleGuestCount > 0;
+  if (filter === 'male') return row.gender === 'Male';
+  if (filter === 'female') return row.gender === 'Female';
   return true;
 }
 

@@ -1,5 +1,5 @@
 import api from './api';
-import type { MealType } from '../types';
+import type { MealType, UserGender } from '../types';
 
 export interface PresentAttendeeRow {
   reservationId: number;
@@ -8,6 +8,7 @@ export interface PresentAttendeeRow {
   fullName: string;
   mobile: string;
   nationalId: string | null;
+  gender: UserGender | null;
   maleGuestCount: number;
   femaleGuestCount: number;
   isPresent: boolean;

@@ -26,6 +26,7 @@ import { mawkibsApi } from '../../lib/mawkibs';
 import { reservationsApi } from '../../lib/reservations';
 import { usersApi } from '../../lib/users';
 import { splitFullName } from '../../lib/full-name';
+import { genderFromGuestCounts } from '../../lib/user-gender';
 import { guestTheme } from '../../lib/guest-theme';
 import { useAuth } from '../../contexts/AuthContext';
 import type { UserGender } from '../../types';
@@ -198,6 +199,12 @@ export function QuickReservationForm({
   const effectiveFemaleGuestCount = showFemaleFields ? femaleGuestCount : 0;
   const totalGuestCount = effectiveMaleGuestCount + effectiveFemaleGuestCount;
 
+  useEffect(() => {
+    setGender(
+      genderFromGuestCounts(effectiveMaleGuestCount, effectiveFemaleGuestCount),
+    );
+  }, [effectiveMaleGuestCount, effectiveFemaleGuestCount]);
+
   const reservationSectionSubtitle = useMemo(
     () =>
       `${formatPersianNumber(totalGuestCount)} مهمان برای بازه ${rangeLabel}`,
@@ -329,7 +336,8 @@ export function QuickReservationForm({
         lastName,
         mobileNumber: mobileNumber.trim(),
         nationalId: nationalId.trim() || undefined,
-        gender: gender || undefined,
+        gender:
+          genderFromGuestCounts(effectiveMale, effectiveFemale) || undefined,
         birthDate: birthDate || undefined,
         country: country.trim() || undefined,
         province: province.trim() || undefined,
