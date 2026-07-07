@@ -12,7 +12,6 @@ import { NavIcon } from "../components/ui/NavIcons";
 import { mealPlansApi } from "../lib/meal-plans";
 import { isReservationMealPlanLinkVisible } from "../lib/meal-plan-utils";
 import {
-  normalizeLookupQuery,
   lookupOwnerReservation,
 } from "../lib/mawkib-owner-dashboard";
 import { useAuth } from '../contexts/AuthContext';
@@ -53,11 +52,6 @@ export function MealPlansPage() {
   const [generateOpen, setGenerateOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
 
-  const filterMealPlanMatches = (items: Reservation[]) =>
-    filterConfirmedLookupMatches(items).filter((item) =>
-      canManageReservationMealPlan(item),
-    );
-
   const resetSearchState = () => {
     setSearched(false);
     setMatches([]);
@@ -94,7 +88,7 @@ export function MealPlansPage() {
   };
 
   const handleSearch = async () => {
-    const trimmed = normalizeLookupQuery(query);
+    const trimmed = query.trim();
     if (!trimmed) {
       toast.error("لطفاً شماره موبایل، کد ملی یا شناسه رزرو را وارد کنید");
       return;
@@ -105,9 +99,12 @@ export function MealPlansPage() {
     try {
       const lookupFn = isAdmin ? lookupAdminReservation : lookupOwnerReservation;
       const result = await lookupFn(trimmed, { status: 'Confirmed' });
-      const merged = filterMealPlanMatches(
-        mergeLookupMatches(result.reservation, result.alternatives),
-      );
+      const rawMerged = mergeLookupMatches(result.reservation, result.alternatives);
+      const merged = filterConfirmedLookupMatches(rawMerged);
+
+      // #region agent log
+      fetch('http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'06086f'},body:JSON.stringify({sessionId:'06086f',location:'MealPlansPage.tsx:handleSearch',message:'meal lookup result',data:{trimmed,rawCount:rawMerged.length,confirmedCount:merged.length,firstId:merged[0]?.id??null,canManage:merged[0]?canManageReservationMealPlan(merged[0]):null},hypothesisId:'A,B,C',runId:'post-fix',timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
 
       setMatches(merged);
       setSelectedId(merged[0]?.id ?? null);
@@ -119,7 +116,17 @@ export function MealPlansPage() {
         return;
       }
 
-      await selectReservation(merged[0]);
+      const selected = merged[0];
+      setReservation(selected);
+
+      if (!canManageReservationMealPlan(selected)) {
+        toast.error("مدیریت برنامه غذایی برای این موکب فعال نیست");
+        setPlans([]);
+        setShowPlanSection(false);
+        return;
+      }
+
+      await selectReservation(selected);
     } catch (err) {
       resetSearchState();
       toastApiError(err, "خطا در جستجوی رزرو");
@@ -288,7 +295,17 @@ export function MealPlansPage() {
         <ReservationLookupMatchesBar
           matches={matches}
           selectedId={selectedId}
-          onSelect={(item) => void selectReservation(item)}
+          onSelect={(item) => {
+            setSelectedId(item.id);
+            setReservation(item);
+            if (!canManageReservationMealPlan(item)) {
+              toast.error("مدیریت برنامه غذایی برای این موکب فعال نیست");
+              setPlans([]);
+              setShowPlanSection(false);
+              return;
+            }
+            void selectReservation(item);
+          }}
         />
       )}
 
@@ -299,6 +316,7 @@ export function MealPlansPage() {
             presence={reservation.presenceState}
           />
 
+          {canManageReservationMealPlan(reservation) && (
           <div className="flex flex-wrap items-center gap-2">
             <div className="ms-auto flex flex-wrap gap-2">
               <button
@@ -327,6 +345,7 @@ export function MealPlansPage() {
               </button>
             </div>
           </div>
+          )}
         </section>
       )}
 
