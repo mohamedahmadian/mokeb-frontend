@@ -258,12 +258,18 @@ interface ReservationDetailInfoProps {
   mawkibDetailsHref?: string;
   variant?: "guest" | "default";
   showStatusBanner?: boolean;
+  canEditTrackingCode?: boolean;
+  onEditTrackingCode?: () => void;
 }
 
 export function ReservationStatusBanner({
   reservation,
+  canEditTrackingCode = false,
+  onEditTrackingCode,
 }: {
   reservation: Reservation;
+  canEditTrackingCode?: boolean;
+  onEditTrackingCode?: () => void;
 }) {
   const styles = statusStyles[reservation.status];
   const statusActionLabel = getReservationStatusActionLabel(reservation);
@@ -309,21 +315,41 @@ export function ReservationStatusBanner({
           >
             {RESERVATION_STATUS_LABELS[reservation.status]}
           </span>
-          <span
-            className="inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-200/90 shadow-sm backdrop-blur-sm"
-            dir="ltr"
-            title="کد رزرو"
-          >
-            <span className="font-mono tracking-wide">
-              {reservation.trackingCode}
-            </span>
-            <span
-              className="font-sans text-[10px] font-medium text-slate-500"
-              dir="rtl"
+          {canEditTrackingCode && onEditTrackingCode ? (
+            <button
+              type="button"
+              onClick={onEditTrackingCode}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-200/90 shadow-sm backdrop-blur-sm transition hover:bg-white hover:ring-[#4a6fa5]/30"
+              dir="ltr"
+              title="ویرایش کد رزرو"
             >
-              کد رزرو :
+              <span className="font-mono tracking-wide">
+                {reservation.trackingCode}
+              </span>
+              <span
+                className="font-sans text-[10px] font-medium text-slate-500"
+                dir="rtl"
+              >
+                کد رزرو :
+              </span>
+            </button>
+          ) : (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-200/90 shadow-sm backdrop-blur-sm"
+              dir="ltr"
+              title="کد رزرو"
+            >
+              <span className="font-mono tracking-wide">
+                {reservation.trackingCode}
+              </span>
+              <span
+                className="font-sans text-[10px] font-medium text-slate-500"
+                dir="rtl"
+              >
+                کد رزرو :
+              </span>
             </span>
-          </span>
+          )}
         </div>
       </div>
     </div>
@@ -336,6 +362,8 @@ export function ReservationDetailInfo({
   mawkibDetailsHref,
   variant = "default",
   showStatusBanner = true,
+  canEditTrackingCode = false,
+  onEditTrackingCode,
 }: ReservationDetailInfoProps) {
   const endDate = reservation.reservationEndDate ?? reservation.reservationDate;
   const isGuest = variant === "guest";
@@ -345,7 +373,11 @@ export function ReservationDetailInfo({
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       {showStatusBanner && (
-        <ReservationStatusBanner reservation={reservation} />
+        <ReservationStatusBanner
+          reservation={reservation}
+          canEditTrackingCode={canEditTrackingCode}
+          onEditTrackingCode={onEditTrackingCode}
+        />
       )}
 
       <div className={`space-y-3 p-4 sm:p-5 ${showStatusBanner ? "" : ""}`}>

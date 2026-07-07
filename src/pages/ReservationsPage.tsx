@@ -141,16 +141,26 @@ function ReservationDateCell({
   );
 }
 
-function PilgrimCell({ pilgrim }: { pilgrim: Reservation["pilgrim"] }) {
+function PilgrimCell({
+  pilgrim,
+  trackingCode,
+}: {
+  pilgrim: Reservation["pilgrim"];
+  trackingCode?: string;
+}) {
+  const contactLine = [pilgrim.mobileNumber, trackingCode]
+    .filter(Boolean)
+    .join(" - ");
+
   return (
     <div>
       <div>{pilgrim.fullName}</div>
-      {pilgrim.mobileNumber ? (
+      {contactLine ? (
         <div
           dir="ltr"
           className="mt-0.5 text-xs text-slate-500 tabular-nums font-[Vazir,ui-sans-serif,system-ui,sans-serif]"
         >
-          {pilgrim.mobileNumber}
+          {contactLine}
         </div>
       ) : null}
     </div>
@@ -698,13 +708,15 @@ export function ReservationsPage() {
                       },
                     ]
                   : []),
-                ...(!isPilgrim && r.pilgrim.mobileNumber
+                ...(!isPilgrim && (r.pilgrim.mobileNumber || r.trackingCode)
                   ? [
                       {
                         label: "موبایل",
                         value: (
                           <span dir="ltr" className="tabular-nums">
-                            {r.pilgrim.mobileNumber}
+                            {[r.pilgrim.mobileNumber, r.trackingCode]
+                              .filter(Boolean)
+                              .join(" - ")}
                           </span>
                         ),
                       },
@@ -794,7 +806,7 @@ export function ReservationsPage() {
                   <td className="px-4 py-3">{r.mawkib.name}</td>
                   {!isPilgrim && (
                     <td className="px-4 py-3">
-                      <PilgrimCell pilgrim={r.pilgrim} />
+                      <PilgrimCell pilgrim={r.pilgrim} trackingCode={r.trackingCode} />
                     </td>
                   )}
                   <td className="px-4 py-3 whitespace-nowrap">

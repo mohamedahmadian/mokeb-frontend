@@ -71,11 +71,11 @@ export function MealPlansSidebarSection({
             to="/meal-plans/present-attendees"
             onClick={onNavigate}
             className={listLinkClass(isPresentAttendeesReportActive(pathname), collapsed, true)}
-            title="گزارش حاضرین"
+            title="گزارش وعده‌های غذایی"
           >
             <span className="flex items-center gap-2.5 px-1">
               <NavIcon name="pilgrims" />
-              <span>گزارش حاضرین</span>
+              <span>گزارش وعده‌های غذایی</span>
             </span>
           </NavLink>
         </div>

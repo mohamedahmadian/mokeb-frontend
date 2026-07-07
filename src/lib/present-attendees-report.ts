@@ -8,6 +8,8 @@ export interface PresentAttendeeRow {
   fullName: string;
   mobile: string;
   nationalId: string | null;
+  maleGuestCount: number;
+  femaleGuestCount: number;
   isPresent: boolean;
   presence: string;
   isServed: boolean;

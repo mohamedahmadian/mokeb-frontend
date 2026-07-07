@@ -46,10 +46,7 @@ export function ReservationDeliveredItemsButton({
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
 
-  if (!canManageDeliveredItems(reservation, user?.roles)) {
-    return null;
-  }
-
+  const canManage = canManageDeliveredItems(reservation, user?.roles);
   const items = reservation.deliveredItems ?? [];
 
   const invalidate = (updated: Reservation) => {
@@ -118,6 +115,10 @@ export function ReservationDeliveredItemsButton({
     (variant === 'guest'
       ? `${guestTheme.btnSecondary} w-full`
       : `${btnSecondary} w-full sm:w-auto`);
+
+  if (!canManage) {
+    return null;
+  }
 
   return (
     <>

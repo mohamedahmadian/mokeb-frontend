@@ -269,13 +269,20 @@ function MawkibLocationQrBlock({
         <p className="pilgrim-card__location-title">موقعیت موکب</p>
         <div className="pilgrim-card__location-qr-code">
           <QRCodeSVG value={scanQrValue} size={72} level="M" />
-          {interactive && (
-            <Link
-              to={mawkibPagePath}
-              className="pilgrim-card__location-qr-overlay"
-              aria-label="مشاهده موقعیت موکب روی نقشه"
-            />
-          )}
+          {interactive &&
+            (locationQrUrl ? (
+              <a
+                href={locationQrUrl}
+                className="pilgrim-card__location-qr-overlay"
+                aria-label="مسیریابی به موقعیت موکب"
+              />
+            ) : (
+              <Link
+                to={mawkibPagePath}
+                className="pilgrim-card__location-qr-overlay"
+                aria-label="مشاهده موقعیت موکب روی نقشه"
+              />
+            ))}
         </div>
         <p className="pilgrim-card__location-caption">
           اسکن برای باز کردن نقشه (اسنپ، نشان و ...)
@@ -404,9 +411,15 @@ export function ReservationUserCardPrintContent({
             label="آدرس"
             value={
               interactive && mawkibAddress !== "—" ? (
-                <Link to={mawkibPagePath} className="pilgrim-card__map-link">
-                  {mawkibAddress}
-                </Link>
+                locationQrUrl ? (
+                  <a href={locationQrUrl} className="pilgrim-card__map-link">
+                    {mawkibAddress}
+                  </a>
+                ) : (
+                  <Link to={mawkibPagePath} className="pilgrim-card__map-link">
+                    {mawkibAddress}
+                  </Link>
+                )
               ) : (
                 mawkibAddress
               )

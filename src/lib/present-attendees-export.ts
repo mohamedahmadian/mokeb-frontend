@@ -21,10 +21,10 @@ function formatReportDate(date: string): string {
 export function buildPresentAttendeesExcelExport(
   report: PresentAttendeesReport,
 ): string {
-  const title = `گزارش حاضرین — ${report.mawkibName}`;
+  const title = `گزارش وعده‌های غذایی — ${report.mawkibName}`;
   const mealLabel = MEAL_TYPE_LABELS[report.mealType];
   const headerRow = excelRow(
-    ['ردیف', 'نام و نام خانوادگی', 'تلفن همراه', 'کد ملی', 'حضور', 'تحویل']
+    ['ردیف', 'نام و نام خانوادگی', 'کد رزرو', 'تلفن همراه', 'کد ملی', 'حضور', 'تحویل']
       .map((cell) => excelCell(cell, 'header'))
       .join(''),
   );
@@ -35,6 +35,7 @@ export function buildPresentAttendeesExcelExport(
         [
           formatPersianNumber(index + 1),
           row.fullName,
+          row.trackingCode,
           row.mobile,
           row.nationalId ?? '—',
           row.presence,
@@ -42,7 +43,7 @@ export function buildPresentAttendeesExcelExport(
         ]
           .map((cell, cellIndex) => {
             const style =
-              cellIndex === 2 ? 'ltr' : cellIndex === 0 ? 'rtl' : 'rtl';
+              cellIndex === 2 || cellIndex === 3 ? 'ltr' : cellIndex === 0 ? 'rtl' : 'rtl';
             return excelCell(cell, style);
           })
           .join(''),
@@ -87,7 +88,7 @@ export function buildPresentAttendeesExcelExport(
     <Font ss:FontName="Tahoma" x:Family="Swiss" ss:Size="14" ss:Bold="1"/>
   </Style>
 </Styles>
-<Worksheet ss:Name="گزارش حاضرین">
+<Worksheet ss:Name="گزارش وعده‌های غذایی">
   <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
     <DisplayRightToLeft/>
   </WorksheetOptions>

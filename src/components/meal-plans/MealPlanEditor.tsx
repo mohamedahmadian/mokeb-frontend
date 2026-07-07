@@ -34,6 +34,7 @@ export function MealPlanEditor({
 }: MealPlanEditorProps) {
   const [rows, setRows] = useState<MealPlanRow[]>(() => plansToRows(plans));
   const [saving, setSaving] = useState(false);
+  const [togglingKey, setTogglingKey] = useState<string | null>(null);
   const [servingId, setServingId] = useState<number | null>(null);
 
   const syncedKey = useMemo(
@@ -57,6 +58,33 @@ export function MealPlanEditor({
           : row,
       ),
     );
+  };
+
+  const handleToggleRequired = async (
+    rowIndex: number,
+    mealType: MealType,
+    checked: boolean,
+  ) => {
+    const row = rows[rowIndex];
+    if (!row) return;
+
+    const toggleKey = `${rowIndex}-${mealType}`;
+    setTogglingKey(toggleKey);
+    updateCell(rowIndex, mealType, { isRequired: checked });
+
+    try {
+      const updated = await mealPlansApi.upsertEntry(reservation.id, {
+        date: row.date,
+        mealType,
+        isRequired: checked,
+      });
+      onPlansUpdated(updated);
+    } catch (err) {
+      setRows(plansToRows(plans));
+      toastApiError(err, 'خطا در ذخیره برنامه غذایی');
+    } finally {
+      setTogglingKey(null);
+    }
   };
 
   const handleSave = async () => {
@@ -152,9 +180,10 @@ export function MealPlanEditor({
                       mealType={mealType}
                       cell={row[mealType]}
                       onToggle={(checked) =>
-                        updateCell(rowIndex, mealType, { isRequired: checked })
+                        void handleToggleRequired(rowIndex, mealType, checked)
                       }
                       onServe={() => row[mealType].id && handleServe(row[mealType].id!)}
+                      toggling={togglingKey === `${rowIndex}-${mealType}`}
                       serving={servingId === row[mealType].id}
                     />
                   </td>

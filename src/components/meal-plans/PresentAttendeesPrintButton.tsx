@@ -53,7 +53,7 @@ function PrintContent({ report }: { report: PresentAttendeesReport }) {
     <div className="present-attendees-print">
       <header className="present-attendees-print__header">
         <div>
-          <p className="present-attendees-print__eyebrow">سامانه موکب — گزارش حاضرین</p>
+          <p className="present-attendees-print__eyebrow">سامانه موکب — گزارش وعده‌های غذایی</p>
           <h1 className="present-attendees-print__title">{report.mawkibName}</h1>
           <p className="present-attendees-print__meta">
             تاریخ {formatPersianDate(report.date)} — وعده {MEAL_TYPE_LABELS[report.mealType]}
@@ -82,6 +82,7 @@ function PrintContent({ report }: { report: PresentAttendeesReport }) {
           <tr>
             <th>ردیف</th>
             <th>نام و نام خانوادگی</th>
+            <th>کد رزرو</th>
             <th>تلفن همراه</th>
             <th>کد ملی</th>
             <th>حضور</th>
@@ -93,6 +94,7 @@ function PrintContent({ report }: { report: PresentAttendeesReport }) {
             <tr key={row.reservationId}>
               <td>{formatPersianNumber(index + 1)}</td>
               <td>{row.fullName}</td>
+              <td dir="ltr">{row.trackingCode || '—'}</td>
               <td dir="ltr">{row.mobile || '—'}</td>
               <td dir="ltr">{row.nationalId || '—'}</td>
               <td>{row.presence}</td>

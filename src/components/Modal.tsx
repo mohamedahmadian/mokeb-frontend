@@ -5,7 +5,7 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
-  size?: 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   /** بالاتر از مودال‌های معمولی — برای مودال تودرتو مثل انتخاب موقعیت روی نقشه */
   elevated?: boolean;
   /** کنار دکمه بستن در سمت چپ هدر (RTL) */
@@ -40,7 +40,13 @@ export function Modal({
   if (!open) return null;
 
   const maxWidth =
-    size === 'xl' ? 'max-w-5xl' : size === 'lg' ? 'max-w-2xl' : 'max-w-lg';
+    size === 'xl'
+      ? 'max-w-5xl'
+      : size === 'lg'
+        ? 'max-w-2xl'
+        : size === 'sm'
+          ? 'max-w-sm'
+          : 'max-w-lg';
 
   return (
     <div

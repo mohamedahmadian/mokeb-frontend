@@ -155,6 +155,11 @@ export const reservationsApi = {
       .patch<Reservation>(`/reservations/${id}/cancel`, { note })
       .then((r) => r.data),
 
+  updateTrackingCode: (id: number, trackingCode: string) =>
+    api
+      .patch<Reservation>(`/reservations/${id}/tracking-code`, { trackingCode })
+      .then((r) => r.data),
+
   extend: (
     id: number,
     payload?: { reservationEndDate?: string; stayDays?: number },

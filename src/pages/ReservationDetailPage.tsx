@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CancelReservationModal } from '../components/reservations/CancelReservationModal';
+import { ReservationTrackingCodeEditModal } from '../components/reservations/ReservationTrackingCodeEditModal';
 import { ExtendReservationModal } from '../components/reservations/ExtendReservationModal';
 import { ReservationAttendanceNavigateCard } from '../components/reservations/ReservationAttendanceNavigateCard';
 import { ReservationDetailInfo, ReservationStatusBanner } from '../components/reservations/ReservationDetailInfo';
@@ -28,6 +29,7 @@ export function ReservationDetailPage() {
   const canConfirm = isAdmin || isMawkibOwner;
   const [cancelOpen, setCancelOpen] = useState(false);
   const [extendOpen, setExtendOpen] = useState(false);
+  const [trackingCodeEditOpen, setTrackingCodeEditOpen] = useState(false);
 
   const { data: reservation, isLoading, isError } = useQuery({
     queryKey: ['reservation', reservationId],
@@ -77,6 +79,21 @@ export function ReservationDetailPage() {
     },
   });
 
+  const updateTrackingCode = useMutation({
+    mutationFn: (trackingCode: string) =>
+      reservationsApi.updateTrackingCode(reservationId, trackingCode),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['reservation', reservationId], updated);
+      queryClient.invalidateQueries({ queryKey: ['reservations-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['reservations-my'] });
+      setTrackingCodeEditOpen(false);
+      toast.success('کد رزرو با موفقیت تغییر کرد');
+    },
+    onError: (error) => {
+      toastApiError(error, 'خطا در تغییر کد رزرو');
+    },
+  });
+
   if (!reservationId) {
     return <p className="text-red-600">شناسه رزرو نامعتبر است</p>;
   }
@@ -95,6 +112,8 @@ export function ReservationDetailPage() {
       </div>
     );
   }
+
+  const canEditTrackingCode = isAdmin || isMawkibOwner;
 
   const canCancel =
     reservation.status !== 'Cancelled' &&
@@ -192,7 +211,15 @@ export function ReservationDetailPage() {
       />
 
       <div className="space-y-4">
-        <ReservationStatusBanner reservation={reservation} />
+        <ReservationStatusBanner
+          reservation={reservation}
+          canEditTrackingCode={canEditTrackingCode}
+          onEditTrackingCode={
+            canEditTrackingCode
+              ? () => setTrackingCodeEditOpen(true)
+              : undefined
+          }
+        />
 
         <ReservationDetailInfo
           reservation={reservation}
@@ -230,6 +257,15 @@ export function ReservationDetailPage() {
           } catch (err) {
             throw new Error(getApiErrorMessage(err, 'خطا در لغو رزرو'));
           }
+        }}
+      />
+
+      <ReservationTrackingCodeEditModal
+        open={trackingCodeEditOpen}
+        onClose={() => setTrackingCodeEditOpen(false)}
+        currentTrackingCode={reservation.trackingCode}
+        onSubmit={async (trackingCode) => {
+          await updateTrackingCode.mutateAsync(trackingCode);
         }}
       />
 

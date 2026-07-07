@@ -102,10 +102,6 @@ export function MealPlansPage() {
       const rawMerged = mergeLookupMatches(result.reservation, result.alternatives);
       const merged = filterConfirmedLookupMatches(rawMerged);
 
-      // #region agent log
-      fetch('http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'06086f'},body:JSON.stringify({sessionId:'06086f',location:'MealPlansPage.tsx:handleSearch',message:'meal lookup result',data:{trimmed,rawCount:rawMerged.length,confirmedCount:merged.length,firstId:merged[0]?.id??null,canManage:merged[0]?canManageReservationMealPlan(merged[0]):null},hypothesisId:'A,B,C',runId:'post-fix',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-
       setMatches(merged);
       setSelectedId(merged[0]?.id ?? null);
 

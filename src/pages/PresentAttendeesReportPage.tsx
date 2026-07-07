@@ -101,6 +101,7 @@ function matchesPresentAttendeeTableFilter(
 }
 
 type PresenceTableFilter = 'all' | 'present' | 'absent';
+type GenderTableFilter = 'all' | 'male' | 'female';
 
 const PRESENCE_TABLE_FILTERS: {
   value: PresenceTableFilter;
@@ -111,6 +112,15 @@ const PRESENCE_TABLE_FILTERS: {
   { value: 'absent', label: 'غائبین' },
 ];
 
+const GENDER_TABLE_FILTERS: {
+  value: GenderTableFilter;
+  label: string;
+}[] = [
+  { value: 'male', label: 'آقا' },
+  { value: 'all', label: 'همه' },
+  { value: 'female', label: 'خانم' },
+];
+
 function PresenceTableFilterToggle({
   value,
   onChange,
@@ -119,12 +129,50 @@ function PresenceTableFilterToggle({
   onChange: (value: PresenceTableFilter) => void;
 }) {
   return (
+    <TableSegmentFilterToggle
+      value={value}
+      onChange={onChange}
+      options={PRESENCE_TABLE_FILTERS}
+      ariaLabel="فیلتر حضور"
+    />
+  );
+}
+
+function GenderTableFilterToggle({
+  value,
+  onChange,
+}: {
+  value: GenderTableFilter;
+  onChange: (value: GenderTableFilter) => void;
+}) {
+  return (
+    <TableSegmentFilterToggle
+      value={value}
+      onChange={onChange}
+      options={GENDER_TABLE_FILTERS}
+      ariaLabel="فیلتر جنسیت"
+    />
+  );
+}
+
+function TableSegmentFilterToggle<T extends string>({
+  value,
+  onChange,
+  options,
+  ariaLabel,
+}: {
+  value: T;
+  onChange: (value: T) => void;
+  options: { value: T; label: string }[];
+  ariaLabel: string;
+}) {
+  return (
     <div
       className="inline-flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5"
       role="group"
-      aria-label="فیلتر حضور"
+      aria-label={ariaLabel}
     >
-      {PRESENCE_TABLE_FILTERS.map((option) => {
+      {options.map((option) => {
         const active = value === option.value;
         return (
           <button
@@ -151,6 +199,15 @@ function matchesPresenceTableFilter(
 ): boolean {
   if (filter === 'present') return row.isPresent;
   if (filter === 'absent') return !row.isPresent;
+  return true;
+}
+
+function matchesGenderTableFilter(
+  row: PresentAttendeeRow,
+  filter: GenderTableFilter,
+): boolean {
+  if (filter === 'male') return row.maleGuestCount > 0;
+  if (filter === 'female') return row.femaleGuestCount > 0;
   return true;
 }
 
@@ -191,6 +248,7 @@ export function PresentAttendeesReportPage() {
   const [report, setReport] = useState<PresentAttendeesReport | null>(null);
   const [tableFilter, setTableFilter] = useState('');
   const [presenceFilter, setPresenceFilter] = useState<PresenceTableFilter>('all');
+  const [genderFilter, setGenderFilter] = useState<GenderTableFilter>('all');
   const [servingReservationIds, setServingReservationIds] = useState<number[]>([]);
 
   const { data: mawkibs = [] } = useQuery({
@@ -213,12 +271,15 @@ export function PresentAttendeesReportPage() {
     return report.rows.filter(
       (row) =>
         matchesPresenceTableFilter(row, presenceFilter) &&
+        matchesGenderTableFilter(row, genderFilter) &&
         matchesPresentAttendeeTableFilter(row, tableFilter),
     );
-  }, [report, tableFilter, presenceFilter]);
+  }, [report, tableFilter, presenceFilter, genderFilter]);
 
   const hasActiveTableFilters =
-    Boolean(tableFilter.trim()) || presenceFilter !== 'all';
+    Boolean(tableFilter.trim()) ||
+    presenceFilter !== 'all' ||
+    genderFilter !== 'all';
 
   const deliveryStats = useMemo(() => {
     if (!report) return { served: 0, unserved: 0 };
@@ -231,7 +292,10 @@ export function PresentAttendeesReportPage() {
     return { served, unserved };
   }, [report]);
 
-  const handleSearch = async (event?: FormEvent) => {
+  const handleSearch = async (
+    event?: FormEvent,
+    overrides?: { mealType?: MealType },
+  ) => {
     event?.preventDefault();
 
     if (!mawkibId) {
@@ -239,21 +303,25 @@ export function PresentAttendeesReportPage() {
       return;
     }
 
+    const searchMealType = overrides?.mealType ?? mealType;
+
     setLoading(true);
     setSearched(true);
     try {
       const data = await presentAttendeesReportApi.get({
         mawkibId: Number(mawkibId),
         date,
-        mealType,
+        mealType: searchMealType,
       });
       setReport(data);
       setTableFilter('');
       setPresenceFilter('all');
+      setGenderFilter('all');
     } catch (err) {
       setReport(null);
       setTableFilter('');
       setPresenceFilter('all');
+      setGenderFilter('all');
       toastApiError(err, 'خطا در دریافت گزارش');
     } finally {
       setLoading(false);
@@ -297,8 +365,8 @@ export function PresentAttendeesReportPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-4 font-sans [&_button]:cursor-pointer [&_button:disabled]:cursor-not-allowed">
       <PageHeader
-        title="گزارش حاضرین"
-        subtitle="فهرست زائران حاضر و غایب برای هر وعده غذایی"
+        title="گزارش وعده‌های غذایی"
+        subtitle="فهرست زائران و وضعیت تحویل هر وعده غذایی"
       />
 
       <section className="rounded-xl border border-slate-200/80 bg-white shadow-sm">
@@ -335,7 +403,13 @@ export function PresentAttendeesReportPage() {
           <div className="space-y-1.5">
             <label className="block text-xs font-medium text-slate-600">وعده غذایی</label>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <MealTypeToggle value={mealType} onChange={setMealType} />
+              <MealTypeToggle
+                value={mealType}
+                onChange={(nextMealType) => {
+                  setMealType(nextMealType);
+                  void handleSearch(undefined, { mealType: nextMealType });
+                }}
+              />
               <button
                 type="submit"
                 disabled={loading}
@@ -391,12 +465,16 @@ export function PresentAttendeesReportPage() {
           ) : (
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-100 p-2.5 sm:p-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                   <PresenceTableFilterToggle
                     value={presenceFilter}
                     onChange={setPresenceFilter}
                   />
-                  <div className="relative min-w-0 flex-1">
+                  <GenderTableFilterToggle
+                    value={genderFilter}
+                    onChange={setGenderFilter}
+                  />
+                  <div className="relative min-w-0 flex-1 sm:min-w-[12rem]">
                     <NavIcon
                       name="track"
                       className="pointer-events-none absolute end-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
@@ -418,6 +496,7 @@ export function PresentAttendeesReportPage() {
                     onClick={() => {
                       setTableFilter('');
                       setPresenceFilter('all');
+                      setGenderFilter('all');
                     }}
                     disabled={!hasActiveTableFilters}
                     className={`${mealPlanSecondaryBtn} shrink-0 !min-h-9 !px-3`}
