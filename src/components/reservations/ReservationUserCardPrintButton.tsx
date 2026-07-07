@@ -5,11 +5,17 @@ import { QRCodeSVG } from "qrcode.react";
 import { Modal } from "../Modal";
 import { NavIcon } from "../ui/NavIcons";
 import { formatPersianNumber } from "../../lib/capacity";
-import { buildGuestMawkibPath, buildGuestMawkibUrl } from "../../lib/guest-mawkib";
+import {
+  buildGuestMawkibPath,
+  buildGuestMawkibUrl,
+} from "../../lib/guest-mawkib";
 import { buildMawkibLocationMapUrl, hasValidCoords } from "../../lib/geo";
 import { buildPilgrimCardUrl } from "../../lib/reservation-track";
 import { btnPrimary, btnSecondary, inputClass } from "../../lib/styles";
-import { printPilgrimCardImage, openPilgrimCardPrintWindow } from "../../lib/pilgrim-card-download";
+import {
+  printPilgrimCardImage,
+  openPilgrimCardPrintWindow,
+} from "../../lib/pilgrim-card-download";
 import { toast } from "../../lib/toast";
 import { formatPersianDateRange } from "../ui/PersianDateRangePicker";
 import { formatPresenceStayWeekdays } from "../../lib/pilgrim-card-weekday";
@@ -271,9 +277,7 @@ function MawkibLocationQrBlock({
           )}
         </div>
         <p className="pilgrim-card__location-caption">
-          {interactive
-            ? "برای مشاهده در سایت کلیک کنید · با اسکن، برنامه نقشه (گوگل‌مپ، نشان و ...) باز می‌شود"
-            : "اسکن برای باز کردن نقشه (گوگل‌مپ، نشان و ...)"}
+          اسکن برای باز کردن نقشه (اسنپ، نشان و ...)
         </p>
       </div>
     </div>
@@ -477,9 +481,9 @@ export function ReservationUserCardPrintButton({
         toast.success("زائر کارت برای چاپ آماده شد");
       })
       .catch((error) => {
-        if (error instanceof Error && error.message === 'POPUP_BLOCKED') {
+        if (error instanceof Error && error.message === "POPUP_BLOCKED") {
           toast.error(
-            'مرورگر اجازه باز کردن پنجره چاپ را نداد. لطفاً پاپ‌آپ را فعال کنید یا از «دانلود زائر کارت» استفاده کنید.',
+            "مرورگر اجازه باز کردن پنجره چاپ را نداد. لطفاً پاپ‌آپ را فعال کنید یا از «دانلود زائر کارت» استفاده کنید.",
           );
           return;
         }

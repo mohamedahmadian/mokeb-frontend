@@ -2,6 +2,10 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { MealPlanEditor } from "../components/meal-plans/MealPlanEditor";
+import {
+  mergeLookupMatches,
+  ReservationLookupMatchesBar,
+} from "../components/reservations/ReservationLookupMatchesBar";
 import { ReservationAttendanceSummary } from "../components/reservations/ReservationAttendancePanel";
 import { PageHeader } from "../components/ui/PageHeader";
 import { NavIcon } from "../components/ui/NavIcons";
@@ -10,9 +14,12 @@ import {
   isMealPlanEligibleReservation,
   isReservationMealPlanLinkVisible,
 } from "../lib/meal-plan-utils";
-import { normalizeLookupQuery, lookupOwnerReservationSingle } from "../lib/mawkib-owner-dashboard";
+import {
+  normalizeLookupQuery,
+  lookupOwnerReservation,
+} from "../lib/mawkib-owner-dashboard";
 import { useAuth } from '../contexts/AuthContext';
-import { lookupAdminReservationSingle } from '../lib/admin-dashboard';
+import { lookupAdminReservation } from '../lib/admin-dashboard';
 import { reservationsApi } from "../lib/reservations";
 import { inputClass } from "../lib/styles";
 import { toast, toastApiError } from "../lib/toast";
@@ -36,12 +43,30 @@ export function MealPlansPage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [matches, setMatches] = useState<Reservation[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [plans, setPlans] = useState<MealPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
   const [showPlanSection, setShowPlanSection] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
+
+  const filterMealPlanMatches = (items: Reservation[]) =>
+    items.filter(
+      (item) =>
+        isMealPlanEligibleReservation(item.status) &&
+        canManageReservationMealPlan(item),
+    );
+
+  const resetSearchState = () => {
+    setSearched(false);
+    setMatches([]);
+    setSelectedId(null);
+    setReservation(null);
+    setPlans([]);
+    setShowPlanSection(false);
+  };
 
   const loadPlans = async (reservationId: number) => {
     setPlansLoading(true);
@@ -57,6 +82,7 @@ export function MealPlansPage() {
   };
 
   const selectReservation = async (selected: Reservation) => {
+    setSelectedId(selected.id);
     setReservation(selected);
     setShowPlanSection(true);
     await loadPlans(selected.id);
@@ -78,31 +104,25 @@ export function MealPlansPage() {
     setLoading(true);
     setSearched(true);
     try {
-      const lookupFn = isAdmin
-        ? lookupAdminReservationSingle
-        : lookupOwnerReservationSingle;
-      const found = await lookupFn(trimmed);
+      const lookupFn = isAdmin ? lookupAdminReservation : lookupOwnerReservation;
+      const result = await lookupFn(trimmed);
+      const merged = filterMealPlanMatches(
+        mergeLookupMatches(result.reservation, result.alternatives),
+      );
 
-      if (!found || !isMealPlanEligibleReservation(found.status)) {
+      setMatches(merged);
+      setSelectedId(merged[0]?.id ?? null);
+
+      if (merged.length === 0) {
         setReservation(null);
         setPlans([]);
         setShowPlanSection(false);
         return;
       }
 
-      if (!canManageReservationMealPlan(found)) {
-        setReservation(null);
-        setPlans([]);
-        setShowPlanSection(false);
-        toast.error("مدیریت برنامه غذایی برای این موکب فعال نیست");
-        return;
-      }
-
-      await selectReservation(found);
+      await selectReservation(merged[0]);
     } catch (err) {
-      setReservation(null);
-      setPlans([]);
-      setShowPlanSection(false);
+      resetSearchState();
       toastApiError(err, "خطا در جستجوی رزرو");
     } finally {
       setLoading(false);
@@ -150,53 +170,7 @@ export function MealPlansPage() {
   useEffect(() => {
     const reservationIdParam = searchParams.get("reservationId");
     if (reservationIdParam) return;
-
-    const input = searchInputRef.current;
-    // #region agent log
-    fetch("http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "06086f",
-      },
-      body: JSON.stringify({
-        sessionId: "06086f",
-        hypothesisId: "H1",
-        location: "MealPlansPage.tsx:focus-on-mount:before",
-        message: "Meal page mount focus attempt",
-        data: {
-          hasInputRef: Boolean(input),
-          activeTag: document.activeElement?.tagName ?? null,
-          activeId: (document.activeElement as HTMLElement | null)?.id ?? null,
-          reservationIdParam,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-
-    input?.focus();
-
-    // #region agent log
-    fetch("http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "06086f",
-      },
-      body: JSON.stringify({
-        sessionId: "06086f",
-        hypothesisId: "H1",
-        location: "MealPlansPage.tsx:focus-on-mount:after",
-        message: "Meal page mount focus result",
-        data: {
-          focusedSearchInput: document.activeElement === input,
-          activeTag: document.activeElement?.tagName ?? null,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
+    searchInputRef.current?.focus();
   }, [searchParams]);
 
   useEffect(() => {
@@ -234,6 +208,8 @@ export function MealPlansPage() {
         }
 
         await selectReservation(loaded);
+        setMatches([loaded]);
+        setSelectedId(loaded.id);
       } catch (err) {
         if (!cancelled) {
           toastApiError(err, "خطا در بارگذاری رزرو");
@@ -274,10 +250,7 @@ export function MealPlansPage() {
               onChange={(event) => {
                 setQuery(event.target.value);
                 if (searched) {
-                  setReservation(null);
-                  setPlans([]);
-                  setShowPlanSection(false);
-                  setSearched(false);
+                  resetSearchState();
                 }
               }}
               className={`${inputClass} min-w-0 flex-1 !min-h-9 !py-2 text-right !text-sm`}
@@ -301,7 +274,7 @@ export function MealPlansPage() {
           </div>
         </form>
 
-        {searched && !loading && !reservation && (
+        {searched && !loading && matches.length === 0 && (
           <div className="flex items-center gap-2 border-t border-slate-100 px-2.5 py-2 text-[11px] text-slate-500 sm:px-3">
             <NavIcon
               name="track"
@@ -313,6 +286,14 @@ export function MealPlansPage() {
           </div>
         )}
       </section>
+
+      {matches.length > 1 && selectedId != null && (
+        <ReservationLookupMatchesBar
+          matches={matches}
+          selectedId={selectedId}
+          onSelect={(item) => void selectReservation(item)}
+        />
+      )}
 
       {reservation && (
         <section className="space-y-3">

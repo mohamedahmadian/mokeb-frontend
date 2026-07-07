@@ -17,7 +17,7 @@ export function getPendingMawkibs(mawkibs: Mawkib[], limit = 5): Mawkib[] {
 
 export async function lookupAdminReservation(
   query: string,
-  options?: { single?: boolean },
+  options?: { single?: boolean; exact?: boolean },
 ): Promise<{
   reservation: Reservation | null;
   alternatives: Reservation[];

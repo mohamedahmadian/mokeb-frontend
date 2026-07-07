@@ -2,6 +2,10 @@ import api from './api';
 
 export type AttendanceRosterKind = 'absent' | 'present';
 
+export type AbsentRegisterEventType = 'CHECK_IN' | 'TEMP_IN';
+
+export type AbsenceKind = 'NOT_ARRIVED' | 'TEMPORARILY_OUT';
+
 export interface AttendanceRosterRow {
   reservationId: number;
   fullName: string;
@@ -9,6 +13,8 @@ export interface AttendanceRosterRow {
   nationalId: string | null;
   durationMs: number;
   lastExitAt: string | null;
+  absenceKind?: AbsenceKind | null;
+  registerEventType?: AbsentRegisterEventType | null;
 }
 
 export interface AttendanceRosterResponse {

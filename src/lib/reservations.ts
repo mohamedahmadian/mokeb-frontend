@@ -21,6 +21,8 @@ export interface ReservationFilters {
   lookupQuery?: string;
   /** With lookupQuery: return only the best-matching reservation. */
   lookupSingle?: boolean;
+  /** With lookupQuery: exact field match instead of partial contains. */
+  lookupExact?: boolean;
   pilgrimUserId?: number;
   guestCountMin?: number;
   guestCountMax?: number;

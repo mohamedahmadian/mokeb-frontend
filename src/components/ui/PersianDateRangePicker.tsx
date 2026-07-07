@@ -42,7 +42,7 @@ export function formatPersianDateRange(startDate: string, endDate: string): stri
     return `${start.format('DD MMMM')} الی ${end.format('DD MMMM YYYY')}`;
   }
 
-  return `${startLabel} تا ${end.format('DD MMMM YYYY')}`;
+  return `${startLabel} الی ${end.format('DD MMMM YYYY')}`;
 }
 
 export function PersianDateRangePicker({

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '../components/ui/PageHeader';
 import { NavIcon } from '../components/ui/NavIcons';
@@ -21,7 +21,10 @@ import { downloadPresentAttendeesExcel } from '../lib/present-attendees-export';
 import {
   presentAttendeesReportApi,
   type PresentAttendeesReport,
+  type PresentAttendeeRow,
 } from '../lib/present-attendees-report';
+import { normalizeLookupQuery } from '../lib/mawkib-owner-dashboard';
+import { inputClass } from '../lib/styles';
 import { toast, toastApiError } from '../lib/toast';
 import type { MealType } from '../types';
 
@@ -84,6 +87,99 @@ function MealTypeToggle({
   );
 }
 
+function matchesPresentAttendeeTableFilter(
+  row: PresentAttendeeRow,
+  query: string,
+): boolean {
+  const normalizedQuery = normalizeLookupQuery(query);
+  if (!normalizedQuery) return true;
+
+  const fields = [row.fullName, row.mobile, row.nationalId ?? ''];
+  return fields.some((field) =>
+    normalizeLookupQuery(field).includes(normalizedQuery),
+  );
+}
+
+type PresenceTableFilter = 'all' | 'present' | 'absent';
+
+const PRESENCE_TABLE_FILTERS: {
+  value: PresenceTableFilter;
+  label: string;
+}[] = [
+  { value: 'present', label: 'حاضرین' },
+  { value: 'all', label: 'همه' },
+  { value: 'absent', label: 'غائبین' },
+];
+
+function PresenceTableFilterToggle({
+  value,
+  onChange,
+}: {
+  value: PresenceTableFilter;
+  onChange: (value: PresenceTableFilter) => void;
+}) {
+  return (
+    <div
+      className="inline-flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5"
+      role="group"
+      aria-label="فیلتر حضور"
+    >
+      {PRESENCE_TABLE_FILTERS.map((option) => {
+        const active = value === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onChange(option.value)}
+            className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors sm:px-3 sm:text-sm ${
+              active
+                ? 'bg-white text-[#3d5d8a] shadow-sm ring-1 ring-[#4a6fa5]/20'
+                : 'text-slate-600 hover:text-slate-800'
+            }`}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function matchesPresenceTableFilter(
+  row: PresentAttendeeRow,
+  filter: PresenceTableFilter,
+): boolean {
+  if (filter === 'present') return row.isPresent;
+  if (filter === 'absent') return !row.isPresent;
+  return true;
+}
+
+function DeliveryStatChip({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: 'served' | 'unserved';
+}) {
+  const toneClass =
+    tone === 'served'
+      ? 'border-emerald-200/90 bg-emerald-50/90 text-emerald-800'
+      : 'border-amber-200/90 bg-amber-50/80 text-amber-900';
+
+  return (
+    <div
+      className={`inline-flex min-h-8 items-center gap-1.5 rounded-lg border px-2.5 shadow-sm ${toneClass}`}
+    >
+      <span className="text-[10px] font-medium leading-none opacity-85">{label}</span>
+      <span className="text-sm font-bold leading-none tabular-nums">
+        {formatPersianNumber(value)}
+      </span>
+    </div>
+  );
+}
+
 export function PresentAttendeesReportPage() {
   const { user } = useAuth();
   const isAdmin = user?.roles.includes('Admin') ?? false;
@@ -93,8 +189,9 @@ export function PresentAttendeesReportPage() {
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<PresentAttendeesReport | null>(null);
+  const [tableFilter, setTableFilter] = useState('');
+  const [presenceFilter, setPresenceFilter] = useState<PresenceTableFilter>('all');
   const [servingReservationIds, setServingReservationIds] = useState<number[]>([]);
-  const filterSectionRef = useRef<HTMLElement>(null);
 
   const { data: mawkibs = [] } = useQuery({
     queryKey: ['mawkibs-filter', isAdmin ? 'admin' : 'my'],
@@ -111,32 +208,28 @@ export function PresentAttendeesReportPage() {
     }
   }, [mawkibs, mawkibId]);
 
-  useEffect(() => {
-    const section = filterSectionRef.current;
-    if (!section) return;
+  const filteredRows = useMemo(() => {
+    if (!report) return [];
+    return report.rows.filter(
+      (row) =>
+        matchesPresenceTableFilter(row, presenceFilter) &&
+        matchesPresentAttendeeTableFilter(row, tableFilter),
+    );
+  }, [report, tableFilter, presenceFilter]);
 
-    const cs = getComputedStyle(section);
-    // #region agent log
-    fetch('http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '06086f',
-      },
-      body: JSON.stringify({
-        sessionId: '06086f',
-        hypothesisId: 'H1',
-        location: 'PresentAttendeesReportPage.tsx:filter-section-mount',
-        message: 'Filter section overflow style on mount',
-        data: {
-          sectionOverflow: cs.overflow,
-          sectionOverflowY: cs.overflowY,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-  }, []);
+  const hasActiveTableFilters =
+    Boolean(tableFilter.trim()) || presenceFilter !== 'all';
+
+  const deliveryStats = useMemo(() => {
+    if (!report) return { served: 0, unserved: 0 };
+    let served = 0;
+    let unserved = 0;
+    for (const row of report.rows) {
+      if (row.isServed) served += 1;
+      else unserved += 1;
+    }
+    return { served, unserved };
+  }, [report]);
 
   const handleSearch = async (event?: FormEvent) => {
     event?.preventDefault();
@@ -155,8 +248,12 @@ export function PresentAttendeesReportPage() {
         mealType,
       });
       setReport(data);
+      setTableFilter('');
+      setPresenceFilter('all');
     } catch (err) {
       setReport(null);
+      setTableFilter('');
+      setPresenceFilter('all');
       toastApiError(err, 'خطا در دریافت گزارش');
     } finally {
       setLoading(false);
@@ -204,10 +301,7 @@ export function PresentAttendeesReportPage() {
         subtitle="فهرست زائران حاضر و غایب برای هر وعده غذایی"
       />
 
-      <section
-        ref={filterSectionRef}
-        className="rounded-xl border border-slate-200/80 bg-white shadow-sm"
-      >
+      <section className="rounded-xl border border-slate-200/80 bg-white shadow-sm">
         <form onSubmit={handleSearch} className="space-y-4 p-3 sm:p-4">
           <div className="flex items-center gap-2">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#e8eef6] text-[#4a6fa5]">
@@ -240,18 +334,17 @@ export function PresentAttendeesReportPage() {
 
           <div className="space-y-1.5">
             <label className="block text-xs font-medium text-slate-600">وعده غذایی</label>
-            <MealTypeToggle value={mealType} onChange={setMealType} />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-            <button
-              type="submit"
-              disabled={loading}
-              className={`${mealPlanSecondaryBtn} !min-h-9 !px-3`}
-            >
-              <NavIcon name="track" className={mealPlanIconClass} strokeWidth={1.75} />
-              {loading ? '...' : 'نمایش گزارش'}
-            </button>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <MealTypeToggle value={mealType} onChange={setMealType} />
+              <button
+                type="submit"
+                disabled={loading}
+                className={`${mealPlanSecondaryBtn} shrink-0 !min-h-9 !px-3`}
+              >
+                <NavIcon name="track" className={mealPlanIconClass} strokeWidth={1.75} />
+                {loading ? '...' : 'نمایش گزارش'}
+              </button>
+            </div>
           </div>
         </form>
       </section>
@@ -264,20 +357,31 @@ export function PresentAttendeesReportPage() {
             <StatCard label="تعداد غائبین" value={report.stats.absent} tone="absent" />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <PresentAttendeesPrintButton report={report} />
-            <button
-              type="button"
-              onClick={handleDownload}
-              disabled={!report.rows.length}
-              className={mealPlanSecondaryBtn}
-            >
-              <NavIcon name="download" className={mealPlanIconClass} strokeWidth={1.75} />
-              دانلود اکسل
-            </button>
-            <p className="ms-auto text-[11px] text-slate-500">
-              {report.mawkibName} — {MEAL_TYPE_LABELS[report.mealType]}
-            </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <DeliveryStatChip
+                label="تحویل داده شده"
+                value={deliveryStats.served}
+                tone="served"
+              />
+              <DeliveryStatChip
+                label="تحویل داده نشده"
+                value={deliveryStats.unserved}
+                tone="unserved"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <PresentAttendeesPrintButton report={report} />
+              <button
+                type="button"
+                onClick={handleDownload}
+                disabled={!report.rows.length}
+                className={mealPlanSecondaryBtn}
+              >
+                <NavIcon name="download" className={mealPlanIconClass} strokeWidth={1.75} />
+                دانلود اکسل
+              </button>
+            </div>
           </div>
 
           {report.rows.length === 0 ? (
@@ -286,6 +390,55 @@ export function PresentAttendeesReportPage() {
             </div>
           ) : (
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 p-2.5 sm:p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <PresenceTableFilterToggle
+                    value={presenceFilter}
+                    onChange={setPresenceFilter}
+                  />
+                  <div className="relative min-w-0 flex-1">
+                    <NavIcon
+                      name="track"
+                      className="pointer-events-none absolute end-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
+                      strokeWidth={1.75}
+                    />
+                    <input
+                      type="text"
+                      value={tableFilter}
+                      onChange={(event) => setTableFilter(event.target.value)}
+                      placeholder="جستجوی سریع در نام، موبایل یا کد ملی..."
+                      className={`${inputClass} !min-h-9 w-full !py-2 !ps-3 !pe-9 !text-sm text-right`}
+                      dir="rtl"
+                      inputMode="text"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTableFilter('');
+                      setPresenceFilter('all');
+                    }}
+                    disabled={!hasActiveTableFilters}
+                    className={`${mealPlanSecondaryBtn} shrink-0 !min-h-9 !px-3`}
+                  >
+                    <NavIcon name="x" className={mealPlanIconClass} strokeWidth={1.75} />
+                    پاک کردن فیلتر
+                  </button>
+                </div>
+                {hasActiveTableFilters && (
+                  <p className="mt-2 text-[11px] text-slate-500">
+                    {formatPersianNumber(filteredRows.length)} مورد از{' '}
+                    {formatPersianNumber(report.rows.length)} ردیف
+                  </p>
+                )}
+              </div>
+
+              {filteredRows.length === 0 ? (
+                <div className="px-4 py-8 text-center text-sm text-slate-500">
+                  موردی با این فیلتر در جدول یافت نشد.
+                </div>
+              ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[720px] text-sm">
                   <thead className="bg-slate-50 text-slate-600">
@@ -299,7 +452,7 @@ export function PresentAttendeesReportPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {report.rows.map((row, index) => (
+                    {filteredRows.map((row, index) => (
                       <tr
                         key={row.reservationId}
                         className="border-t border-slate-100 hover:bg-slate-50/60"
@@ -344,6 +497,7 @@ export function PresentAttendeesReportPage() {
                   </tbody>
                 </table>
               </div>
+              )}
             </div>
           )}
         </section>

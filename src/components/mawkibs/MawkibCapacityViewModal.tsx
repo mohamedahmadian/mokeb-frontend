@@ -187,11 +187,25 @@ function DayCapacityCard({
   const status = getDayStatus(day);
   const styles = statusStyles[status];
   const isToday = day.date === todayGregorian();
+  const canReserve = Boolean(onReserve) && status !== "full";
 
   return (
     <div
+      role={canReserve ? "button" : undefined}
+      tabIndex={canReserve ? 0 : undefined}
+      onClick={canReserve ? onReserve : undefined}
+      onKeyDown={
+        canReserve
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onReserve?.();
+              }
+            }
+          : undefined
+      }
       className={`group relative flex aspect-square flex-col justify-between rounded-xl border p-2 shadow-sm transition-all duration-200 ${styles.card} ${
-        onReserve
+        canReserve
           ? `cursor-pointer ${styles.reserveHover} group-hover:border-2 group-hover:shadow-xl`
           : ""
       } ${isToday ? "ring-2 ring-[#4a6fa5]/40 ring-offset-1" : ""}`}
@@ -228,19 +242,14 @@ function DayCapacityCard({
         />
       </div>
 
-      {onReserve && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 opacity-100 backdrop-blur-[1px] transition-all duration-200 max-md:pointer-events-auto md:bg-transparent md:opacity-0 md:backdrop-blur-none md:group-hover:bg-white/75 md:group-hover:opacity-100 md:group-hover:backdrop-blur-[1px] md:group-hover:pointer-events-auto">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onReserve();
-            }}
-            className={`${guestTheme.btnPrimary} pointer-events-auto inline-flex cursor-pointer items-center gap-1.5 px-3 py-1.5 text-xs shadow-md`}
+      {canReserve && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 opacity-100 backdrop-blur-[1px] transition-all duration-200 max-md:pointer-events-none md:bg-transparent md:opacity-0 md:backdrop-blur-none md:group-hover:bg-white/75 md:group-hover:opacity-100 md:group-hover:backdrop-blur-[1px]">
+          <span
+            className={`${guestTheme.btnPrimary} pointer-events-none inline-flex items-center gap-1.5 px-3 py-1.5 text-xs shadow-md`}
           >
             <IconReserve />
             رزرو
-          </button>
+          </span>
         </div>
       )}
     </div>
@@ -516,7 +525,7 @@ export function MawkibCapacityViewModal({
                 key={day.date}
                 day={day}
                 onReserve={
-                  handleDayReserve
+                  handleDayReserve && getDayStatus(day) !== "full"
                     ? () => handleDayReserve(day.date)
                     : undefined
                 }

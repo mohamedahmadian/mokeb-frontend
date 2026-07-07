@@ -19,7 +19,7 @@ export function normalizeLookupQuery(value: string): string {
 export async function lookupReservationList(
   query: string,
   fetchList: (filters: import('./reservations').ReservationFilters) => Promise<Reservation[]>,
-  options?: { single?: boolean },
+  options?: { single?: boolean; exact?: boolean },
 ): Promise<{
   reservation: Reservation | null;
   alternatives: Reservation[];
@@ -31,6 +31,7 @@ export async function lookupReservationList(
 
   const results = await fetchList({
     lookupQuery: trimmed,
+    lookupExact: options?.exact ?? false,
     all: true,
     ...(options?.single ? { lookupSingle: true } : {}),
   });
@@ -39,7 +40,11 @@ export async function lookupReservationList(
     return { reservation: null, alternatives: [] };
   }
 
-  const ranked = rankReservationsByLookupQuery(results, trimmed);
+  const ranked = rankReservationsByLookupQuery(
+    results,
+    trimmed,
+    options?.exact ?? false,
+  );
 
   if (options?.single) {
     return { reservation: ranked[0] ?? null, alternatives: [] };
@@ -51,7 +56,7 @@ export async function lookupReservationList(
 
 export async function lookupOwnerReservation(
   query: string,
-  options?: { single?: boolean },
+  options?: { single?: boolean; exact?: boolean },
 ): Promise<{
   reservation: Reservation | null;
   alternatives: Reservation[];

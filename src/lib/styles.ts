@@ -33,3 +33,7 @@ export const selectItemActive = 'bg-[#f0f4fa] font-medium text-[#4a6fa5]';
 export const selectItemHover = 'hover:bg-[#f0f4fa]';
 
 export const focusRing = 'focus:border-[#4a6fa5] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20';
+
+/** Table viewport: header (~3rem) + 10 rows (~3.25rem each). Scrolls when content exceeds. */
+export const tableViewport10RowsClass =
+  'overflow-x-auto overflow-y-auto min-h-[35.5rem] max-h-[35.5rem]';

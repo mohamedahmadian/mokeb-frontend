@@ -10,11 +10,14 @@ import {
 import { pilgrimCardScreenCss } from './pilgrim-card-styles';
 
 const SCREEN_ROOT_CLASS = 'pilgrim-card-screen-root';
+const COMPACT_ROOT_CLASS = 'pilgrim-card-screen-root-compact';
 
 interface PilgrimCardScreenViewProps {
   reservation: Reservation;
   showPrintButton?: boolean;
   showDownloadButton?: boolean;
+  autoDownload?: boolean;
+  compact?: boolean;
   printButtonClassName?: string;
   downloadButtonClassName?: string;
   hintMessage?: string;
@@ -24,6 +27,8 @@ export function PilgrimCardScreenView({
   reservation,
   showPrintButton = true,
   showDownloadButton = false,
+  autoDownload = false,
+  compact = false,
   printButtonClassName,
   downloadButtonClassName,
   hintMessage,
@@ -44,16 +49,18 @@ export function PilgrimCardScreenView({
     downloadButtonClassName ??
     `${guestTheme.btnSecondary} w-full sm:w-auto`;
 
+  const rootClass = compact ? COMPACT_ROOT_CLASS : SCREEN_ROOT_CLASS;
+
   return (
-    <div className="space-y-4">
+    <div className={compact ? 'space-y-2' : 'space-y-4'}>
       {hintMessage && (
         <p className="text-center text-sm leading-relaxed text-slate-600">
           {hintMessage}
         </p>
       )}
 
-      <style>{pilgrimCardScreenCss(SCREEN_ROOT_CLASS)}</style>
-      <div className={SCREEN_ROOT_CLASS}>
+      <style>{pilgrimCardScreenCss(rootClass, compact)}</style>
+      <div className={rootClass}>
         <div
           className="pilgrim-card-shell"
           data-weekday={weekdayAccent.id}
@@ -85,6 +92,7 @@ export function PilgrimCardScreenView({
           {showDownloadButton && (
             <PilgrimCardDownloadButton
               reservation={reservation}
+              autoDownload={autoDownload}
               className={`w-full sm:w-auto ${downloadButtonClassName ?? ''}`}
             />
           )}

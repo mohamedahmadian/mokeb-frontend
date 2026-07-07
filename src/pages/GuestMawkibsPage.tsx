@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { CapacityFilterToggle } from "../components/guest/CapacityFilterToggle";
 import { GuestPageHeader, GuestShell } from "../components/guest/GuestShell";
 import {
@@ -24,7 +24,7 @@ import { buildGuestReserveUrl } from "../lib/guest-reserve";
 import { isMawkibOnlineReservationEnabled } from "../lib/mawkib-online-reservation";
 import { MAWKIB_CITIES } from "../lib/mawkib-locations";
 import type { MawkibCity } from "../lib/mawkib-locations";
-import { mawkibsApi } from "../lib/mawkibs";
+import { mawkibsApi, DEFAULT_MAWKIBS_PAGE_SIZE } from "../lib/mawkibs";
 import type { Mawkib } from "../types";
 
 function IconSearch() {
@@ -92,6 +92,90 @@ export function GuestMawkibsPage() {
   const [browseView, setBrowseView] = useState<MawkibBrowseView>(initialView);
   const [capacityMawkib, setCapacityMawkib] = useState<Mawkib | null>(null);
   const [galleryMawkib, setGalleryMawkib] = useState<Mawkib | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const listFilters = useMemo(
+    () => ({
+      ...(debouncedQuery ? { q: debouncedQuery } : {}),
+      ...(mawkibCity ? { mawkibCity: mawkibCity as MawkibCity } : {}),
+      capacityFilter: (onlyAvailableCapacity ? "available" : "all") as const,
+    }),
+    [debouncedQuery, mawkibCity, onlyAvailableCapacity],
+  );
+
+  const {
+    data: listData,
+    isLoading: listLoading,
+    isError: listError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: [
+      "guest-mawkibs-browse",
+      debouncedQuery,
+      mawkibCity,
+      onlyAvailableCapacity,
+      "list",
+    ],
+    queryFn: ({ pageParam }) =>
+      mawkibsApi.getPublicListPaginated({
+        ...listFilters,
+        page: pageParam,
+        pageSize: DEFAULT_MAWKIBS_PAGE_SIZE,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined,
+    enabled: browseView === "list",
+  });
+
+  const listMawkibs = useMemo(
+    () => listData?.pages.flatMap((page) => page.items) ?? [],
+    [listData],
+  );
+  const listTotal = listData?.pages[0]?.total ?? 0;
+
+  const {
+    data: mapMawkibs = [],
+    isLoading: mapLoading,
+    isError: mapError,
+  } = useQuery({
+    queryKey: [
+      "guest-mawkibs-browse",
+      debouncedQuery,
+      mawkibCity,
+      onlyAvailableCapacity,
+      "map",
+    ],
+    queryFn: () => mawkibsApi.getPublicListForExport(listFilters),
+    enabled: browseView === "map",
+  });
+
+  useEffect(() => {
+    if (browseView !== "list") return;
+
+    const sentinel = loadMoreRef.current;
+    if (!sentinel || !hasNextPage || isFetchingNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          void fetchNextPage();
+        }
+      },
+      { rootMargin: "240px" },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [
+    browseView,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    listMawkibs.length,
+  ]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -113,27 +197,31 @@ export function GuestMawkibsPage() {
     setBrowseView((current) => (current === next ? current : next));
   }, [searchParams]);
 
-  const {
-    data: mawkibs = [],
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: [
-      "guest-mawkibs-browse",
-      debouncedQuery,
-      mawkibCity,
-      onlyAvailableCapacity,
-    ],
-    queryFn: () =>
-      mawkibsApi.getPublicList({
-        ...(debouncedQuery ? { q: debouncedQuery } : {}),
-        ...(mawkibCity ? { mawkibCity: mawkibCity as MawkibCity } : {}),
-        capacityFilter: onlyAvailableCapacity ? "available" : "all",
-      }),
-  });
-
   const guestMawkibDetailPath = (id: number) =>
     `/guest/mawkibs/${id}?from=mawkibs`;
+
+  const renderMawkibCard = (mawkib: Mawkib) => {
+    const galleryUrls = mawkibGalleryUrls(mawkib);
+    return (
+      <MawkibInfoCard
+        key={mawkib.id}
+        mawkib={mawkib}
+        showThumbnail
+        variant="guest-browse"
+        onCardClick={() => navigate(guestMawkibDetailPath(mawkib.id))}
+        footer={
+          <MawkibGuestBrowseFooter
+            showGallery={galleryUrls.length > 0}
+            showReserve={isMawkibOnlineReservationEnabled(mawkib)}
+            onViewGallery={() => setGalleryMawkib(mawkib)}
+            onViewCapacity={() => setCapacityMawkib(mawkib)}
+            onReserve={() => navigate(buildGuestReserveUrl(mawkib.id))}
+            onViewDetails={() => navigate(guestMawkibDetailPath(mawkib.id))}
+          />
+        }
+      />
+    );
+  };
 
   return (
     <GuestShell maxWidth={browseView === "map" ? "2xl" : "lg"}>
@@ -207,23 +295,23 @@ export function GuestMawkibsPage() {
         {browseView === "map" ? (
           <div className="space-y-3">
             <div className="relative h-[24rem] w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm sm:h-[32rem]">
-              {isLoading ? (
+              {mapLoading ? (
                 <div className="flex h-full items-center justify-center">
                   <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#c5d4e8] border-t-[#4a6fa5]" />
                 </div>
-              ) : isError ? (
+              ) : mapError ? (
                 <div className="flex h-full items-center justify-center p-6 text-center text-sm text-red-600">
                   خطا در دریافت لیست موکب‌ها. لطفاً دوباره تلاش کنید.
                 </div>
               ) : (
                 <>
                   <MawkibMap
-                    mountKey={`guest-map-${mawkibs.length}-${mawkibCity}`}
-                    mawkibs={mawkibs}
+                    mountKey={`guest-map-${mapMawkibs.length}-${mawkibCity}`}
+                    mawkibs={mapMawkibs}
                     mawkibCity={(mawkibCity as MawkibCity) || ""}
                     detailPath={guestMawkibDetailPath}
                   />
-                  {mawkibs.length === 0 && (
+                  {mapMawkibs.length === 0 && (
                     <div className="pointer-events-none absolute inset-x-0 top-4 z-[1000] flex justify-center px-4">
                       <p className="rounded-lg bg-white/95 px-4 py-2 text-center text-sm text-slate-600 shadow-sm">
                         موکبی یافت نشد — نقشه بر اساس فیلترهای فعلی نمایش داده
@@ -234,23 +322,23 @@ export function GuestMawkibsPage() {
                 </>
               )}
             </div>
-            {!isLoading && !isError && (
+            {!mapLoading && !mapError && (
               <p className="text-center text-xs text-slate-500">
-                {mawkibs.length > 0
-                  ? `${mawkibs.length.toLocaleString("fa-IR")} موکب — برای جزئیات، موس را روی آیکون نگه دارید`
+                {mapMawkibs.length > 0
+                  ? `${mapMawkibs.length.toLocaleString("fa-IR")} موکب — برای جزئیات، موس را روی آیکون نگه دارید`
                   : "فیلترها را تغییر دهید یا جستجوی دیگری انجام دهید"}
               </p>
             )}
           </div>
-        ) : isLoading ? (
+        ) : listLoading && listMawkibs.length === 0 ? (
           <div className="flex justify-center py-16">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#c5d4e8] border-t-[#4a6fa5]" />
           </div>
-        ) : isError ? (
+        ) : listError ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-600">
             خطا در دریافت لیست موکب‌ها. لطفاً دوباره تلاش کنید.
           </div>
-        ) : mawkibs.length === 0 ? (
+        ) : listMawkibs.length === 0 ? (
           <div className={`${guestTheme.card} p-10 text-center`}>
             <p className="font-medium text-slate-700">موکبی یافت نشد</p>
             <p className="mt-2 text-sm text-slate-500">
@@ -261,31 +349,23 @@ export function GuestMawkibsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {mawkibs.map((mawkib) => {
-              const galleryUrls = mawkibGalleryUrls(mawkib);
-              return (
-                <MawkibInfoCard
-                  key={mawkib.id}
-                  mawkib={mawkib}
-                  showThumbnail
-                  variant="guest-browse"
-                  footer={
-                    <MawkibGuestBrowseFooter
-                      showGallery={galleryUrls.length > 0}
-                      showReserve={isMawkibOnlineReservationEnabled(mawkib)}
-                      onViewGallery={() => setGalleryMawkib(mawkib)}
-                      onViewCapacity={() => setCapacityMawkib(mawkib)}
-                      onReserve={() =>
-                        navigate(buildGuestReserveUrl(mawkib.id))
-                      }
-                      onViewDetails={() =>
-                        navigate(guestMawkibDetailPath(mawkib.id))
-                      }
-                    />
-                  }
-                />
-              );
-            })}
+            {listTotal > 0 && (
+              <p className="text-center text-xs text-slate-500">
+                {listMawkibs.length.toLocaleString("fa-IR")} از{" "}
+                {listTotal.toLocaleString("fa-IR")} موکب
+              </p>
+            )}
+            {listMawkibs.map(renderMawkibCard)}
+            <div ref={loadMoreRef} className="flex min-h-12 justify-center py-4">
+              {isFetchingNextPage && (
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#c5d4e8] border-t-[#4a6fa5]" />
+              )}
+            </div>
+            {!hasNextPage && listMawkibs.length > 0 && (
+              <p className="pb-2 text-center text-xs text-slate-400">
+                همه موکب‌ها نمایش داده شد
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -297,7 +377,11 @@ export function GuestMawkibsPage() {
         mawkibName={capacityMawkib?.name ?? ""}
         serviceStartDate={capacityMawkib?.serviceStartDate}
         serviceEndDate={capacityMawkib?.serviceEndDate}
-        guestReserveLinks
+        guestReserveLinks={
+          capacityMawkib
+            ? isMawkibOnlineReservationEnabled(capacityMawkib)
+            : false
+        }
       />
 
       <MawkibGalleryModal

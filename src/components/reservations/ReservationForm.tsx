@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { PersianDateInput } from "../ui/PersianDateInput";
-import { formatPersianDate } from "../ui/PersianDateInput";
+import { PersianDateInput, formatPersianDate } from "../ui/PersianDateInput";
+import { formatPersianDateRange } from "../ui/PersianDateRangePicker";
 import {
   formatPersianNumber,
   mawkibAvailableFemale,
@@ -20,6 +20,8 @@ import {
 } from "../../lib/date-range";
 import { toast, toastApiError } from "../../lib/toast";
 import { guestApi } from "../../lib/guest";
+import { buildReservationFromGuestSuccess } from "../../lib/guest-success-reservation";
+import { downloadPilgrimCardForReservation } from "../../lib/pilgrim-card-auto-download";
 import { mawkibsApi } from "../../lib/mawkibs";
 import { reservationsApi } from "../../lib/reservations";
 import { usersApi, type PilgrimOption } from "../../lib/users";
@@ -229,8 +231,6 @@ export function ReservationForm({
   const isGuestFastMode =
     variant === "guest" && guestReservationMode === "fast";
 
-  const showStayDurationPicker = isPanel || !isGuestFastMode;
-
   const [pilgrimMode, setPilgrimMode] = useState<PilgrimMode>(() =>
     initialPilgrimUserId ? "select" : "new",
   );
@@ -439,9 +439,11 @@ export function ReservationForm({
     if (skipCapacityCheck && canBypassCapacity) {
       return "همه موکب‌های در دسترس نمایش داده می‌شوند؛ ظرفیت در این حالت بررسی نمی‌شود";
     }
-    const startLabel = dateStart ? formatPersianDate(dateStart) : "—";
-    const endLabel = dateEnd ? formatPersianDate(dateEnd) : "—";
-    return `از تاریخ ${startLabel} الی تاریخ ${endLabel} برای ${formatPersianNumber(maleGuestCount + effectiveFemaleGuestCount)} نفر`;
+    const guestTotal = maleGuestCount + effectiveFemaleGuestCount;
+    if (!dateStart || !dateEnd) {
+      return `— برای ${formatPersianNumber(guestTotal)} نفر`;
+    }
+    return `${formatPersianDateRange(dateStart, dateEnd)} برای ${formatPersianNumber(guestTotal)} نفر`;
   }, [
     skipCapacityCheck,
     canBypassCapacity,
@@ -452,11 +454,21 @@ export function ReservationForm({
   ]);
 
   const staySectionSubtitle = useMemo(() => {
-    const startLabel = dateStart ? formatPersianDate(dateStart) : "—";
-    const endLabel = dateEnd ? formatPersianDate(dateEnd) : "—";
     const guestTotal = maleGuestCount + effectiveFemaleGuestCount;
-    return `از تاریخ ${startLabel} الی ${endLabel} برای ${formatPersianNumber(guestTotal)} نفر`;
+    if (!dateStart || !dateEnd) {
+      return `— برای ${formatPersianNumber(guestTotal)} نفر`;
+    }
+    const rangeLabel = formatPersianDateRange(dateStart, dateEnd);
+    // #region agent log
+    fetch('http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'06086f'},body:JSON.stringify({sessionId:'06086f',hypothesisId:'H1',location:'ReservationForm.tsx:staySectionSubtitle',message:'Stay subtitle computed',data:{dateStart,dateEnd,rangeLabel,guestTotal,stayDays:reservationStayDayCount(dateStart,dateEnd)},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    return `${rangeLabel} برای ${formatPersianNumber(guestTotal)} نفر`;
   }, [dateStart, dateEnd, maleGuestCount, effectiveFemaleGuestCount]);
+
+  const minimumEndDate = useMemo(
+    () => (dateStart ? defaultReservationEndDate(dateStart, 1) : today),
+    [dateStart, today],
+  );
 
   const selectedMawkib = useMemo(() => {
     if (!selectedMawkibId) return undefined;
@@ -765,9 +777,7 @@ export function ReservationForm({
           password: isGuestFastMode ? undefined : trimmedPassword || undefined,
           province: isGuestFastMode ? undefined : province.trim() || undefined,
           city: isGuestFastMode ? undefined : city.trim() || undefined,
-          nationalId: isGuestFastMode
-            ? undefined
-            : nationalId.trim() || undefined,
+          nationalId: nationalId.trim() || undefined,
           nationalIdCardImageUrl: isGuestFastMode
             ? undefined
             : (nationalIdCardImageUrl ?? undefined),
@@ -799,7 +809,10 @@ export function ReservationForm({
 
         setRulesModalOpen(false);
         const mawkibForSnapshot = selectedMawkib;
-        onSuccess({
+        const guestSuccessPayload: Extract<
+          ReservationFormSuccess,
+          { variant: "guest" }
+        > = {
           variant: "guest",
           message: result.message,
           mawkibName: result.mawkibName,
@@ -830,7 +843,21 @@ export function ReservationForm({
               }
             : undefined,
           companions: companionsPayload,
-        });
+        };
+
+        if (isGuestFastMode) {
+          try {
+            await downloadPilgrimCardForReservation(
+              buildReservationFromGuestSuccess(guestSuccessPayload),
+            );
+          } catch {
+            toast.error(
+              "دانلود خودکار زائر کارت انجام نشد. از دکمه دانلود در پایین صفحه استفاده کنید.",
+            );
+          }
+        }
+
+        onSuccess(guestSuccessPayload);
         return;
       }
 
@@ -942,8 +969,14 @@ export function ReservationForm({
 
   const handleDateStartChange = (start: string) => {
     setDateStart(start);
-    if (start && dateEnd && dateEnd < start) {
-      setDateEnd(defaultReservationEndDate(start, 1));
+    if (start) {
+      const minEnd = defaultReservationEndDate(start, 1);
+      if (!dateEnd || dateEnd < minEnd) {
+        // #region agent log
+        fetch('http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'06086f'},body:JSON.stringify({sessionId:'06086f',hypothesisId:'H3',location:'ReservationForm.tsx:handleDateStartChange',message:'Adjusted end date for minimum stay',data:{start,previousEnd:dateEnd,minEnd},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        setDateEnd(minEnd);
+      }
     }
     if (!preselectedMawkibId) {
       setSelectedMawkibId(null);
@@ -951,12 +984,25 @@ export function ReservationForm({
   };
 
   const handleDateEndChange = (end: string) => {
-    if (end && dateStart && end < dateStart) {
-      toast.error("تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد");
-      setDateEnd(dateStart);
-    } else {
-      setDateEnd(end);
+    if (end && dateStart) {
+      const minEnd = defaultReservationEndDate(dateStart, 1);
+      if (end < minEnd) {
+        if (end < dateStart) {
+          toast.error("تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد");
+        } else {
+          toast.error("حداقل مدت اقامت یک روز است");
+        }
+        // #region agent log
+        fetch('http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'06086f'},body:JSON.stringify({sessionId:'06086f',hypothesisId:'H2',location:'ReservationForm.tsx:handleDateEndChange',message:'Rejected end date below minimum stay',data:{dateStart,requestedEnd:end,minEnd},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        setDateEnd(minEnd);
+        if (!preselectedMawkibId) {
+          setSelectedMawkibId(null);
+        }
+        return;
+      }
     }
+    setDateEnd(end);
     if (!preselectedMawkibId) {
       setSelectedMawkibId(null);
     }
@@ -1139,30 +1185,28 @@ export function ReservationForm({
             subtitle={staySectionSubtitle}
           />
           <div className="space-y-4">
-            {showStayDurationPicker && (
-              <StayDurationPicker
-                today={today}
-                dateStart={dateStart}
-                dateEnd={dateEnd}
-                serviceStartDate={
-                  selectedMawkib?.serviceStartDate ??
-                  preselectedMawkibDetail?.serviceStartDate ??
-                  guestPreselectedMawkib?.serviceStartDate
-                }
-                defaultReservationDays={
-                  selectedMawkib?.defaultReservationDays ??
-                  preselectedMawkibDetail?.defaultReservationDays ??
-                  guestPreselectedMawkib?.defaultReservationDays
-                }
-                maxReservationDays={
-                  selectedMawkib?.maxReservationDays ??
-                  preselectedMawkibDetail?.maxReservationDays ??
-                  guestPreselectedMawkib?.maxReservationDays
-                }
-                mawkibSelected={selectedMawkibId != null}
-                onSelect={handleStayDurationSelect}
-              />
-            )}
+            <StayDurationPicker
+              today={today}
+              dateStart={dateStart}
+              dateEnd={dateEnd}
+              serviceStartDate={
+                selectedMawkib?.serviceStartDate ??
+                preselectedMawkibDetail?.serviceStartDate ??
+                guestPreselectedMawkib?.serviceStartDate
+              }
+              defaultReservationDays={
+                selectedMawkib?.defaultReservationDays ??
+                preselectedMawkibDetail?.defaultReservationDays ??
+                guestPreselectedMawkib?.defaultReservationDays
+              }
+              maxReservationDays={
+                selectedMawkib?.maxReservationDays ??
+                preselectedMawkibDetail?.maxReservationDays ??
+                guestPreselectedMawkib?.maxReservationDays
+              }
+              mawkibSelected={selectedMawkibId != null}
+              onSelect={handleStayDurationSelect}
+            />
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <PersianDateInput
@@ -1179,7 +1223,7 @@ export function ReservationForm({
                 value={dateEnd}
                 onChange={handleDateEndChange}
                 placeholder="انتخاب تاریخ خروج"
-                minDate={dateStart || today}
+                minDate={minimumEndDate}
                 inputClassName={reservationFormInputClass}
                 clearable={false}
               />

@@ -790,6 +790,7 @@ export function MawkibInfoCard({
   selectable = false,
   selected = false,
   onSelect,
+  onCardClick,
   footer,
   reservationBlocked = false,
   showOnlineReservationStatus = true,
@@ -800,6 +801,8 @@ export function MawkibInfoCard({
   selectable?: boolean;
   selected?: boolean;
   onSelect?: () => void;
+  /** Clicking the card body (not footer actions) — e.g. open mawkib details. */
+  onCardClick?: () => void;
   footer?: ReactNode;
   reservationBlocked?: boolean;
   showOnlineReservationStatus?: boolean;
@@ -807,12 +810,17 @@ export function MawkibInfoCard({
   variant?: "default" | "guest-browse";
 }) {
   const canSelect = Boolean(selectable && !reservationBlocked && onSelect);
+  const canClickCard = Boolean(onCardClick && !canSelect && !reservationBlocked);
   const baseClass =
     "w-full overflow-hidden rounded-2xl border-2 text-right transition-all";
+  const clickableBrowseClass =
+    "cursor-pointer border-slate-200 bg-white hover:border-[#c5d4e8] hover:shadow-sm";
   const stateClass = canSelect
     ? selected
       ? "cursor-pointer border-[#4a6fa5] bg-gradient-to-b from-[#f0f4fa] to-white shadow-md shadow-[#c5d4e8]/40"
       : "cursor-pointer border-slate-200 bg-white hover:border-[#c5d4e8] hover:shadow-sm"
+    : canClickCard
+      ? clickableBrowseClass
     : reservationBlocked
       ? "cursor-not-allowed border-slate-200 bg-slate-50/80 opacity-90"
       : "border-slate-200 bg-white";
@@ -862,6 +870,28 @@ export function MawkibInfoCard({
       >
         {body}
       </button>
+    );
+  }
+
+  if (canClickCard) {
+    return (
+      <article className={`${baseClass} ${stateClass}`}>
+        <button
+          type="button"
+          onClick={onCardClick}
+          className="w-full cursor-pointer text-right"
+        >
+          <MawkibInfoCardBody
+            mawkib={mawkib}
+            selectable={false}
+            selected={false}
+            showOnlineReservationStatus={showOnlineReservationStatus}
+            showThumbnail={showThumbnail}
+            variant={variant}
+          />
+        </button>
+        {footer}
+      </article>
     );
   }
 

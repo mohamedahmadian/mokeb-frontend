@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Reservation } from '../../types';
 import { downloadPilgrimCardImage } from '../../lib/pilgrim-card-download';
 import { btnSecondary } from '../../lib/styles';
@@ -8,18 +8,22 @@ import { PilgrimCardCapture } from './PilgrimCardCapture';
 interface PilgrimCardDownloadButtonProps {
   reservation: Reservation;
   className?: string;
+  /** Trigger download once after the capture element is mounted. */
+  autoDownload?: boolean;
 }
 
 export function PilgrimCardDownloadButton({
   reservation,
   className,
+  autoDownload = false,
 }: PilgrimCardDownloadButtonProps) {
   const cardShellRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
+  const autoDownloadDoneRef = useRef(false);
 
-  const handleDownload = async () => {
+  const handleDownload = useCallback(async () => {
     const element = cardShellRef.current;
-    if (!element) return;
+    if (!element) return false;
 
     setDownloading(true);
     try {
@@ -28,12 +32,42 @@ export function PilgrimCardDownloadButton({
         `zaeer-kart-${reservation.trackingCode}.png`,
       );
       toast.success('زائر کارت با موفقیت دانلود شد');
+      return true;
     } catch {
       toast.error('دانلود زائر کارت انجام نشد. لطفاً دوباره تلاش کنید.');
+      return false;
     } finally {
       setDownloading(false);
     }
-  };
+  }, [reservation.trackingCode]);
+
+  useEffect(() => {
+    if (!autoDownload || autoDownloadDoneRef.current) return;
+
+    let cancelled = false;
+
+    const runAutoDownload = async () => {
+      for (let attempt = 0; attempt < 30 && !cancelled; attempt += 1) {
+        if (cardShellRef.current) break;
+        await new Promise<void>((resolve) => {
+          requestAnimationFrame(() => resolve());
+        });
+      }
+
+      if (cancelled || autoDownloadDoneRef.current || !cardShellRef.current) {
+        return;
+      }
+
+      autoDownloadDoneRef.current = true;
+      await handleDownload();
+    };
+
+    void runAutoDownload();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [autoDownload, handleDownload]);
 
   return (
     <>

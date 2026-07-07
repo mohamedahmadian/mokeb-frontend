@@ -137,6 +137,10 @@ function InfoRow({
   );
 }
 
+function InfoRowGrid({ children }: { children: ReactNode }) {
+  return <div className="grid grid-cols-2 gap-x-2 gap-y-2">{children}</div>;
+}
+
 interface MawkibMapHoverCardProps {
   mawkib: Mawkib;
   detailPath: (id: number) => string;
@@ -190,29 +194,49 @@ export function MawkibMapHoverCard({
       </div>
 
       <div className="mt-2 space-y-2">
-        {locationLabel && (
-          <InfoRow icon={icons.location} label="کشور / شهر" value={locationLabel} />
+        {(locationLabel || mawkibPhone) && (
+          <InfoRowGrid>
+            {locationLabel && (
+              <div className={mawkibPhone ? undefined : "col-span-2"}>
+                <InfoRow
+                  icon={icons.location}
+                  label="کشور / شهر"
+                  value={locationLabel}
+                />
+              </div>
+            )}
+            {mawkibPhone && (
+              <div className={locationLabel ? undefined : "col-span-2"}>
+                <InfoRow
+                  icon={icons.phone}
+                  label="تلفن موکب"
+                  value={mawkibPhone}
+                  dir="ltr"
+                  mono
+                />
+              </div>
+            )}
+          </InfoRowGrid>
         )}
-        {mawkibPhone && (
-          <InfoRow
-            icon={icons.phone}
-            label="شماره تماس موکب"
-            value={mawkibPhone}
-            dir="ltr"
-            mono
-          />
-        )}
-        {ownerName && (
-          <InfoRow icon={icons.owner} label="مسئول موکب" value={ownerName} />
-        )}
-        {ownerPhone && (
-          <InfoRow
-            icon={icons.phone}
-            label="موبایل مسئول"
-            value={ownerPhone}
-            dir="ltr"
-            mono
-          />
+        {(ownerName || ownerPhone) && (
+          <InfoRowGrid>
+            {ownerName && (
+              <div className={ownerPhone ? undefined : "col-span-2"}>
+                <InfoRow icon={icons.owner} label="مسئول موکب" value={ownerName} />
+              </div>
+            )}
+            {ownerPhone && (
+              <div className={ownerName ? undefined : "col-span-2"}>
+                <InfoRow
+                  icon={icons.phone}
+                  label="موبایل مسئول"
+                  value={ownerPhone}
+                  dir="ltr"
+                  mono
+                />
+              </div>
+            )}
+          </InfoRowGrid>
         )}
         {mawkib.address?.trim() && (
           <InfoRow
@@ -283,7 +307,7 @@ interface HoverCardLayout {
   transform: string;
 }
 
-const CARD_ESTIMATE = { width: 256, height: 400 };
+const CARD_ESTIMATE = { width: 256, height: 340 };
 const HOVER_GAP = 14;
 const EDGE_PADDING = 10;
 

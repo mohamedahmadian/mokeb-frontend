@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { CancelReservationModal } from '../components/reservations/CancelReservationModal';
 import { MawkibFilterSelect } from '../components/mawkibs/MawkibFilterSelect';
 import { MawkibCapacityPills } from '../components/mawkibs/MawkibInfoCard';
@@ -145,6 +145,7 @@ function stopActionBubble(event: { stopPropagation: () => void }) {
 }
 
 export function WaitingListPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = user?.roles.includes('Admin') ?? false;
   const queryClient = useQueryClient();
@@ -334,6 +335,9 @@ export function WaitingListPage() {
     );
   };
 
+  const rowInteractiveClass =
+    'cursor-pointer border-t border-slate-100 transition hover:bg-slate-50/80';
+
   return (
     <div>
       <PageHeader
@@ -436,7 +440,17 @@ export function WaitingListPage() {
                 reservations.map((reservation) => (
                   <tr
                     key={reservation.id}
-                    className="border-t border-slate-100 transition hover:bg-slate-50/80"
+                    className={rowInteractiveClass}
+                    onClick={() => navigate(`/reservations/${reservation.id}`)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        navigate(`/reservations/${reservation.id}`);
+                      }
+                    }}
+                    tabIndex={0}
+                    role="link"
+                    aria-label={`مشاهده جزئیات رزرو ${reservation.pilgrim.fullName}`}
                   >
                     <td className="px-4 py-3 whitespace-nowrap text-slate-700">
                       {formatPersianDateTimeFromIso(reservation.createdAt)}

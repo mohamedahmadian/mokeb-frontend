@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { guestTheme } from '../../lib/guest-theme';
+import { isReservationMealPlanLinkVisible } from '../../lib/meal-plan-utils';
 import { btnSecondary } from '../../lib/styles';
 import type { Reservation } from '../../types';
 import { ReservationDeliveredItemsButton } from './ReservationDeliveredItemsButton';
@@ -54,6 +55,9 @@ export function ReservationToolsCard({
   const isMawkibOwner = user?.roles.includes('MawkibOwner') ?? false;
   const showDeliveredItems = variant === 'panel' && (isAdmin || isMawkibOwner);
   const showMealPlanLink = showDeliveredItems;
+  const mealPlanVisible =
+    showMealPlanLink &&
+    isReservationMealPlanLinkVisible(reservation, { isAdmin, isMawkibOwner });
 
   const buttonClass =
     variant === 'guest'
@@ -68,19 +72,21 @@ export function ReservationToolsCard({
   return (
     <ToolsCardShell variant={variant}>
       {showDeliveredItems && reservationId != null && (
-        <div className="flex w-full flex-wrap gap-2">
+        <div
+          className={`grid w-full gap-2 ${mealPlanVisible ? 'grid-cols-2' : 'grid-cols-1'}`}
+        >
           <ReservationDeliveredItemsButton
             reservation={reservation}
             reservationId={reservationId}
             onUpdate={onDeliveredItemsUpdate}
-            className={`${buttonClass} min-w-0 flex-1 sm:flex-none`}
+            className={`${buttonClass} w-full min-w-0`}
           />
           {showMealPlanLink && (
             <ReservationMealPlanLink
               reservation={reservation}
               isAdmin={isAdmin}
               isMawkibOwner={isMawkibOwner}
-              className={`${buttonClass} min-w-0 flex-1 sm:flex-none`}
+              className={`${buttonClass} w-full min-w-0`}
             />
           )}
         </div>

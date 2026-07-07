@@ -16,7 +16,7 @@ import type { ReservationFormSuccess } from "./ReservationForm";
 type GuestSuccess = Extract<ReservationFormSuccess, { variant: "guest" }>;
 
 const FAST_MODE_CARD_HINT =
-  "لطفاً از این کارت عکس تهیه فرمایید و همراه خود داشته باشید.";
+  "عکس رزرو شما هم اکنون دانلود می شود . لطفا  ان را نزد خود نگه دارید ";
 
 function SuccessIcon() {
   return (

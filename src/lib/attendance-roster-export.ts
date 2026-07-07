@@ -1,6 +1,7 @@
 import { formatPersianNumber } from './capacity';
 import { formatDurationFaWords } from './format-duration-fa';
 import { formatTimeFromIso } from './format-time';
+import { attendanceRosterTitle } from './attendance-page-utils';
 import type { AttendanceRosterResponse } from './attendance-roster';
 
 function excelCell(value: string, style = 'rtl'): string {
@@ -19,7 +20,7 @@ export function buildAttendanceRosterExcelExport(
   data: AttendanceRosterResponse,
 ): string {
   const isAbsent = data.kind === 'absent';
-  const title = isAbsent ? 'لیست غائبین' : 'لیست حاضرین';
+  const title = attendanceRosterTitle(data.kind);
   const durationHeader = isAbsent ? 'مدت زمان عدم حضور' : 'مدت حضور';
 
   const headers = isAbsent

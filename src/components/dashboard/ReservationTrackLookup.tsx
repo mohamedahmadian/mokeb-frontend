@@ -1,6 +1,13 @@
 import { ConfirmDialog } from "../ConfirmDialog";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { formatPersianDateRange } from "../ui/PersianDateRangePicker";
 import { NavIcon } from "../ui/NavIcons";
@@ -17,7 +24,13 @@ import {
 } from "../reservations/ReservationAttendanceModal";
 import { GuestCountBadges } from "../reservations/GuestCountBadges";
 import { RESERVATION_STATUS_LABELS } from "../../lib/constants";
-import { formatTimeFa, formatTimeFromIso, buildRecordedAtFromDateAndTime, currentTimeInputValue, todayLocalGregorianDateString } from "../../lib/format-time";
+import {
+  formatTimeFa,
+  formatTimeFromIso,
+  buildRecordedAtFromDateAndTime,
+  currentTimeInputValue,
+  todayLocalGregorianDateString,
+} from "../../lib/format-time";
 import { reservationEventsApi } from "../../lib/reservation-events-api";
 import {
   getPresenceCardClass,
@@ -133,7 +146,8 @@ function TrackResultRow({
   const checkOutTime = hasActualCheckOut
     ? formatTimeFromIso(reservation.actualCheckOutAt) || "—"
     : formatTimeFa(
-        reservation.plannedCheckOutTime ?? reservation.mawkib.defaultCheckOutTime,
+        reservation.plannedCheckOutTime ??
+          reservation.mawkib.defaultCheckOutTime,
       );
   const guestCount = (
     <GuestCountBadges
@@ -162,190 +176,252 @@ function TrackResultRow({
   const extendBtnClass = `${dashboardSecondaryBtn} border-[#c5d4e8] bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6]`;
 
   return (
-    <section className={getPresenceCardClass(showPresence ? presence : undefined)}>
+    <section
+      className={getPresenceCardClass(showPresence ? presence : undefined)}
+    >
       <div className="p-3 sm:p-4">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-        <div className="flex min-w-0 items-start gap-2.5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#e8eef6] text-[#4a6fa5]">
-            <NavIcon name="pilgrims" className="h-4 w-4" strokeWidth={1.75} />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-slate-800">
-              {reservation.pilgrim.fullName}
-            </p>
-            <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-slate-500">
-              <NavIcon name="mawkibs" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-              <span className="truncate">{reservation.mawkib.name}</span>
-            </p>
+          <div className="flex min-w-0 items-start gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#e8eef6] text-[#4a6fa5]">
+              <NavIcon name="pilgrims" className="h-4 w-4" strokeWidth={1.75} />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-slate-800">
+                {reservation.pilgrim.fullName}
+              </p>
+              <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-slate-500">
+                <NavIcon
+                  name="mawkibs"
+                  className="h-3.5 w-3.5 shrink-0"
+                  strokeWidth={1.75}
+                />
+                <span className="truncate">{reservation.mawkib.name}</span>
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
+            {showPresence && presence && <PresenceBadge presence={presence} />}
+            <StatusBadge status={reservation.status} />
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-1.5">
-          {showPresence && presence && <PresenceBadge presence={presence} />}
-          <StatusBadge status={reservation.status} />
-        </div>
-      </div>
 
-      <div
-        className={`mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 ${showCheckInOutTimes ? "lg:grid-cols-6" : "lg:grid-cols-4"}`}
-      >
-        <InfoCell
-          icon={<NavIcon name="track" className="h-3.5 w-3.5" strokeWidth={1.75} />}
-          label="کد رزرو"
-          value={reservation.trackingCode}
-          dir="ltr"
-        />
-        <InfoCell
-          icon={<NavIcon name="login" className="h-3.5 w-3.5" strokeWidth={1.75} />}
-          label="موبایل"
-          value={reservation.pilgrim.mobileNumber}
-          dir="ltr"
-        />
-        <InfoCell
-          icon={<NavIcon name="reserve" className="h-3.5 w-3.5" strokeWidth={1.75} />}
-          label="تاریخ اقامت"
-          value={stayRange}
-        />
-        <InfoCell
-          icon={<NavIcon name="users" className="h-3.5 w-3.5" strokeWidth={1.75} />}
-          label="تعداد"
-          value={guestCount}
-        />
-        {showCheckInOutTimes && (
-          <>
-            <InfoCell
-              icon={<NavIcon name="check" className="h-3.5 w-3.5" strokeWidth={1.75} />}
-              label={hasActualCheckIn ? "ورود واقعی" : "ساعت ورود"}
-              value={checkInTime}
-              dir="ltr"
-              accent={hasActualCheckIn}
-              valueBold
-            />
-            <InfoCell
-              icon={<NavIcon name="logout" className="h-3.5 w-3.5" strokeWidth={1.75} />}
-              label={hasActualCheckOut ? "خروج واقعی" : "ساعت خروج"}
-              value={checkOutTime}
-              dir="ltr"
-              accent={hasActualCheckOut}
-              valueBold
-            />
-          </>
-        )}
-      </div>
-
-      <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-        <Link
-          ref={detailsLinkRef}
-          to={`/reservations/${reservation.id}`}
-          className={`${dashboardSecondaryBtn} ${
-            highlightDetails
-              ? "border-[#4a6fa5] bg-[#f0f4fa] text-[#4a6fa5] ring-2 ring-[#4a6fa5]/25 focus:outline-none focus-visible:ring-[#4a6fa5]/40"
-              : ""
-          }`}
+        <div
+          className={`mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 ${showCheckInOutTimes ? "lg:grid-cols-6" : "lg:grid-cols-4"}`}
         >
-          <NavIcon name="info" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-          مشاهده جزئیات
-        </Link>
-        <ReservationMealPlanLink
-          reservation={reservation}
-          isAdmin={isAdmin}
-          isMawkibOwner={isMawkibOwner}
-          className={`${dashboardSecondaryBtn} border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100`}
-        />
-        {showCheckIn && canCheckIn && (
-          <button
-            type="button"
-            onClick={() => onOpenAttendance(reservation.id, "check-in")}
-            disabled={attendanceLoading}
-            className={`${btnPrimary} inline-flex shrink-0 items-center justify-center gap-1.5 !min-h-8 !px-2.5 !py-1.5 !text-[11px] !bg-emerald-600 hover:!bg-emerald-700`}
-          >
-            <NavIcon name="login" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-            {attendanceLoading ? "..." : "ثبت ورود"}
-          </button>
-        )}
-        <ReservationDeliveredItemsButton
-          reservation={reservation}
-          reservationId={reservation.id}
-          className={dashboardSecondaryBtn}
-          onUpdate={onReservationUpdate}
-        />
-        <PilgrimCardViewButton
-          trackingCode={reservation.trackingCode}
-          reservation={reservation}
-          className={dashboardSecondaryBtn}
-        />
-        <ReservationUserCardPrintButton
-          reservation={reservation}
-          className={dashboardSecondaryBtn}
-        />
-        <MawkibCardPrintButton
-          data={reservationMawkibToCardData(reservation.mawkib)}
-          className={dashboardSecondaryBtn}
-        />
-        {showExtend && (
-          <button
-            type="button"
-            onClick={() => onRequestExtend(reservation.id)}
-            disabled={extendLoadingId === reservation.id}
-            className={extendBtnClass}
-          >
-            <svg
-              className="h-3.5 w-3.5 shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-              aria-hidden
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+          <InfoCell
+            icon={
+              <NavIcon
+                name="track"
+                className="h-3.5 w-3.5"
+                strokeWidth={1.75}
               />
-            </svg>
-            {extendLoadingId === reservation.id ? "..." : "تمدید رزرو"}
-          </button>
-        )}
-        {(canTempOut || canTempIn || (showCheckIn && canCheckOut)) && (
-          <div className="ms-auto flex flex-wrap gap-2">
-            {canTempOut && (
-              <button
-                type="button"
-                onClick={() => onRecordTempEvent(reservation.id, "TEMP_OUT")}
-                disabled={attendanceLoading}
-                className={tempOutActionBtn}
-                title="خروج موقت"
+            }
+            label="کد رزرو"
+            value={reservation.trackingCode}
+            dir="ltr"
+          />
+          <InfoCell
+            icon={
+              <NavIcon
+                name="login"
+                className="h-3.5 w-3.5"
+                strokeWidth={1.75}
+              />
+            }
+            label="موبایل"
+            value={reservation.pilgrim.mobileNumber}
+            dir="ltr"
+          />
+          <InfoCell
+            icon={
+              <NavIcon
+                name="reserve"
+                className="h-3.5 w-3.5"
+                strokeWidth={1.75}
+              />
+            }
+            label="تاریخ اقامت"
+            value={stayRange}
+          />
+          <InfoCell
+            icon={
+              <NavIcon
+                name="users"
+                className="h-3.5 w-3.5"
+                strokeWidth={1.75}
+              />
+            }
+            label="تعداد"
+            value={guestCount}
+          />
+          {showCheckInOutTimes && (
+            <>
+              <InfoCell
+                icon={
+                  <NavIcon
+                    name="check"
+                    className="h-3.5 w-3.5"
+                    strokeWidth={1.75}
+                  />
+                }
+                label={hasActualCheckIn ? "ورود واقعی" : "ساعت ورود"}
+                value={checkInTime}
+                dir="ltr"
+                accent={hasActualCheckIn}
+                valueBold
+              />
+              <InfoCell
+                icon={
+                  <NavIcon
+                    name="logout"
+                    className="h-3.5 w-3.5"
+                    strokeWidth={1.75}
+                  />
+                }
+                label={hasActualCheckOut ? "خروج واقعی" : "ساعت خروج"}
+                value={checkOutTime}
+                dir="ltr"
+                accent={hasActualCheckOut}
+                valueBold
+              />
+            </>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+          <Link
+            ref={detailsLinkRef}
+            to={`/reservations/${reservation.id}`}
+            className={`${dashboardSecondaryBtn} ${
+              highlightDetails
+                ? "border-[#4a6fa5] bg-[#f0f4fa] text-[#4a6fa5] ring-2 ring-[#4a6fa5]/25 focus:outline-none focus-visible:ring-[#4a6fa5]/40"
+                : ""
+            }`}
+          >
+            <NavIcon
+              name="info"
+              className="h-3.5 w-3.5 shrink-0"
+              strokeWidth={1.75}
+            />
+            مشاهده جزئیات
+          </Link>
+          <ReservationMealPlanLink
+            reservation={reservation}
+            isAdmin={isAdmin}
+            isMawkibOwner={isMawkibOwner}
+            className={`${dashboardSecondaryBtn} border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100`}
+          />
+          {showCheckIn && canCheckIn && (
+            <button
+              type="button"
+              onClick={() => onOpenAttendance(reservation.id, "check-in")}
+              disabled={attendanceLoading}
+              className={`${btnPrimary} inline-flex shrink-0 items-center justify-center gap-1.5 !min-h-8 !px-2.5 !py-1.5 !text-[11px] !bg-emerald-600 hover:!bg-emerald-700`}
+            >
+              <NavIcon
+                name="login"
+                className="h-3.5 w-3.5 shrink-0"
+                strokeWidth={1.75}
+              />
+              {attendanceLoading ? "..." : "ثبت ورود"}
+            </button>
+          )}
+          <ReservationDeliveredItemsButton
+            reservation={reservation}
+            reservationId={reservation.id}
+            className={dashboardSecondaryBtn}
+            onUpdate={onReservationUpdate}
+          />
+          <PilgrimCardViewButton
+            trackingCode={reservation.trackingCode}
+            reservation={reservation}
+            className={dashboardSecondaryBtn}
+          />
+          <ReservationUserCardPrintButton
+            reservation={reservation}
+            className={dashboardSecondaryBtn}
+          />
+          <MawkibCardPrintButton
+            data={reservationMawkibToCardData(reservation.mawkib)}
+            className={dashboardSecondaryBtn}
+          />
+          {showExtend && (
+            <button
+              type="button"
+              onClick={() => onRequestExtend(reservation.id)}
+              disabled={extendLoadingId === reservation.id}
+              className={extendBtnClass}
+            >
+              <svg
+                className="h-3.5 w-3.5 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                aria-hidden
               >
-                <NavIcon name="logout" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                {attendanceLoading ? "..." : "خروج موقت"}
-              </button>
-            )}
-            {canTempIn && (
-              <button
-                type="button"
-                onClick={() => onRecordTempEvent(reservation.id, "TEMP_IN")}
-                disabled={attendanceLoading}
-                className={tempInActionBtn}
-                title="ورود موقت"
-              >
-                <NavIcon name="login" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                {attendanceLoading ? "..." : "ورود موقت"}
-              </button>
-            )}
-            {showCheckIn && canCheckOut && (
-              <button
-                type="button"
-                onClick={() => onRequestCheckOut(reservation.id)}
-                disabled={attendanceLoading}
-                className={dashboardSecondaryBtn}
-                title="خروج نهایی"
-              >
-                <NavIcon name="logout" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                {attendanceLoading ? "..." : "خروج نهایی"}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              {extendLoadingId === reservation.id ? "..." : "تمدید رزرو"}
+            </button>
+          )}
+          {(canTempOut || canTempIn || (showCheckIn && canCheckOut)) && (
+            <div className="ms-auto flex flex-wrap gap-2">
+              {canTempOut && (
+                <button
+                  type="button"
+                  onClick={() => onRecordTempEvent(reservation.id, "TEMP_OUT")}
+                  disabled={attendanceLoading}
+                  className={tempOutActionBtn}
+                  title="خروج موقت"
+                >
+                  <NavIcon
+                    name="logout"
+                    className="h-3.5 w-3.5 shrink-0"
+                    strokeWidth={1.75}
+                  />
+                  {attendanceLoading ? "..." : "خروج موقت"}
+                </button>
+              )}
+              {canTempIn && (
+                <button
+                  type="button"
+                  onClick={() => onRecordTempEvent(reservation.id, "TEMP_IN")}
+                  disabled={attendanceLoading}
+                  className={tempInActionBtn}
+                  title="ورود موقت"
+                >
+                  <NavIcon
+                    name="login"
+                    className="h-3.5 w-3.5 shrink-0"
+                    strokeWidth={1.75}
+                  />
+                  {attendanceLoading ? "..." : "ورود موقت"}
+                </button>
+              )}
+              {showCheckIn && canCheckOut && (
+                <button
+                  type="button"
+                  onClick={() => onRequestCheckOut(reservation.id)}
+                  disabled={attendanceLoading}
+                  className={dashboardSecondaryBtn}
+                  title="خروج نهایی"
+                >
+                  <NavIcon
+                    name="logout"
+                    className="h-3.5 w-3.5 shrink-0"
+                    strokeWidth={1.75}
+                  />
+                  {attendanceLoading ? "..." : "خروج نهایی"}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
@@ -356,7 +432,10 @@ type LookupResult = Awaited<
 >;
 
 interface ReservationTrackLookupProps {
-  lookupFn?: (query: string) => Promise<LookupResult>;
+  lookupFn?: (
+    query: string,
+    options?: { exact?: boolean },
+  ) => Promise<LookupResult>;
   showCheckIn?: boolean;
   showCheckInOutTimes?: boolean;
   /** Called after check-in/check-out succeeds (e.g. refresh dashboard stats). */
@@ -372,19 +451,24 @@ export function ReservationTrackLookup({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const isAdmin = user?.roles.includes('Admin') ?? false;
-  const isMawkibOwner = user?.roles.includes('MawkibOwner') ?? false;
+  const isAdmin = user?.roles.includes("Admin") ?? false;
+  const isMawkibOwner = user?.roles.includes("MawkibOwner") ?? false;
   const searchInputRef = useRef<HTMLInputElement>(null);
   const detailsLinkRef = useRef<HTMLAnchorElement>(null);
   const [query, setQuery] = useState("");
+  const [exactSearch, setExactSearch] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checkingInId, setCheckingInId] = useState<number | null>(null);
   const [attendanceModal, setAttendanceModal] = useState<{
     id: number;
     type: AttendanceType;
   } | null>(null);
-  const [checkOutConfirmId, setCheckOutConfirmId] = useState<number | null>(null);
-  const [extendReservationId, setExtendReservationId] = useState<number | null>(null);
+  const [checkOutConfirmId, setCheckOutConfirmId] = useState<number | null>(
+    null,
+  );
+  const [extendReservationId, setExtendReservationId] = useState<number | null>(
+    null,
+  );
   const [extendingId, setExtendingId] = useState<number | null>(null);
   const [results, setResults] = useState<Reservation[]>([]);
   const [searched, setSearched] = useState(false);
@@ -404,7 +488,7 @@ export function ReservationTrackLookup({
     setLoading(true);
     setSearched(true);
     try {
-      const result = await lookupFn(trimmed);
+      const result = await lookupFn(trimmed, { exact: exactSearch });
       const matches = result.reservation
         ? [result.reservation, ...result.alternatives]
         : [];
@@ -442,7 +526,9 @@ export function ReservationTrackLookup({
     setCheckOutConfirmId(null);
   };
 
-  const checkOutConfirmReservation = results.find((r) => r.id === checkOutConfirmId);
+  const checkOutConfirmReservation = results.find(
+    (r) => r.id === checkOutConfirmId,
+  );
   const extendReservation = results.find((r) => r.id === extendReservationId);
 
   const handleExtendSubmit = async (reservationEndDate: string) => {
@@ -486,10 +572,15 @@ export function ReservationTrackLookup({
       if (type === "check-out" && updated.mealPlanNotice) {
         toast.warning(updated.mealPlanNotice);
       }
-      await queryClient.invalidateQueries({ queryKey: ["reservation-events", id] });
+      await queryClient.invalidateQueries({
+        queryKey: ["reservation-events", id],
+      });
       onAttendanceSuccess?.(type);
     } catch (err) {
-      toastApiError(err, type === "check-in" ? "خطا در ثبت ورود" : "خطا در ثبت خروج");
+      toastApiError(
+        err,
+        type === "check-in" ? "خطا در ثبت ورود" : "خطا در ثبت خروج",
+      );
       throw err;
     } finally {
       setCheckingInId(null);
@@ -506,20 +597,29 @@ export function ReservationTrackLookup({
         todayLocalGregorianDateString(),
         currentTimeInputValue(),
       );
-      const result = await reservationEventsApi.record(id, { eventType, recordedAt });
-      if (result.reservation && typeof result.reservation === "object" && "id" in result.reservation) {
+      const result = await reservationEventsApi.record(id, {
+        eventType,
+        recordedAt,
+      });
+      if (
+        result.reservation &&
+        typeof result.reservation === "object" &&
+        "id" in result.reservation
+      ) {
         setResults((prev) =>
           prev.map((item) =>
-            item.id === id ? { ...item, ...(result.reservation as Reservation) } : item,
+            item.id === id
+              ? { ...item, ...(result.reservation as Reservation) }
+              : item,
           ),
         );
       }
       toast.success(
-        eventType === "TEMP_OUT"
-          ? "خروج موقت ثبت شد"
-          : "ورود موقت ثبت شد",
+        eventType === "TEMP_OUT" ? "خروج موقت ثبت شد" : "ورود موقت ثبت شد",
       );
-      onAttendanceSuccess?.(eventType === "TEMP_OUT" ? "check-out" : "check-in");
+      onAttendanceSuccess?.(
+        eventType === "TEMP_OUT" ? "check-out" : "check-in",
+      );
     } catch (err) {
       toastApiError(err, "خطا در ثبت رویداد");
     } finally {
@@ -567,7 +667,9 @@ export function ReservationTrackLookup({
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#e8eef6] text-[#4a6fa5]">
               <NavIcon name="track" className="h-4 w-4" strokeWidth={1.75} />
             </span>
-            <h2 className="text-sm font-semibold text-slate-800">پیگیری رزرو</h2>
+            <h2 className="text-sm font-semibold text-slate-800">
+              پیگیری رزرو
+            </h2>
           </div>
 
           <div className="flex flex-col gap-1.5 sm:flex-row">
@@ -590,15 +692,35 @@ export function ReservationTrackLookup({
               disabled={loading}
               className={`${btnPrimary} inline-flex shrink-0 items-center justify-center gap-1 !min-h-9 !px-3 !py-2 !text-xs sm:min-w-[5.5rem]`}
             >
-              <NavIcon name="track" className="h-3.5 w-3.5" strokeWidth={1.75} />
+              <NavIcon
+                name="track"
+                className="h-3.5 w-3.5"
+                strokeWidth={1.75}
+              />
               {loading ? "..." : "جستجو"}
             </button>
           </div>
+
+          <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-slate-600">
+            <input
+              type="checkbox"
+              checked={exactSearch}
+              onChange={(event) => {
+                setExactSearch(event.target.checked);
+                if (searched) resetResults();
+              }}
+              className="h-3.5 w-3.5 shrink-0 rounded border-slate-300 text-[#4a6fa5] focus:ring-[#4a6fa5]/25"
+            />
+            جستجوی عین عبارت وارد شده
+          </label>
         </form>
 
         {searched && !loading && results.length === 0 && (
           <div className="flex items-center gap-2 border-t border-slate-100 px-2.5 py-2 text-[11px] text-slate-500 sm:px-3">
-            <NavIcon name="track" className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+            <NavIcon
+              name="track"
+              className="h-3.5 w-3.5 shrink-0 text-slate-400"
+            />
             <span>رزروی با این مشخصات یافت نشد.</span>
           </div>
         )}
@@ -607,23 +729,23 @@ export function ReservationTrackLookup({
       {results.length > 0 && (
         <div className="space-y-3">
           {results.map((reservation, index) => (
-              <TrackResultRow
-                key={reservation.id}
-                reservation={reservation}
-                onOpenAttendance={handleOpenAttendance}
-                onRequestCheckOut={handleRequestCheckOut}
-                onRecordTempEvent={handleRecordTempEvent}
-                onReservationUpdate={handleReservationUpdate}
-                onRequestExtend={setExtendReservationId}
-                attendanceLoading={checkingInId === reservation.id}
-                extendLoadingId={extendingId}
-                detailsLinkRef={index === 0 ? detailsLinkRef : undefined}
-                highlightDetails={index === 0}
-                showCheckIn={showCheckIn}
-                showCheckInOutTimes={showCheckInOutTimes}
-                isAdmin={isAdmin}
-                isMawkibOwner={isMawkibOwner}
-              />
+            <TrackResultRow
+              key={reservation.id}
+              reservation={reservation}
+              onOpenAttendance={handleOpenAttendance}
+              onRequestCheckOut={handleRequestCheckOut}
+              onRecordTempEvent={handleRecordTempEvent}
+              onReservationUpdate={handleReservationUpdate}
+              onRequestExtend={setExtendReservationId}
+              attendanceLoading={checkingInId === reservation.id}
+              extendLoadingId={extendingId}
+              detailsLinkRef={index === 0 ? detailsLinkRef : undefined}
+              highlightDetails={index === 0}
+              showCheckIn={showCheckIn}
+              showCheckInOutTimes={showCheckInOutTimes}
+              isAdmin={isAdmin}
+              isMawkibOwner={isMawkibOwner}
+            />
           ))}
         </div>
       )}

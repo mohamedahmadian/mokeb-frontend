@@ -220,9 +220,15 @@ export function GuestReservationPersonalFields({
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div
+        className={`grid grid-cols-1 gap-3 ${
+          isFastMode ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
+        }`}
+      >
         <label className="block">
-          <span className="mb-1.5 block text-sm text-slate-600">شماره موبایل *</span>
+          <span className="mb-1.5 block text-sm text-slate-600">
+            {isFastMode ? 'تلفن همراه *' : 'شماره موبایل *'}
+          </span>
           <div className="flex items-start gap-2">
             <input
               ref={mobileRef}
@@ -280,9 +286,7 @@ export function GuestReservationPersonalFields({
             required
             value={fullName}
             onChange={(e) => onFullNameChange(e.target.value)}
-            onKeyDown={handleEnter(() =>
-              isFastMode ? onPasswordEnter() : focusField(nationalIdRef),
-            )}
+            onKeyDown={handleEnter(() => focusField(nationalIdRef))}
             readOnly={isDuplicateWithKnownName}
             className={`${reservationFormInputClass}${
               isDuplicateWithKnownName ? ' bg-slate-50 text-slate-700' : ''
@@ -290,6 +294,23 @@ export function GuestReservationPersonalFields({
             placeholder="مثلاً علی محمدی"
           />
         </label>
+        {isFastMode && (
+          <label className="block">
+            <span className="mb-1.5 block text-sm text-slate-600">کد ملی</span>
+            <input
+              ref={nationalIdRef}
+              type="text"
+              inputMode="numeric"
+              value={nationalId}
+              onChange={(e) => onNationalIdChange(e.target.value)}
+              onKeyDown={handleEnter(onPasswordEnter)}
+              className={reservationFormInputClass}
+              placeholder="0123456789"
+              dir="ltr"
+              maxLength={10}
+            />
+          </label>
+        )}
       </div>
 
       {!isFastMode && (

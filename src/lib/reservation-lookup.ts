@@ -45,6 +45,7 @@ export function scoreReservationLookupMatch(
 export function rankReservationsByLookupQuery(
   reservations: Reservation[],
   query: string,
+  exact = false,
 ): Reservation[] {
   const q = normalizeLookupQuery(query);
   if (!q || reservations.length === 0) return reservations;
@@ -54,11 +55,18 @@ export function rankReservationsByLookupQuery(
     score: scoreReservationLookupMatch(reservation, q),
   }));
 
+  const isExactScore = (score: number) =>
+    score === 1000 || score === 850 || score === 500;
+
   const maxScore = Math.max(...scored.map((item) => item.score));
-  const threshold = maxScore >= 800 ? 800 : 1;
+  const threshold = exact
+    ? 500
+    : maxScore >= 800
+      ? 800
+      : 1;
 
   return scored
-    .filter((item) => item.score >= threshold)
+    .filter((item) => item.score >= threshold && (!exact || isExactScore(item.score)))
     .sort((a, b) => b.score - a.score)
     .map((item) => item.reservation);
 }

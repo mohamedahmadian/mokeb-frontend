@@ -37,6 +37,7 @@ import {
   btnAction,
   btnDanger,
   filterInputClass,
+  tableViewport10RowsClass,
 } from "../lib/styles";
 import { mawkibsApi } from "../lib/mawkibs";
 import {
@@ -755,9 +756,10 @@ export function ReservationsPage() {
         )}
       </div>
 
-      <div className="hidden overflow-x-auto rounded-xl bg-white shadow-sm lg:block">
+      <div className="hidden overflow-hidden rounded-xl bg-white shadow-sm lg:block">
+        <div className={tableViewport10RowsClass}>
         <table className="w-full min-w-[640px] text-sm">
-          <thead className="bg-slate-50 text-slate-600">
+          <thead className="sticky top-0 z-10 bg-slate-50 text-slate-600 shadow-[0_1px_0_0_rgb(226_232_240)]">
             <tr>
               {isPilgrim && <th className="px-4 py-3 text-right">درخواست</th>}
               <th className="px-4 py-3 text-right">موکب</th>
@@ -844,6 +846,7 @@ export function ReservationsPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       <PaginationBar

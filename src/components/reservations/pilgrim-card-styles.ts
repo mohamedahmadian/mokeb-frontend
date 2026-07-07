@@ -4,9 +4,181 @@ export const CARD_TEAL = '#1a3f3f';
 export const CARD_TEAL_LIGHT = '#e8f3f3';
 
 /** استایل نمایش زائر کارت روی صفحه (نه فقط چاپ) */
-export function pilgrimCardScreenCss(rootClass = 'pilgrim-card-screen-root') {
-  const r = `.${rootClass}`;
+function pilgrimCardScreenCompactOverrides(r: string): string {
   return `
+${r} .pilgrim-card-shell {
+  max-width: 21rem;
+  border-width: 2px;
+  border-radius: 1rem;
+}
+
+${r} .pilgrim-card {
+  max-width: 21rem;
+}
+
+${r} .pilgrim-card__weekday-dot {
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 0.65rem;
+  height: 0.65rem;
+}
+
+${r} .pilgrim-card__weekday-banner {
+  padding: 0.45rem 0.65rem;
+  font-size: 0.78rem;
+}
+
+${r} .pilgrim-card__header {
+  min-height: 6.25rem;
+}
+
+${r} .pilgrim-card__header-qr {
+  padding: 0.55rem 0.5rem 0.55rem 0.6rem;
+  gap: 0.25rem;
+}
+
+${r} .pilgrim-card__header-qr svg {
+  width: 4.25rem;
+  height: 4.25rem;
+}
+
+${r} .pilgrim-card__header-qr-label {
+  font-size: 0.62rem;
+}
+
+${r} .pilgrim-card__header-qr-code {
+  font-size: 0.6rem;
+}
+
+${r} .pilgrim-card__hero-overlay {
+  padding: 0.55rem;
+  gap: 0.25rem;
+}
+
+${r} .pilgrim-card__hero-title {
+  font-size: 0.88rem;
+}
+
+${r} .pilgrim-card__hero-badge {
+  font-size: 0.62rem;
+  padding: 0.2rem 0.4rem;
+}
+
+${r} .pilgrim-card__hero-badge svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+${r} .pilgrim-card__stat {
+  padding: 0.45rem 0.25rem;
+  gap: 0.25rem;
+}
+
+${r} .pilgrim-card__circle-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+${r} .pilgrim-card__circle-icon svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+${r} .pilgrim-card__stat-label {
+  font-size: 0.6rem;
+}
+
+${r} .pilgrim-card__stat-value {
+  font-size: 0.68rem;
+}
+
+${r} .pilgrim-card__stat-subvalue {
+  font-size: 0.55rem;
+}
+
+${r} .pilgrim-card__panel {
+  margin: 0.5rem;
+  padding: 0.55rem;
+  border-radius: 0.5rem;
+}
+
+${r} .pilgrim-card__panel-title {
+  font-size: 0.72rem;
+  margin-bottom: 0.35rem;
+  gap: 0.25rem;
+}
+
+${r} .pilgrim-card__panel-title svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+${r} .pilgrim-card__details {
+  gap: 0.25rem;
+  margin-bottom: 0.35rem;
+}
+
+${r} .pilgrim-card__detail-row {
+  padding: 0.25rem 0;
+}
+
+${r} .pilgrim-card__detail-key {
+  font-size: 0.64rem;
+  gap: 0.25rem;
+}
+
+${r} .pilgrim-card__detail-value {
+  font-size: 0.66rem;
+}
+
+${r} .pilgrim-card__location-qr {
+  padding: 0.5rem;
+  gap: 0.25rem;
+}
+
+${r} .pilgrim-card__location-qr-code svg {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
+${r} .pilgrim-card__location-title {
+  font-size: 0.64rem;
+}
+
+${r} .pilgrim-card__location-caption {
+  font-size: 0.58rem;
+}
+
+${r} .pilgrim-card__map-page-link {
+  font-size: 0.66rem;
+}
+
+${r} .pilgrim-card__custom-note {
+  margin: 0 0.5rem 0.5rem;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.66rem;
+}
+
+${r} .pilgrim-card__footer {
+  margin: 0 0.5rem 0.5rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.62rem;
+  gap: 0.25rem;
+}
+
+${r} .pilgrim-card__footer svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+`;
+}
+
+export function pilgrimCardScreenCss(
+  rootClass = 'pilgrim-card-screen-root',
+  compact = false,
+): string {
+  const r = `.${rootClass}`;
+  const base = `
 ${PRINT_CARD_HERO_IMAGE_CSS}
 ${r} {
   display: flex;
@@ -446,4 +618,6 @@ ${r} .pilgrim-card__footer svg {
   flex-shrink: 0;
 }
 `;
+
+  return compact ? base + pilgrimCardScreenCompactOverrides(r) : base;
 }

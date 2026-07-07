@@ -176,8 +176,8 @@ export function PanelNewPilgrimOptionalFields({
               value={country}
               onChange={(value) => {
                 onCountryChange(value);
-                onProvinceChange('');
-                onCityChange('');
+                onProvinceChange("");
+                onCityChange("");
               }}
               inputClassName={reservationFormInputClass}
             />
@@ -201,8 +201,8 @@ export function PanelNewPilgrimOptionalFields({
             value={country}
             onChange={(value) => {
               onCountryChange(value);
-              onProvinceChange?.('');
-              onCityChange?.('');
+              onProvinceChange?.("");
+              onCityChange?.("");
             }}
             inputClassName={reservationFormInputClass}
           />
@@ -419,14 +419,14 @@ export function PanelNewPilgrimFields({
       {mobileCheckStatus === "duplicate" && existingUserFullName && (
         <p className="mt-1.5 rounded-lg border border-amber-100 bg-amber-50/80 px-2.5 py-2 text-xs leading-relaxed text-amber-800">
           این شماره متعلق به{" "}
-          <span className="font-semibold">{existingUserFullName}</span> می‌باشد و
-          این رزرو برای ایشان ثبت خواهد شد.
+          <span className="font-semibold">{existingUserFullName}</span> می‌باشد
+          و این رزرو برای ایشان ثبت خواهد شد.
         </p>
       )}
       {mobileCheckStatus === "duplicate" && !existingUserFullName && (
         <p className="mt-1.5 text-xs text-amber-700">
-          این شماره موبایل قبلاً در سیستم ثبت شده است؛ رزرو برای همان حساب کاربری
-          ثبت می‌شود.
+          این شماره موبایل قبلاً در سیستم ثبت شده است؛ رزرو برای همان حساب
+          کاربری ثبت می‌شود.
         </p>
       )}
     </label>

@@ -128,6 +128,10 @@ async function waitForImages(root: HTMLElement): Promise<void> {
   );
 }
 
+/** A5 printable area with 8mm margins (148×210mm sheet). */
+const A5_PRINT_MAX_WIDTH_MM = 132;
+const A5_PRINT_MAX_HEIGHT_MM = 194;
+
 function buildPrintDocumentHtml(imageSrc: string): string {
   return `<!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -136,10 +140,22 @@ function buildPrintDocumentHtml(imageSrc: string): string {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>زائر کارت</title>
   <style>
-    @page { margin: 8mm; }
+    @page { size: A5 portrait; margin: 8mm; }
     html, body { margin: 0; padding: 0; background: #fff; }
-    body { display: flex; justify-content: center; }
-    img { max-width: 100%; height: auto; display: block; }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100%;
+    }
+    img {
+      display: block;
+      width: auto;
+      height: auto;
+      max-width: ${A5_PRINT_MAX_WIDTH_MM}mm;
+      max-height: ${A5_PRINT_MAX_HEIGHT_MM}mm;
+      object-fit: contain;
+    }
   </style>
 </head>
 <body>
@@ -210,6 +226,10 @@ function runPrintInWindow(
         mobile: isMobilePrintEnvironment(),
         viaPopup: win !== window,
         imageSrcKind: imageSrc.startsWith('blob:') ? 'blob' : 'data',
+        naturalWidth: img?.naturalWidth ?? 0,
+        naturalHeight: img?.naturalHeight ?? 0,
+        a5MaxWidthMm: A5_PRINT_MAX_WIDTH_MM,
+        a5MaxHeightMm: A5_PRINT_MAX_HEIGHT_MM,
       });
 
       win.addEventListener('afterprint', finish, { once: true });
@@ -276,11 +296,51 @@ export async function downloadPilgrimCardImage(
   filename: string,
 ): Promise<void> {
   const dataUrl = await capturePilgrimCardPng(element);
+  const blob = await (await fetch(dataUrl)).blob();
+  const blobUrl = URL.createObjectURL(blob);
 
   const link = document.createElement('a');
+  link.href = blobUrl;
   link.download = filename;
-  link.href = dataUrl;
+  link.rel = 'noopener';
+  link.style.display = 'none';
+  document.body.appendChild(link);
+
+  // #region agent log
+  fetch('http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Debug-Session-Id': '06086f',
+    },
+    body: JSON.stringify({
+      sessionId: '06086f',
+      hypothesisId: 'H5',
+      location: 'pilgrim-card-download.ts:download',
+      message: 'Triggering file download',
+      data: {
+        filename,
+        blobSize: blob.size,
+        userActivationActive:
+          typeof navigator !== 'undefined' &&
+          'userActivation' in navigator &&
+          navigator.userActivation?.isActive,
+        userActivationHasBeenActive:
+          typeof navigator !== 'undefined' &&
+          'userActivation' in navigator &&
+          navigator.userActivation?.hasBeenActive,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
+
   link.click();
+
+  window.setTimeout(() => {
+    URL.revokeObjectURL(blobUrl);
+    link.remove();
+  }, 250);
 }
 
 export async function printPilgrimCardImage(

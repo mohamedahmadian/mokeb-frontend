@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatPersianDateRange } from '../ui/PersianDateRangePicker';
+import { PersianDateInput } from '../ui/PersianDateInput';
 import { NavIcon } from '../ui/NavIcons';
 import { formatPersianNumber } from '../../lib/capacity';
 import {
@@ -14,6 +15,12 @@ import {
   type StayDurationPreset,
 } from '../../lib/date-range';
 import { toast, toastApiError } from '../../lib/toast';
+import { getApiErrorMessage } from '../../lib/constants';
+import {
+  isReservationConflictMessage,
+  parseReservationConflictError,
+  type ReservationConflictInfo,
+} from '../../lib/reservation-conflict';
 import { mawkibsApi } from '../../lib/mawkibs';
 import { reservationsApi } from '../../lib/reservations';
 import { usersApi } from '../../lib/users';
@@ -33,6 +40,7 @@ import {
   IconCalendar,
   IconUser,
   SectionHeader,
+  reservationFormInputClass,
   todayDateString,
 } from './reservation-form-ui';
 import {
@@ -82,6 +90,14 @@ export function QuickReservationForm({
   const [dateStart, setDateStart] = useState(today);
   const [dateEnd, setDateEnd] = useState(() => defaultReservationEndDate(today, 1));
   const [submitting, setSubmitting] = useState(false);
+  const [conflictInfo, setConflictInfo] = useState<ReservationConflictInfo | null>(null);
+  const [showManualDateFields, setShowManualDateFields] = useState(false);
+  const staySectionRef = useRef<HTMLElement>(null);
+
+  const minimumEndDate = useMemo(
+    () => (dateStart ? defaultReservationEndDate(dateStart, 1) : today),
+    [dateStart, today],
+  );
 
   const { data: mawkib, isLoading: mawkibLoading, isError: mawkibError } = useQuery({
     queryKey: ['mawkib', mawkibId],
@@ -189,6 +205,42 @@ export function QuickReservationForm({
     setDateEnd(defaultReservationEndDate(start, days));
   };
 
+  const handleDateStartChange = (start: string) => {
+    setDateStart(start);
+    if (start) {
+      const minEnd = defaultReservationEndDate(start, 1);
+      if (!dateEnd || dateEnd < minEnd) {
+        setDateEnd(minEnd);
+      }
+    }
+  };
+
+  const handleDateEndChange = (end: string) => {
+    if (end && dateStart) {
+      const minEnd = defaultReservationEndDate(dateStart, 1);
+      if (end < minEnd) {
+        if (end < dateStart) {
+          toast.error('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد');
+        } else {
+          toast.error('حداقل مدت اقامت یک روز است');
+        }
+        setDateEnd(minEnd);
+        return;
+      }
+    }
+    setDateEnd(end);
+  };
+
+  const revealDateConflictUi = (conflict: ReservationConflictInfo | null) => {
+    setShowManualDateFields(true);
+    if (conflict) {
+      setConflictInfo(conflict);
+    }
+    requestAnimationFrame(() => {
+      staySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -284,8 +336,43 @@ export function QuickReservationForm({
       }
 
       toast.success('رزرو سریع با موفقیت ثبت شد');
+      setConflictInfo(null);
+      setShowManualDateFields(false);
       onSuccess(created.id);
     } catch (err) {
+      const apiMessage = getApiErrorMessage(err, '');
+      const conflict = parseReservationConflictError(err);
+      const isConflict =
+        conflict != null ||
+        (apiMessage.length > 0 && isReservationConflictMessage(apiMessage));
+
+      // #region agent log
+      fetch('http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '06086f' },
+        body: JSON.stringify({
+          sessionId: '06086f',
+          location: 'QuickReservationForm.tsx:handleSubmit',
+          message: 'reservation submit error',
+          data: {
+            isConflict,
+            hasStructuredConflict: conflict != null,
+            apiMessage: apiMessage.slice(0, 120),
+            conflictDates: conflict
+              ? { start: conflict.reservationDate, end: conflict.reservationEndDate }
+              : null,
+          },
+          timestamp: Date.now(),
+          runId: 'conflict-ui',
+          hypothesisId: 'H1-H2',
+        }),
+      }).catch(() => {});
+      // #endregion
+
+      if (isConflict) {
+        revealDateConflictUi(conflict);
+      }
+
       toastApiError(err, 'خطا در ثبت رزرو سریع');
     } finally {
       setSubmitting(false);
@@ -376,22 +463,82 @@ export function QuickReservationForm({
 
       <hr className="border-slate-100" />
 
-      <section>
+      <section ref={staySectionRef} className="scroll-mt-24">
         <SectionHeader
           icon={<IconCalendar />}
           title="مدت اقامت"
           subtitle={staySectionSubtitle}
         />
-        <StayDurationPicker
-          today={today}
-          dateStart={dateStart}
-          dateEnd={dateEnd}
-          serviceStartDate={mawkib.serviceStartDate}
-          defaultReservationDays={mawkib.defaultReservationDays}
-          maxReservationDays={mawkib.maxReservationDays}
-          mawkibSelected
-          onSelect={handleStayDurationSelect}
-        />
+        <div className="space-y-4">
+          {conflictInfo && (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            >
+              <p className="font-semibold text-red-900">تداخل با رزرو قبلی</p>
+              <p className="mt-1 text-xs leading-relaxed text-red-800">
+                رزرو فعال قبلی
+                {conflictInfo.mawkibName ? ` در موکب «${conflictInfo.mawkibName}»` : ''}
+                {conflictInfo.trackingCode
+                  ? ` (کد پیگیری: ${conflictInfo.trackingCode})`
+                  : ''}{' '}
+                از{' '}
+                {formatPersianDateRange(
+                  conflictInfo.reservationDate,
+                  conflictInfo.reservationEndDate,
+                )}{' '}
+                است. لطفاً تاریخ شروع و پایان اقامت را تغییر دهید.
+              </p>
+            </div>
+          )}
+
+          {showManualDateFields && !conflictInfo && (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            >
+              <p className="font-semibold text-red-900">تداخل با رزرو قبلی</p>
+              <p className="mt-1 text-xs leading-relaxed">
+                بازه تاریخ انتخاب‌شده با رزرو فعال قبلی این زائر تداخل دارد. لطفاً
+                تاریخ شروع و پایان اقامت را تغییر دهید.
+              </p>
+            </div>
+          )}
+
+          <StayDurationPicker
+            today={today}
+            dateStart={dateStart}
+            dateEnd={dateEnd}
+            serviceStartDate={mawkib.serviceStartDate}
+            defaultReservationDays={mawkib.defaultReservationDays}
+            maxReservationDays={mawkib.maxReservationDays}
+            mawkibSelected
+            onSelect={handleStayDurationSelect}
+          />
+
+          {showManualDateFields && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <PersianDateInput
+                label="تاریخ شروع اقامت *"
+                value={dateStart}
+                onChange={handleDateStartChange}
+                placeholder="انتخاب تاریخ ورود"
+                minDate={today}
+                inputClassName={reservationFormInputClass}
+                clearable={false}
+              />
+              <PersianDateInput
+                label="تاریخ پایان اقامت *"
+                value={dateEnd}
+                onChange={handleDateEndChange}
+                placeholder="انتخاب تاریخ خروج"
+                minDate={minimumEndDate}
+                inputClassName={reservationFormInputClass}
+                clearable={false}
+              />
+            </div>
+          )}
+        </div>
       </section>
 
       <hr className="border-slate-100" />

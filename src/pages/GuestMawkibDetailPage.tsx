@@ -9,6 +9,7 @@ import { MawkibCapacityViewModal } from '../components/mawkibs/MawkibCapacityVie
 import { guestTheme } from '../lib/guest-theme';
 import { mawkibToCardData } from '../lib/mawkib-card';
 import { mawkibsApi } from '../lib/mawkibs';
+import { isMawkibOnlineReservationEnabled } from '../lib/mawkib-online-reservation';
 
 function IconMawkibs() {
   return (
@@ -144,7 +145,7 @@ export function GuestMawkibDetailPage() {
             mawkibName={mawkib.name}
             serviceStartDate={mawkib.serviceStartDate}
             serviceEndDate={mawkib.serviceEndDate}
-            guestReserveLinks
+            guestReserveLinks={isMawkibOnlineReservationEnabled(mawkib)}
           />
         </div>
       )}

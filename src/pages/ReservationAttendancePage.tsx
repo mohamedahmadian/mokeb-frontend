@@ -1,14 +1,18 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   AttendanceRosterModal,
   AttendanceRosterSidebarButtons,
 } from '../components/attendance/AttendanceRosterModal';
+import {
+  mergeLookupMatches,
+  ReservationLookupMatchesBar,
+} from '../components/reservations/ReservationLookupMatchesBar';
 import { PageHeader } from '../components/ui/PageHeader';
 import { NavIcon } from '../components/ui/NavIcons';
 import { ReservationAttendancePanel } from '../components/reservations/ReservationAttendancePanel';
-import { lookupOwnerReservationSingle } from '../lib/mawkib-owner-dashboard';
-import { lookupAdminReservationSingle } from '../lib/admin-dashboard';
+import { lookupOwnerReservation } from '../lib/mawkib-owner-dashboard';
+import { lookupAdminReservation } from '../lib/admin-dashboard';
 import type { AttendanceRosterKind } from '../lib/attendance-roster';
 import { useAuth } from '../contexts/AuthContext';
 import { btnAction, inputClass } from '../lib/styles';
@@ -25,42 +29,73 @@ export function ReservationAttendancePage() {
   const [query, setQuery] = useState(() => searchParams.get('q')?.trim() ?? '');
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [reservation, setReservation] = useState<Reservation | null>(null);
+  const [matches, setMatches] = useState<Reservation[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [rosterKind, setRosterKind] = useState<AttendanceRosterKind | null>(null);
 
-  const lookupFn = isAdmin ? lookupAdminReservationSingle : lookupOwnerReservationSingle;
+  const reservation = useMemo(
+    () => matches.find((item) => item.id === selectedId) ?? matches[0] ?? null,
+    [matches, selectedId],
+  );
+
+  const runSearch = useCallback(
+    async (searchQuery: string) => {
+      const trimmed = searchQuery.trim();
+      if (!trimmed) {
+        toast.error('کد ملی، موبایل یا شماره رزرو را وارد کنید');
+        return;
+      }
+
+      const lookup = isAdmin ? lookupAdminReservation : lookupOwnerReservation;
+
+      setLoading(true);
+      setSearched(true);
+      try {
+        const result = await lookup(trimmed);
+        const merged = mergeLookupMatches(result.reservation, result.alternatives);
+        setMatches(merged);
+        setSelectedId(merged[0]?.id ?? null);
+
+        if (merged.length === 0) {
+          toast.error('رزروی با این مشخصات یافت نشد');
+        }
+      } catch (err) {
+        setMatches([]);
+        setSelectedId(null);
+        toastApiError(err, 'خطا در جستجو');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [isAdmin],
+  );
 
   useEffect(() => {
     const q = searchParams.get('q')?.trim();
-    if (q) {
-      setQuery(q);
-      setReservation(null);
-      setSearched(false);
-    }
-  }, [searchParams]);
+    if (!q) return;
+    setQuery(q);
+    void runSearch(q);
+  }, [searchParams, runSearch]);
 
   const handleSearch = async (e?: FormEvent) => {
     e?.preventDefault();
-    const trimmed = query.trim();
-    if (!trimmed) {
-      toast.error('کد ملی، موبایل یا شماره رزرو را وارد کنید');
-      return;
-    }
+    await runSearch(query);
+  };
 
-    setLoading(true);
-    setSearched(true);
-    try {
-      const found = await lookupFn(trimmed);
-      setReservation(found);
-      if (!found) {
-        toast.error('رزروی با این مشخصات یافت نشد');
-      }
-    } catch (err) {
-      setReservation(null);
-      toastApiError(err, 'خطا در جستجو');
-    } finally {
-      setLoading(false);
-    }
+  const handleReservationUpdate = (updated: Reservation) => {
+    setMatches((prev) =>
+      prev.map((item) => (item.id === updated.id ? updated : item)),
+    );
+  };
+
+  const resetSearchState = () => {
+    setSearched(false);
+    setMatches([]);
+    setSelectedId(null);
+  };
+
+  const handleSelectMatch = async (item: Reservation) => {
+    setSelectedId(item.id);
   };
 
   return (
@@ -94,8 +129,7 @@ export function ReservationAttendancePage() {
                   onChange={(e) => {
                     setQuery(e.target.value);
                     if (searched) {
-                      setSearched(false);
-                      setReservation(null);
+                      resetSearchState();
                     }
                   }}
                   placeholder="موبایل، کد ملی یا شماره رزرو"
@@ -116,7 +150,7 @@ export function ReservationAttendancePage() {
               </div>
             </form>
 
-            {searched && !loading && !reservation && (
+            {searched && !loading && matches.length === 0 && (
               <div className="flex items-center gap-2 border-t border-slate-100 px-2.5 py-2 text-[11px] text-slate-500 sm:px-3">
                 <NavIcon name="track" className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                 <span>رزروی با این مشخصات یافت نشد.</span>
@@ -124,10 +158,18 @@ export function ReservationAttendancePage() {
             )}
           </section>
 
+          {matches.length > 1 && selectedId != null && (
+            <ReservationLookupMatchesBar
+              matches={matches}
+              selectedId={selectedId}
+              onSelect={handleSelectMatch}
+            />
+          )}
+
           {reservation && (
             <ReservationAttendancePanel
               reservation={reservation}
-              onReservationUpdate={setReservation}
+              onReservationUpdate={handleReservationUpdate}
             />
           )}
         </div>

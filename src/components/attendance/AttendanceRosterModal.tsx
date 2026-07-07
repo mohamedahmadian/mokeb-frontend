@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { MawkibFilterSelect } from '../mawkibs/MawkibFilterSelect';
 import { Modal } from '../Modal';
@@ -7,28 +7,27 @@ import {
   attendanceRosterApi,
   type AttendanceRosterKind,
   type AttendanceRosterResponse,
+  type AttendanceRosterRow,
 } from '../../lib/attendance-roster';
 import { downloadAttendanceRosterExcel } from '../../lib/attendance-roster-export';
 import { formatPersianNumber } from '../../lib/capacity';
 import { formatDurationFaWords } from '../../lib/format-duration-fa';
 import { formatTimeFromIso } from '../../lib/format-time';
-import { filterInputClass, btnAction } from '../../lib/styles';
+import { reservationEventsApi } from '../../lib/reservation-events-api';
+import { attendanceRosterTitle } from '../../lib/attendance-page-utils';
+import { filterInputClass, btnAction, btnPrimary } from '../../lib/styles';
 import { useAuth } from '../../contexts/AuthContext';
-import { toastApiError } from '../../lib/toast';
+import { toast, toastApiError } from '../../lib/toast';
 
 const rosterActionBtn = `${btnAction} inline-flex shrink-0 items-center justify-center gap-1.5 border !min-h-8 !px-2.5 !py-1.5 !text-[11px]`;
 const rosterSecondaryBtn = `${rosterActionBtn} border-slate-200 bg-white text-slate-700 hover:bg-slate-50`;
+const rosterPrimaryBtn = `${btnPrimary} inline-flex shrink-0 items-center justify-center gap-1.5 !min-h-8 !px-2.5 !py-1.5 !text-[11px]`;
 
 interface AttendanceRosterModalProps {
   open: boolean;
   kind: AttendanceRosterKind;
   onClose: () => void;
 }
-
-const TITLES: Record<AttendanceRosterKind, string> = {
-  absent: 'لیست غائبین',
-  present: 'لیست حاضرین',
-};
 
 export function AttendanceRosterModal({
   open,
@@ -40,6 +39,52 @@ export function AttendanceRosterModal({
   const [mawkibId, setMawkibId] = useState('');
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<AttendanceRosterResponse | null>(null);
+  const [registeringId, setRegisteringId] = useState<number | null>(null);
+
+  const parsedMawkibId = mawkibId ? Number.parseInt(mawkibId, 10) : undefined;
+
+  const loadRoster = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await attendanceRosterApi.get(kind, parsedMawkibId);
+      setData(result);
+
+      if (kind === 'absent') {
+        const notArrived = result.rows.filter(
+          (row) => row.absenceKind === 'NOT_ARRIVED',
+        ).length;
+        const tempOut = result.rows.filter(
+          (row) => row.absenceKind === 'TEMPORARILY_OUT',
+        ).length;
+
+        // #region agent log
+        fetch('http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '06086f' },
+          body: JSON.stringify({
+            sessionId: '06086f',
+            location: 'AttendanceRosterModal.tsx:loadRoster',
+            message: 'absent roster loaded',
+            data: {
+              total: result.rows.length,
+              notArrived,
+              tempOut,
+              mawkibId: parsedMawkibId ?? null,
+            },
+            timestamp: Date.now(),
+            runId: 'absent-roster',
+            hypothesisId: 'H1-H3',
+          }),
+        }).catch(() => {});
+        // #endregion
+      }
+    } catch (err) {
+      setData(null);
+      toastApiError(err, 'خطا در بارگذاری لیست');
+    } finally {
+      setLoading(false);
+    }
+  }, [kind, parsedMawkibId]);
 
   const { data: mawkibs = [] } = useQuery({
     queryKey: ['mawkibs-filter', isAdmin ? 'admin' : 'my'],
@@ -65,31 +110,29 @@ export function AttendanceRosterModal({
 
   useEffect(() => {
     if (!open) return;
+    void loadRoster();
+  }, [open, loadRoster]);
 
-    let cancelled = false;
-    setLoading(true);
+  const handleRegisterCheckIn = async (row: AttendanceRosterRow) => {
+    if (!row.registerEventType) return;
 
-    const parsedMawkibId = mawkibId ? Number.parseInt(mawkibId, 10) : undefined;
-
-    void attendanceRosterApi
-      .get(kind, parsedMawkibId)
-      .then((result) => {
-        if (!cancelled) setData(result);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setData(null);
-          toastApiError(err, 'خطا در بارگذاری لیست');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+    setRegisteringId(row.reservationId);
+    try {
+      await reservationEventsApi.record(row.reservationId, {
+        eventType: row.registerEventType,
       });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, kind, mawkibId]);
+      toast.success(
+        row.registerEventType === 'CHECK_IN'
+          ? 'ورود با موفقیت ثبت شد'
+          : 'بازگشت به موکب ثبت شد',
+      );
+      await loadRoster();
+    } catch (err) {
+      toastApiError(err, 'خطا در ثبت ورود');
+    } finally {
+      setRegisteringId(null);
+    }
+  };
 
   const isAbsent = kind === 'absent';
   const durationHeader = isAbsent ? 'مدت زمان عدم حضور' : 'مدت حضور';
@@ -98,10 +141,10 @@ export function AttendanceRosterModal({
     : null;
 
   return (
-    <Modal open={open} onClose={onClose} title={TITLES[kind]} size="xl">
+    <Modal open={open} onClose={onClose} title={attendanceRosterTitle(kind)} size="xl">
       <div className="space-y-4">
-        <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-3">
-          <label className="mb-1.5 block text-xs font-medium text-slate-600">
+        <div className="inline-flex w-fit max-w-full flex-wrap items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50/60 p-2.5">
+          <label className="shrink-0 text-xs font-medium text-slate-600">
             موکب
           </label>
           <MawkibFilterSelect
@@ -109,7 +152,7 @@ export function AttendanceRosterModal({
             onChange={setMawkibId}
             scope={isAdmin ? 'admin' : 'my'}
             placeholder="همه موکب‌ها"
-            className={`${filterInputClass} !min-h-9 w-full !py-2 !text-sm`}
+            className={`${filterInputClass} !min-h-9 !w-auto min-w-[10rem] max-w-xs !py-2 !text-sm`}
           />
         </div>
 
@@ -141,7 +184,7 @@ export function AttendanceRosterModal({
         ) : !data || data.rows.length === 0 ? (
           <p className="py-8 text-center text-sm text-slate-500">
             {isAbsent
-              ? 'در حال حاضر زائری با وضعیت غایب (خروج موقت) یافت نشد.'
+              ? 'در حال حاضر زائری با وضعیت «ورود نخورده» یا «خروج موقت» در بازه اقامت یافت نشد.'
               : 'در حال حاضر زائری با وضعیت حاضر در موکب یافت نشد.'}
           </p>
         ) : (
@@ -163,9 +206,14 @@ export function AttendanceRosterModal({
                     {durationHeader}
                   </th>
                   {isAbsent && (
-                    <th className="px-3 py-2.5 font-semibold text-slate-600">
-                      آخرین خروج
-                    </th>
+                    <>
+                      <th className="px-3 py-2.5 font-semibold text-slate-600">
+                        آخرین خروج
+                      </th>
+                      <th className="px-3 py-2.5 font-semibold text-slate-600">
+                        عملیات
+                      </th>
+                    </>
                   )}
                 </tr>
               </thead>
@@ -190,21 +238,38 @@ export function AttendanceRosterModal({
                         {durationLabel}
                       </td>
                       {isAbsent && (
-                        <td className="whitespace-nowrap px-3 py-2.5 text-slate-700" dir="ltr">
-                          {row.lastExitAt ? (
-                            <>
-                              {formatTimeFromIso(row.lastExitAt)}
-                              {row.durationMs > 0 && (
-                                <span className="text-slate-500">
-                                  {' '}
-                                  ({durationLabel})
-                                </span>
-                              )}
-                            </>
-                          ) : (
-                            '—'
-                          )}
-                        </td>
+                        <>
+                          <td className="whitespace-nowrap px-3 py-2.5 text-slate-700" dir="ltr">
+                            {row.lastExitAt ? (
+                              formatTimeFromIso(row.lastExitAt)
+                            ) : row.absenceKind === 'NOT_ARRIVED' ? (
+                              <span className="text-amber-700">ورود ثبت نشده</span>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-2.5">
+                            {row.registerEventType ? (
+                              <button
+                                type="button"
+                                disabled={registeringId === row.reservationId}
+                                onClick={() => void handleRegisterCheckIn(row)}
+                                className={rosterPrimaryBtn}
+                              >
+                                <NavIcon
+                                  name="login"
+                                  className="h-3.5 w-3.5 shrink-0"
+                                  strokeWidth={1.75}
+                                />
+                                {registeringId === row.reservationId
+                                  ? '...'
+                                  : 'ثبت ورود'}
+                              </button>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                        </>
                       )}
                     </tr>
                   );
@@ -228,6 +293,8 @@ export function AttendanceRosterSidebarButtons({
   className?: string;
 }) {
   const panelBtn = `${rosterSecondaryBtn} !min-h-10 w-full !justify-start !px-3 !py-2.5 !text-xs border-slate-200/90 shadow-sm`;
+  const absentTitle = attendanceRosterTitle('absent');
+  const presentTitle = attendanceRosterTitle('present');
 
   return (
     <aside className={`flex flex-col gap-2 lg:w-52 lg:shrink-0 ${className}`}>
@@ -241,11 +308,11 @@ export function AttendanceRosterSidebarButtons({
           </div>
           <button type="button" onClick={onOpenAbsent} className={panelBtn}>
             <NavIcon name="logout" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-            لیست غائبین
+            {absentTitle}
           </button>
           <button type="button" onClick={onOpenPresent} className={panelBtn}>
             <NavIcon name="login" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-            لیست حاضرین
+            {presentTitle}
           </button>
         </div>
       </section>
