@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import { Modal } from '../Modal';
 import type { Reservation } from '../../types';
 import { btnSecondary } from '../../lib/styles';
@@ -18,52 +17,6 @@ export function PilgrimCardModal({
   onClose,
   reservation,
 }: PilgrimCardModalProps) {
-  const cardWrapRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open || !reservation) return;
-
-    const measure = () => {
-      const wrap = cardWrapRef.current;
-      const shell = wrap?.querySelector('.pilgrim-card-shell') as HTMLElement | null;
-      const modalBody = wrap?.closest('[class*="overflow-y-auto"]') as HTMLElement | null;
-      const viewportH = window.innerHeight;
-      const cardH = shell?.offsetHeight ?? 0;
-      const modalBodyH = modalBody?.clientHeight ?? 0;
-      const modalScrollH = modalBody?.scrollHeight ?? 0;
-      const pageScrollH = document.documentElement.scrollHeight;
-      const pageClientH = document.documentElement.clientHeight;
-
-      // #region agent log
-      fetch('http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '06086f' },
-        body: JSON.stringify({
-          sessionId: '06086f',
-          location: 'PilgrimCardModal.tsx:measure',
-          message: 'pilgrim card modal layout',
-          data: {
-            compact: true,
-            cardH,
-            cardW: shell?.offsetWidth ?? 0,
-            modalBodyH,
-            modalScrollH,
-            modalOverflows: modalScrollH > modalBodyH,
-            viewportH,
-            pageOverflows: pageScrollH > pageClientH,
-          },
-          timestamp: Date.now(),
-          runId: 'post-fix',
-          hypothesisId: 'H1-H3',
-        }),
-      }).catch(() => {});
-      // #endregion
-    };
-
-    const id = requestAnimationFrame(measure);
-    return () => cancelAnimationFrame(id);
-  }, [open, reservation]);
-
   return (
     <Modal
       open={open}
@@ -80,7 +33,7 @@ export function PilgrimCardModal({
       }
     >
       {reservation ? (
-        <div ref={cardWrapRef} className="flex justify-center py-0">
+        <div className="flex justify-center py-0">
           <PilgrimCardScreenView
             reservation={reservation}
             showPrintButton={false}

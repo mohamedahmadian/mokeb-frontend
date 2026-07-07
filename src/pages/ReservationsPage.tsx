@@ -21,9 +21,7 @@ import { PaginationBar } from "../components/ui/PaginationBar";
 import {
   PersianDateInput,
   formatPersianDate,
-  formatPersianSlashDateFromGregorian,
-  toLocalGregorianDateString,
-  toPersianDigits,
+  formatPersianSlashDateTimeFromIso,
 } from "../components/ui/PersianDateInput";
 import { formatTimeFromIso } from "../lib/format-time";
 import { useAuth } from "../contexts/AuthContext";
@@ -107,25 +105,12 @@ function buildInitialAppliedFilters(
 }
 
 function RequestDateCell({ createdAt }: { createdAt: string }) {
-  const datePart = formatPersianSlashDateFromGregorian(
-    toLocalGregorianDateString(createdAt),
-  );
-  if (datePart === "—") return <>—</>;
-
-  const date = new Date(createdAt);
-  const time = Number.isNaN(date.getTime())
-    ? ""
-    : toPersianDigits(
-        `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`,
-      );
-
   return (
     <div
       dir="ltr"
-      className="whitespace-nowrap text-right font-[Vazir,ui-sans-serif,system-ui,sans-serif] tabular-nums"
+      className="whitespace-nowrap text-right text-[11px] text-slate-500 tabular-nums font-[Vazir,ui-sans-serif,system-ui,sans-serif]"
     >
-      <span>{datePart}</span>
-      {time ? <span>{` ${time}`}</span> : null}
+      {formatPersianSlashDateTimeFromIso(createdAt)}
     </div>
   );
 }
@@ -705,10 +690,10 @@ export function ReservationsPage() {
                 </span>
               }
               rows={[
-                ...(isPilgrim && r.createdAt
+                ...(r.createdAt
                   ? [
                       {
-                        label: "درخواست",
+                        label: isPilgrim ? "درخواست" : "تاریخ ثبت",
                         value: <RequestDateCell createdAt={r.createdAt} />,
                       },
                     ]
@@ -761,7 +746,9 @@ export function ReservationsPage() {
         <table className="w-full min-w-[640px] text-sm">
           <thead className="sticky top-0 z-10 bg-slate-50 text-slate-600 shadow-[0_1px_0_0_rgb(226_232_240)]">
             <tr>
-              {isPilgrim && <th className="px-4 py-3 text-right">درخواست</th>}
+              <th className="px-4 py-3 text-right">
+                {isPilgrim ? "درخواست" : "تاریخ ثبت"}
+              </th>
               <th className="px-4 py-3 text-right">موکب</th>
               {!isPilgrim && <th className="px-4 py-3 text-right">زائر</th>}
               <th className="px-4 py-3 text-right">تعداد</th>
@@ -775,7 +762,7 @@ export function ReservationsPage() {
             {reservations.length === 0 ? (
               <tr>
                 <td
-                  colSpan={isPilgrim ? 7 : 7}
+                  colSpan={isPilgrim ? 7 : 8}
                   className="px-4 py-8 text-center text-slate-400"
                 >
                   رزروی یافت نشد
@@ -797,15 +784,13 @@ export function ReservationsPage() {
                   role="link"
                   aria-label={`مشاهده جزئیات رزرو ${isPilgrim ? r.mawkib.name : r.pilgrim.fullName}`}
                 >
-                  {isPilgrim && (
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {r.createdAt ? (
-                        <RequestDateCell createdAt={r.createdAt} />
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  )}
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {r.createdAt ? (
+                      <RequestDateCell createdAt={r.createdAt} />
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="px-4 py-3">{r.mawkib.name}</td>
                   {!isPilgrim && (
                     <td className="px-4 py-3">

@@ -13,6 +13,7 @@ import { NavIcon } from '../components/ui/NavIcons';
 import { ReservationAttendancePanel } from '../components/reservations/ReservationAttendancePanel';
 import { lookupOwnerReservation } from '../lib/mawkib-owner-dashboard';
 import { lookupAdminReservation } from '../lib/admin-dashboard';
+import { filterConfirmedLookupMatches } from '../lib/reservation-lookup';
 import type { AttendanceRosterKind } from '../lib/attendance-roster';
 import { useAuth } from '../contexts/AuthContext';
 import { btnAction, inputClass } from '../lib/styles';
@@ -51,13 +52,15 @@ export function ReservationAttendancePage() {
       setLoading(true);
       setSearched(true);
       try {
-        const result = await lookup(trimmed);
-        const merged = mergeLookupMatches(result.reservation, result.alternatives);
+        const result = await lookup(trimmed, { status: 'Confirmed' });
+        const merged = filterConfirmedLookupMatches(
+          mergeLookupMatches(result.reservation, result.alternatives),
+        );
         setMatches(merged);
         setSelectedId(merged[0]?.id ?? null);
 
         if (merged.length === 0) {
-          toast.error('رزروی با این مشخصات یافت نشد');
+          toast.error('رزرو تایید شده‌ای با این مشخصات یافت نشد');
         }
       } catch (err) {
         setMatches([]);
@@ -153,7 +156,7 @@ export function ReservationAttendancePage() {
             {searched && !loading && matches.length === 0 && (
               <div className="flex items-center gap-2 border-t border-slate-100 px-2.5 py-2 text-[11px] text-slate-500 sm:px-3">
                 <NavIcon name="track" className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                <span>رزروی با این مشخصات یافت نشد.</span>
+                <span>رزرو تایید شده‌ای با این مشخصات یافت نشد.</span>
               </div>
             )}
           </section>

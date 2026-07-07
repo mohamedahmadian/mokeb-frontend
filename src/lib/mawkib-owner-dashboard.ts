@@ -1,6 +1,7 @@
 import { reservationsApi } from './reservations';
 import type { Reservation } from '../types';
 import type { AdminUser } from '../types';
+import type { ReservationStatus } from './reservations';
 import { rankReservationsByLookupQuery } from './reservation-lookup';
 
 export function normalizeLookupQuery(value: string): string {
@@ -19,7 +20,11 @@ export function normalizeLookupQuery(value: string): string {
 export async function lookupReservationList(
   query: string,
   fetchList: (filters: import('./reservations').ReservationFilters) => Promise<Reservation[]>,
-  options?: { single?: boolean; exact?: boolean },
+  options?: {
+    single?: boolean;
+    exact?: boolean;
+    status?: ReservationStatus;
+  },
 ): Promise<{
   reservation: Reservation | null;
   alternatives: Reservation[];
@@ -33,6 +38,7 @@ export async function lookupReservationList(
     lookupQuery: trimmed,
     lookupExact: options?.exact ?? false,
     all: true,
+    ...(options?.status ? { status: options.status } : {}),
     ...(options?.single ? { lookupSingle: true } : {}),
   });
 
@@ -56,7 +62,11 @@ export async function lookupReservationList(
 
 export async function lookupOwnerReservation(
   query: string,
-  options?: { single?: boolean; exact?: boolean },
+  options?: {
+    single?: boolean;
+    exact?: boolean;
+    status?: ReservationStatus;
+  },
 ): Promise<{
   reservation: Reservation | null;
   alternatives: Reservation[];

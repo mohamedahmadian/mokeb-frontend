@@ -1,5 +1,6 @@
 import { mawkibsApi } from './mawkibs';
 import { reservationsApi } from './reservations';
+import type { ReservationStatus } from './reservations';
 import {
   computeReservationStats,
   getPendingReservations,
@@ -17,7 +18,11 @@ export function getPendingMawkibs(mawkibs: Mawkib[], limit = 5): Mawkib[] {
 
 export async function lookupAdminReservation(
   query: string,
-  options?: { single?: boolean; exact?: boolean },
+  options?: {
+    single?: boolean;
+    exact?: boolean;
+    status?: ReservationStatus;
+  },
 ): Promise<{
   reservation: Reservation | null;
   alternatives: Reservation[];

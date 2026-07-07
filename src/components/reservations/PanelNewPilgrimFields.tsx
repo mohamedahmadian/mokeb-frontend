@@ -20,7 +20,7 @@ export type PanelMobileCheckStatus =
   | "duplicate";
 
 export const PANEL_OPTIONAL_FIELDS_COLLAPSE_LABEL =
-  "تکمیل اطلاعات اختیاری زائر (اختیاری)";
+  "اطلاعات تکمیلی ( اختیاری )";
 
 function MobileAvailableIcon() {
   return (
@@ -45,6 +45,7 @@ export interface PanelNewPilgrimOptionalFieldsProps {
   nationalId: string;
   gender: UserGender | "";
   birthDate: string;
+  travelOrigin?: string;
   country: string;
   passportNumber: string;
   nationalIdCardImageUrl: string | null;
@@ -56,6 +57,7 @@ export interface PanelNewPilgrimOptionalFieldsProps {
   onNationalIdChange: (value: string) => void;
   onGenderChange: (value: UserGender | "") => void;
   onBirthDateChange: (value: string) => void;
+  onTravelOriginChange?: (value: string) => void;
   onCountryChange: (value: string) => void;
   onPassportNumberChange: (value: string) => void;
   onNationalIdCardImageUrlChange: (value: string | null) => void;
@@ -70,6 +72,7 @@ export function PanelNewPilgrimOptionalFields({
   nationalId,
   gender,
   birthDate,
+  travelOrigin = "",
   country,
   passportNumber,
   nationalIdCardImageUrl,
@@ -80,6 +83,7 @@ export function PanelNewPilgrimOptionalFields({
   onNationalIdChange,
   onGenderChange,
   onBirthDateChange,
+  onTravelOriginChange,
   onCountryChange,
   onPassportNumberChange,
   onNationalIdCardImageUrlChange,
@@ -143,7 +147,7 @@ export function PanelNewPilgrimOptionalFields({
         </label>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <label className="block">
           <span className="mb-1.5 block text-sm text-slate-600">جنسیت</span>
           <GenderSelect
@@ -164,6 +168,16 @@ export function PanelNewPilgrimOptionalFields({
             maxDate={todayDateString()}
             placeholder="انتخاب تاریخ"
             inputClassName={reservationFormInputClass}
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-sm text-slate-600">مبدا سفر</span>
+          <input
+            type="text"
+            value={travelOrigin}
+            onChange={(event) => onTravelOriginChange?.(event.target.value)}
+            className={reservationFormInputClass}
+            placeholder="مثلاً تهران، مشهد"
           />
         </label>
       </div>
@@ -240,6 +254,7 @@ export function PanelNewPilgrimFields({
   nationalId,
   gender,
   birthDate,
+  travelOrigin = "",
   country,
   passportNumber,
   nationalIdCardImageUrl,
@@ -249,6 +264,7 @@ export function PanelNewPilgrimFields({
   onNationalIdChange,
   onGenderChange,
   onBirthDateChange,
+  onTravelOriginChange,
   onCountryChange,
   onPassportNumberChange,
   onNationalIdCardImageUrlChange,
@@ -367,6 +383,7 @@ export function PanelNewPilgrimFields({
       nationalId={nationalId}
       gender={gender}
       birthDate={birthDate}
+      travelOrigin={travelOrigin}
       country={country}
       passportNumber={passportNumber}
       nationalIdCardImageUrl={nationalIdCardImageUrl}
@@ -377,6 +394,7 @@ export function PanelNewPilgrimFields({
       onNationalIdChange={onNationalIdChange}
       onGenderChange={onGenderChange}
       onBirthDateChange={onBirthDateChange}
+      onTravelOriginChange={onTravelOriginChange}
       onCountryChange={onCountryChange}
       onPassportNumberChange={onPassportNumberChange}
       onNationalIdCardImageUrlChange={onNationalIdCardImageUrlChange}
@@ -528,6 +546,7 @@ export function PanelNewPilgrimFields({
       nationalId={nationalId}
       gender={gender}
       birthDate={birthDate}
+      travelOrigin={travelOrigin}
       country={country}
       passportNumber={passportNumber}
       nationalIdCardImageUrl={nationalIdCardImageUrl}
@@ -538,6 +557,7 @@ export function PanelNewPilgrimFields({
       onNationalIdChange={onNationalIdChange}
       onGenderChange={onGenderChange}
       onBirthDateChange={onBirthDateChange}
+      onTravelOriginChange={onTravelOriginChange}
       onCountryChange={onCountryChange}
       onPassportNumberChange={onPassportNumberChange}
       onNationalIdCardImageUrlChange={onNationalIdCardImageUrlChange}

@@ -1,6 +1,5 @@
 import { formatGuestCount, formatPersianNumber } from './capacity';
 import { RESERVATION_STATUS_LABELS } from './constants';
-import { getReservationStatusActionLabel } from './reservation-status';
 import {
   DEFAULT_CHECK_IN_TIME,
   DEFAULT_CHECK_OUT_TIME,
@@ -11,7 +10,7 @@ import type { Reservation } from '../types';
 
 export interface ReservationExportOptions {
   includePilgrim?: boolean;
-  /** Hide check-in/out, travel origin, and status-updated-by columns (pilgrim print) */
+  /** Hide check-in/out columns (pilgrim print) */
   compactColumns?: boolean;
 }
 
@@ -26,8 +25,6 @@ export interface ReservationExportRow {
   endDate: string;
   checkInTime: string;
   checkOutTime: string;
-  travelOrigin: string;
-  statusUpdatedBy: string;
   status: string;
 }
 
@@ -81,10 +78,6 @@ export function mapReservationsToExportRows(
     ),
     checkInTime: resolveCheckInTime(reservation),
     checkOutTime: resolveCheckOutTime(reservation),
-    travelOrigin: reservation.travelOrigin?.trim() || '—',
-    statusUpdatedBy: reservation.lastStatusUpdatedBy
-      ? `${getReservationStatusActionLabel(reservation) ?? 'به‌روزرسانی'} ${reservation.lastStatusUpdatedBy.fullName}`
-      : '—',
     status: RESERVATION_STATUS_LABELS[reservation.status] ?? reservation.status,
   }));
 }
@@ -120,8 +113,6 @@ function exportHeader(options: ReservationExportOptions): string[] {
     header.push(
       'ساعت ورود',
       'ساعت خروج',
-      'مبدا سفر',
-      'به‌روزرسانی توسط',
     );
   }
   header.push('وضعیت');
@@ -145,8 +136,6 @@ function rowCells(row: ReservationExportRow, options: ReservationExportOptions):
     cells.push(
       row.checkInTime,
       row.checkOutTime,
-      row.travelOrigin,
-      row.statusUpdatedBy,
     );
   }
   cells.push(row.status);

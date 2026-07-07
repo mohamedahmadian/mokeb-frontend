@@ -32,8 +32,17 @@ ${r} .pilgrim-card__header {
   min-height: 6.25rem;
 }
 
+${r} .pilgrim-card__header-hero,
 ${r} .pilgrim-card__header-qr {
-  padding: 0.55rem 0.5rem 0.55rem 0.6rem;
+  margin: 0.4rem;
+  border-radius: 0.55rem;
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--pilgrim-weekday-border, #94a3b8) 18%, transparent),
+    0 3px 10px color-mix(in srgb, var(--pilgrim-weekday-accent, #64748b) 10%, transparent);
+}
+
+${r} .pilgrim-card__header-qr {
+  padding: 0.55rem 0.5rem;
   gap: 0.25rem;
 }
 
@@ -257,18 +266,34 @@ ${r} .pilgrim-card {
 ${r} .pilgrim-card__header {
   display: flex;
   min-height: 8.5rem;
+  align-items: stretch;
+}
+
+${r} .pilgrim-card__header-hero,
+${r} .pilgrim-card__header-qr {
+  border: 1px solid var(--pilgrim-weekday-border, #94a3b8);
+  border-radius: 0.75rem;
+  margin: 0.55rem;
+  overflow: hidden;
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--pilgrim-weekday-border, #94a3b8) 20%, transparent),
+    0 4px 14px color-mix(in srgb, var(--pilgrim-weekday-accent, #64748b) 12%, transparent);
 }
 
 ${r} .pilgrim-card__header-qr {
   flex: 0 0 34%;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  padding: 0.85rem 0.75rem 0.85rem 0.85rem;
-  background: ${CARD_TEAL};
-  color: #fff;
+  padding: 0.75rem 0.65rem;
+  background: linear-gradient(
+    180deg,
+    var(--pilgrim-weekday-color, #f1f5f9) 0%,
+    color-mix(in srgb, var(--pilgrim-weekday-color, #f1f5f9) 58%, #ffffff) 100%
+  );
+  color: var(--pilgrim-weekday-text, #475569);
   direction: ltr;
 }
 
@@ -276,15 +301,15 @@ ${r} .pilgrim-card__header-qr svg {
   display: block;
   width: 5.75rem;
   height: 5.75rem;
+  margin-inline: auto;
 }
 
 ${r} .pilgrim-card__header-qr-label {
   margin: 0.25rem 0 0;
   width: 100%;
   font-size: 0.7rem;
-  font-weight: 500;
-  opacity: 0.92;
-  text-align: left;
+  font-weight: 600;
+  text-align: center;
 }
 
 ${r} .pilgrim-card__header-qr-code {
@@ -296,13 +321,13 @@ ${r} .pilgrim-card__header-qr-code {
   letter-spacing: 0.04em;
   line-height: 1.35;
   word-break: break-all;
-  text-align: left;
+  text-align: center;
 }
 
 ${r} .pilgrim-card__header-hero {
   flex: 1;
   position: relative;
-  overflow: hidden;
+  min-width: 0;
   background-color: #334155;
 }
 
@@ -565,13 +590,13 @@ ${r} .pilgrim-card__location-caption {
 }
 
 ${r} .pilgrim-card__map-link {
-  color: #2563eb;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  color: #1e293b;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 ${r} .pilgrim-card__map-link:hover {
-  color: #1d4ed8;
+  color: #1e293b;
 }
 
 ${r} .pilgrim-card__location-qr--interactive {

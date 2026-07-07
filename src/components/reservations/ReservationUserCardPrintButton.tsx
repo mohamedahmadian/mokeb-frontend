@@ -18,13 +18,14 @@ import {
 } from "../../lib/pilgrim-card-download";
 import { toast } from "../../lib/toast";
 import { formatPersianDateRange } from "../ui/PersianDateRangePicker";
-import { formatPresenceStayWeekdays } from "../../lib/pilgrim-card-weekday";
+import {
+  formatPresenceStayWeekdays,
+  getPilgrimCardWeekdayAccentForStayStart,
+} from "../../lib/pilgrim-card-weekday";
 import { resolveMawkibImageUrl } from "../mawkibs/MawkibThumbnail";
 import { PilgrimCardCapture } from "./PilgrimCardCapture";
 
 import type { Reservation } from "../../types";
-
-const CARD_TEAL = "#1a3f3f";
 
 function resolveHeroImage(imageUrl?: string | null): string {
   return resolveMawkibImageUrl(imageUrl);
@@ -323,6 +324,9 @@ export function ReservationUserCardPrintContent({
     reservation.reservationDate,
     reservation.reservationEndDate,
   );
+  const weekdayAccent = getPilgrimCardWeekdayAccentForStayStart(
+    reservation.reservationDate,
+  );
 
   return (
     <div className="pilgrim-card">
@@ -351,8 +355,8 @@ export function ReservationUserCardPrintContent({
             value={trackUrl}
             size={92}
             level="M"
-            fgColor="#ffffff"
-            bgColor={CARD_TEAL}
+            fgColor={weekdayAccent.textOnColor}
+            bgColor={weekdayAccent.color}
             aria-label={`QR زائر کارت ${reservation.trackingCode}`}
           />
           <p className="pilgrim-card__header-qr-label">شناسه رزرو</p>

@@ -21,7 +21,7 @@ export function GuestReservationPage() {
   const initialGuestReservationMode =
     parseGuestReservationModeParam(
       searchParams.get("mode") ?? searchParams.get("fast"),
-    ) ?? "fast";
+    ) ?? "normal";
   const [success, setSuccess] = useState<GuestSuccess | null>(null);
   const [selectedMawkibName, setSelectedMawkibName] = useState<string | null>(
     null,

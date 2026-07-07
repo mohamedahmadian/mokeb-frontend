@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatPersianDateRange } from '../ui/PersianDateRangePicker';
 import { PersianDateInput } from '../ui/PersianDateInput';
 import { NavIcon } from '../ui/NavIcons';
 import { formatPersianNumber } from '../../lib/capacity';
 import {
+  alignReservationEndToMawkibLimits,
   buildReservationOccupiedDates,
   defaultReservationEndDate,
   effectiveDefaultReservationDays,
@@ -12,9 +13,9 @@ import {
   effectiveStayStartDate,
   isWithinMaxReservationDays,
   reservationStayDayCount,
-  type StayDurationPreset,
 } from '../../lib/date-range';
 import { toast, toastApiError } from '../../lib/toast';
+import { reservationStayAlignAlertMessage } from '../../lib/reservation-stay-align';
 import { getApiErrorMessage } from '../../lib/constants';
 import {
   isReservationConflictMessage,
@@ -41,6 +42,7 @@ import {
   IconUser,
   SectionHeader,
   reservationFormInputClass,
+  StayDateAlignAlert,
   todayDateString,
 } from './reservation-form-ui';
 import {
@@ -50,7 +52,6 @@ import {
 } from './PanelNewPilgrimFields';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
 import { MawkibCapacityPills } from '../mawkibs/MawkibInfoCard';
-import { StayDurationPicker } from './StayDurationPicker';
 
 interface QuickReservationFormProps {
   mawkibId: number;
@@ -89,15 +90,10 @@ export function QuickReservationForm({
   const formRef = useRef<HTMLFormElement>(null);
   const [dateStart, setDateStart] = useState(today);
   const [dateEnd, setDateEnd] = useState(() => defaultReservationEndDate(today, 1));
+  const [stayDateAlignAlert, setStayDateAlignAlert] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [conflictInfo, setConflictInfo] = useState<ReservationConflictInfo | null>(null);
-  const [showManualDateFields, setShowManualDateFields] = useState(false);
   const staySectionRef = useRef<HTMLElement>(null);
-
-  const minimumEndDate = useMemo(
-    () => (dateStart ? defaultReservationEndDate(dateStart, 1) : today),
-    [dateStart, today],
-  );
 
   const { data: mawkib, isLoading: mawkibLoading, isError: mawkibError } = useQuery({
     queryKey: ['mawkib', mawkibId],
@@ -105,24 +101,53 @@ export function QuickReservationForm({
     enabled: mawkibId > 0,
   });
 
+  const minReservationDays = effectiveDefaultReservationDays(
+    mawkib?.defaultReservationDays,
+  );
+  const maxReservationDays = effectiveMaxReservationDays(mawkib?.maxReservationDays);
+
+  const minimumEndDate = useMemo(
+    () =>
+      dateStart
+        ? defaultReservationEndDate(dateStart, minReservationDays)
+        : today,
+    [dateStart, minReservationDays, today],
+  );
+
+  const maximumEndDate = useMemo(
+    () =>
+      dateStart
+        ? defaultReservationEndDate(dateStart, maxReservationDays)
+        : undefined,
+    [dateStart, maxReservationDays],
+  );
+
   const stayDays = reservationStayDayCount(dateStart, dateEnd);
   const dateRange = useMemo(
     () => buildReservationOccupiedDates(dateStart, dateEnd),
     [dateStart, dateEnd],
   );
 
-  const capacityQueries = useQueries({
-    queries: dateRange.map((date) => ({
-      queryKey: ['mawkib-capacity', mawkibId, date],
-      queryFn: () => reservationsApi.getCapacity(mawkibId, date),
-      enabled: mawkibId > 0,
-    })),
+  const inventoryEndDate =
+    dateRange.length > 0 ? dateRange[dateRange.length - 1] : '';
+
+  const { data: stayInventory, isLoading: capacityLoading } = useQuery({
+    queryKey: [
+      'mawkib-inventory',
+      'quick-reservation',
+      mawkibId,
+      dateStart,
+      inventoryEndDate,
+    ],
+    queryFn: () => mawkibsApi.getInventory(mawkibId, dateStart, inventoryEndDate),
+    enabled:
+      mawkibId > 0 && !!dateStart && !!inventoryEndDate && dateRange.length > 0,
   });
 
-  const capacityLoading = capacityQueries.some((query) => query.isLoading);
-  const capacitySnapshots = capacityQueries
-    .map((query) => query.data)
-    .filter((snapshot) => snapshot != null);
+  const capacitySnapshots =
+    stayInventory != null && stayInventory.days.length === dateRange.length
+      ? stayInventory.days
+      : [];
 
   const showMaleFields = (mawkib?.maleCapacity ?? 0) > 0;
   const showFemaleFields = (mawkib?.femaleCapacity ?? 0) > 0;
@@ -140,8 +165,9 @@ export function QuickReservationForm({
     if (!mawkib) return;
 
     const start = effectiveStayStartDate(today, mawkib.serviceStartDate);
+    const end = defaultReservationEndDate(start, mawkib.defaultReservationDays);
     setDateStart(start);
-    setDateEnd(defaultReservationEndDate(start, mawkib.defaultReservationDays));
+    setDateEnd(end);
 
     const hasMale = mawkib.maleCapacity > 0;
     const hasFemale = mawkib.femaleCapacity > 0;
@@ -199,40 +225,42 @@ export function QuickReservationForm({
     femaleMax,
   ]);
 
-  const handleStayDurationSelect = (days: StayDurationPreset) => {
-    const start = effectiveStayStartDate(today, mawkib?.serviceStartDate);
-    setDateStart(start);
-    setDateEnd(defaultReservationEndDate(start, days));
+  const clampEndDate = (start: string, end: string) => {
+    const result = alignReservationEndToMawkibLimits(
+      start,
+      end,
+      mawkib?.defaultReservationDays,
+      mawkib?.maxReservationDays,
+    );
+    const message = reservationStayAlignAlertMessage(result);
+    if (message) setStayDateAlignAlert(message);
+    return result.endDate;
   };
 
   const handleDateStartChange = (start: string) => {
+    setStayDateAlignAlert(null);
     setDateStart(start);
-    if (start) {
-      const minEnd = defaultReservationEndDate(start, 1);
-      if (!dateEnd || dateEnd < minEnd) {
-        setDateEnd(minEnd);
-      }
-    }
+    if (!start) return;
+    setDateEnd((currentEnd) => clampEndDate(start, currentEnd || minimumEndDate));
   };
 
   const handleDateEndChange = (end: string) => {
-    if (end && dateStart) {
-      const minEnd = defaultReservationEndDate(dateStart, 1);
-      if (end < minEnd) {
-        if (end < dateStart) {
-          toast.error('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد');
-        } else {
-          toast.error('حداقل مدت اقامت یک روز است');
-        }
-        setDateEnd(minEnd);
-        return;
-      }
+    setStayDateAlignAlert(null);
+    if (!end || !dateStart) {
+      setDateEnd(end);
+      return;
     }
-    setDateEnd(end);
+
+    if (end < dateStart) {
+      toast.error('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد');
+      setDateEnd(minimumEndDate);
+      return;
+    }
+
+    setDateEnd(clampEndDate(dateStart, end));
   };
 
   const revealDateConflictUi = (conflict: ReservationConflictInfo | null) => {
-    setShowManualDateFields(true);
     if (conflict) {
       setConflictInfo(conflict);
     }
@@ -266,8 +294,6 @@ export function QuickReservationForm({
       return;
     }
 
-    const minReservationDays = effectiveDefaultReservationDays(mawkib.defaultReservationDays);
-    const maxReservationDays = effectiveMaxReservationDays(mawkib.maxReservationDays);
     if (stayDays < minReservationDays) {
       toast.error(`حداقل بازه رزرو برای این موکب ${formatPersianNumber(minReservationDays)} روز است`);
       return;
@@ -331,13 +357,12 @@ export function QuickReservationForm({
       queryClient.invalidateQueries({ queryKey: ['reservations-my'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['pilgrims'] });
-      for (const date of dateRange) {
-        queryClient.invalidateQueries({ queryKey: ['mawkib-capacity', mawkibId, date] });
-      }
+      queryClient.invalidateQueries({
+        queryKey: ['mawkib-inventory', 'quick-reservation', mawkibId],
+      });
 
       toast.success('رزرو سریع با موفقیت ثبت شد');
       setConflictInfo(null);
-      setShowManualDateFields(false);
       onSuccess(created.id);
     } catch (err) {
       const apiMessage = getApiErrorMessage(err, '');
@@ -345,29 +370,6 @@ export function QuickReservationForm({
       const isConflict =
         conflict != null ||
         (apiMessage.length > 0 && isReservationConflictMessage(apiMessage));
-
-      // #region agent log
-      fetch('http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '06086f' },
-        body: JSON.stringify({
-          sessionId: '06086f',
-          location: 'QuickReservationForm.tsx:handleSubmit',
-          message: 'reservation submit error',
-          data: {
-            isConflict,
-            hasStructuredConflict: conflict != null,
-            apiMessage: apiMessage.slice(0, 120),
-            conflictDates: conflict
-              ? { start: conflict.reservationDate, end: conflict.reservationEndDate }
-              : null,
-          },
-          timestamp: Date.now(),
-          runId: 'conflict-ui',
-          hypothesisId: 'H1-H2',
-        }),
-      }).catch(() => {});
-      // #endregion
 
       if (isConflict) {
         revealDateConflictUi(conflict);
@@ -384,52 +386,29 @@ export function QuickReservationForm({
   }
 
   if (mawkibError || !mawkib) {
-    return (
-      <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-6 text-center text-sm text-red-600">
-        موکب یافت نشد یا دسترسی ندارید.
-      </div>
-    );
+    return <p className="text-sm text-red-600">خطا در بارگذاری اطلاعات موکب</p>;
   }
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className={`${guestTheme.cardLg} space-y-6`}>
-      <div className="rounded-xl border border-[#c5d4e8] bg-[#f0f4fa]/60 px-4 py-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 flex-1 items-start gap-3">
-            <div className="relative shrink-0">
-              <div
-                className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-[#c5d4e8]/70 to-[#e8eef6]/30 blur-[2px]"
-                aria-hidden
-              />
-              <MawkibThumbnail
-                imageUrl={mawkib.imageUrl}
-                name={mawkib.name}
-                className="relative h-14 w-14 rounded-xl shadow-md shadow-slate-300/50 ring-2 ring-white sm:h-16 sm:w-16"
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-slate-800">{mawkib.name}</p>
-              <p className="mt-1 text-xs text-slate-500">
-                رزرو سریع — بازه {formatPersianNumber(stayDays)} روزه
-              </p>
-              <p className="mt-1 text-sm font-medium text-[#4a6fa5]">{rangeLabel}</p>
-            </div>
-          </div>
-          <MawkibCapacityPills
-            mawkib={mawkibForCapacityDisplay ?? mawkib}
-            compact
-            stacked
-            fitContent
+      <section>
+        <div className="flex items-start gap-3">
+          <MawkibThumbnail
+            imageUrl={mawkib.imageUrl}
+            name={mawkib.name}
+            className="h-16 w-16 shrink-0 rounded-xl"
           />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-bold text-slate-800">{mawkib.name}</h2>
+            <MawkibCapacityPills mawkib={mawkibForCapacityDisplay ?? mawkib} className="mt-2" />
+          </div>
         </div>
-      </div>
+      </section>
+
+      <hr className="border-slate-100" />
 
       <section>
-        <SectionHeader
-          icon={<IconUser />}
-          title="اطلاعات زائر"
-          subtitle="تلفن همراه و نام و نام خانوادگی"
-        />
+        <SectionHeader icon={<IconUser />} title="اطلاعات زائر" />
         <PanelNewPilgrimFields
           fullName={fullName}
           mobileNumber={mobileNumber}
@@ -438,7 +417,8 @@ export function QuickReservationForm({
           birthDate={birthDate}
           country={country}
           passportNumber={passportNumber}
-          password={password}
+          province={province}
+          city={city}
           nationalIdCardImageUrl={nationalIdCardImageUrl}
           submitting={submitting}
           mobileLabel="تلفن همراه"
@@ -466,10 +446,11 @@ export function QuickReservationForm({
       <section ref={staySectionRef} className="scroll-mt-24">
         <SectionHeader
           icon={<IconCalendar />}
-          title="مدت اقامت"
+          title="تاریخ اقامت"
           subtitle={staySectionSubtitle}
         />
         <div className="space-y-4">
+          <StayDateAlignAlert message={stayDateAlignAlert} />
           {conflictInfo && (
             <div
               role="alert"
@@ -492,52 +473,27 @@ export function QuickReservationForm({
             </div>
           )}
 
-          {showManualDateFields && !conflictInfo && (
-            <div
-              role="alert"
-              className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-            >
-              <p className="font-semibold text-red-900">تداخل با رزرو قبلی</p>
-              <p className="mt-1 text-xs leading-relaxed">
-                بازه تاریخ انتخاب‌شده با رزرو فعال قبلی این زائر تداخل دارد. لطفاً
-                تاریخ شروع و پایان اقامت را تغییر دهید.
-              </p>
-            </div>
-          )}
-
-          <StayDurationPicker
-            today={today}
-            dateStart={dateStart}
-            dateEnd={dateEnd}
-            serviceStartDate={mawkib.serviceStartDate}
-            defaultReservationDays={mawkib.defaultReservationDays}
-            maxReservationDays={mawkib.maxReservationDays}
-            mawkibSelected
-            onSelect={handleStayDurationSelect}
-          />
-
-          {showManualDateFields && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <PersianDateInput
-                label="تاریخ شروع اقامت *"
-                value={dateStart}
-                onChange={handleDateStartChange}
-                placeholder="انتخاب تاریخ ورود"
-                minDate={today}
-                inputClassName={reservationFormInputClass}
-                clearable={false}
-              />
-              <PersianDateInput
-                label="تاریخ پایان اقامت *"
-                value={dateEnd}
-                onChange={handleDateEndChange}
-                placeholder="انتخاب تاریخ خروج"
-                minDate={minimumEndDate}
-                inputClassName={reservationFormInputClass}
-                clearable={false}
-              />
-            </div>
-          )}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <PersianDateInput
+              label="تاریخ شروع اقامت *"
+              value={dateStart}
+              onChange={handleDateStartChange}
+              placeholder="انتخاب تاریخ ورود"
+              minDate={effectiveStayStartDate(today, mawkib.serviceStartDate)}
+              inputClassName={reservationFormInputClass}
+              clearable={false}
+            />
+            <PersianDateInput
+              label="تاریخ پایان اقامت *"
+              value={dateEnd}
+              onChange={handleDateEndChange}
+              placeholder="انتخاب تاریخ خروج"
+              minDate={minimumEndDate}
+              maxDate={maximumEndDate}
+              inputClassName={reservationFormInputClass}
+              clearable={false}
+            />
+          </div>
         </div>
       </section>
 
@@ -634,23 +590,23 @@ export function QuickReservationForm({
         </CollapsibleSection>
       </section>
 
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            disabled={submitting}
             className={`${btnSecondary} w-full sm:w-auto`}
+            disabled={submitting}
           >
+            <NavIcon name="x" className="h-4 w-4" />
             انصراف
           </button>
         )}
         <button
           type="submit"
+          className={`${btnPrimary} w-full sm:w-auto`}
           disabled={submitting}
-          className={`${btnPrimary} inline-flex w-full items-center justify-center gap-2 sm:w-auto disabled:cursor-not-allowed disabled:opacity-60`}
         >
-          <NavIcon name="todayReserve" className="h-4 w-4 shrink-0" />
           {submitting ? 'در حال ثبت...' : 'ثبت رزرو سریع'}
         </button>
       </div>

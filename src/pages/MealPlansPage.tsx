@@ -10,16 +10,17 @@ import { ReservationAttendanceSummary } from "../components/reservations/Reserva
 import { PageHeader } from "../components/ui/PageHeader";
 import { NavIcon } from "../components/ui/NavIcons";
 import { mealPlansApi } from "../lib/meal-plans";
-import {
-  isMealPlanEligibleReservation,
-  isReservationMealPlanLinkVisible,
-} from "../lib/meal-plan-utils";
+import { isReservationMealPlanLinkVisible } from "../lib/meal-plan-utils";
 import {
   normalizeLookupQuery,
   lookupOwnerReservation,
 } from "../lib/mawkib-owner-dashboard";
 import { useAuth } from '../contexts/AuthContext';
 import { lookupAdminReservation } from '../lib/admin-dashboard';
+import {
+  filterConfirmedLookupMatches,
+  isConfirmedReservation,
+} from '../lib/reservation-lookup';
 import { reservationsApi } from "../lib/reservations";
 import { inputClass } from "../lib/styles";
 import { toast, toastApiError } from "../lib/toast";
@@ -53,10 +54,8 @@ export function MealPlansPage() {
   const [generating, setGenerating] = useState(false);
 
   const filterMealPlanMatches = (items: Reservation[]) =>
-    items.filter(
-      (item) =>
-        isMealPlanEligibleReservation(item.status) &&
-        canManageReservationMealPlan(item),
+    filterConfirmedLookupMatches(items).filter((item) =>
+      canManageReservationMealPlan(item),
     );
 
   const resetSearchState = () => {
@@ -105,7 +104,7 @@ export function MealPlansPage() {
     setSearched(true);
     try {
       const lookupFn = isAdmin ? lookupAdminReservation : lookupOwnerReservation;
-      const result = await lookupFn(trimmed);
+      const result = await lookupFn(trimmed, { status: 'Confirmed' });
       const merged = filterMealPlanMatches(
         mergeLookupMatches(result.reservation, result.alternatives),
       );
@@ -189,10 +188,8 @@ export function MealPlansPage() {
         const loaded = await reservationsApi.getOne(reservationId);
         if (cancelled) return;
 
-        if (!isMealPlanEligibleReservation(loaded.status)) {
-          toast.error(
-            "برنامه غذایی فقط برای رزروهای تایید شده یا تکمیل‌شده است",
-          );
+        if (!isConfirmedReservation(loaded)) {
+          toast.error("برنامه غذایی فقط برای رزروهای تایید شده است");
           setReservation(null);
           setPlans([]);
           setShowPlanSection(false);
@@ -281,7 +278,7 @@ export function MealPlansPage() {
               className="h-3.5 w-3.5 shrink-0 text-slate-400"
             />
             <span>
-              رزرو فعال (تایید شده یا تکمیل‌شده) با این مشخصات یافت نشد.
+              رزرو تایید شده‌ای با این مشخصات یافت نشد.
             </span>
           </div>
         )}

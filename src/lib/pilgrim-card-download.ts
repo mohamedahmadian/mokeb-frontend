@@ -170,31 +170,6 @@ async function dataUrlToBlobUrl(dataUrl: string): Promise<string> {
   return URL.createObjectURL(blob);
 }
 
-function agentLog(
-  hypothesisId: string,
-  location: string,
-  message: string,
-  data: Record<string, unknown>,
-): void {
-  // #region agent log
-  fetch('http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Debug-Session-Id': '06086f',
-    },
-    body: JSON.stringify({
-      sessionId: '06086f',
-      hypothesisId,
-      location,
-      message,
-      data,
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-}
-
 function runPrintInWindow(
   win: Window,
   imageSrc: string,
@@ -222,16 +197,6 @@ function runPrintInWindow(
 
     const img = doc.querySelector('img');
     const runPrint = () => {
-      agentLog('H1', 'pilgrim-card-download.ts:runPrint', 'Triggering print', {
-        mobile: isMobilePrintEnvironment(),
-        viaPopup: win !== window,
-        imageSrcKind: imageSrc.startsWith('blob:') ? 'blob' : 'data',
-        naturalWidth: img?.naturalWidth ?? 0,
-        naturalHeight: img?.naturalHeight ?? 0,
-        a5MaxWidthMm: A5_PRINT_MAX_WIDTH_MM,
-        a5MaxHeightMm: A5_PRINT_MAX_HEIGHT_MM,
-      });
-
       win.addEventListener('afterprint', finish, { once: true });
       win.focus();
       win.print();
@@ -265,30 +230,15 @@ export async function capturePilgrimCardPng(element: HTMLElement): Promise<strin
   const { embedCSS } = await prepareVazirFonts();
   await waitForImages(element);
 
-  try {
-    const dataUrl = await toPng(element, {
-      cacheBust: true,
-      pixelRatio: mobile ? 1.5 : 2,
-      backgroundColor: '#ffffff',
-      fontEmbedCSS: embedCSS,
-      style: {
-        fontFamily: "'Vazir', Tahoma, sans-serif",
-      },
-    });
-
-    agentLog('H4', 'pilgrim-card-download.ts:capture', 'Capture succeeded', {
-      mobile,
-      dataUrlLength: dataUrl.length,
-    });
-
-    return dataUrl;
-  } catch (error) {
-    agentLog('H4', 'pilgrim-card-download.ts:capture', 'Capture failed', {
-      mobile,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
-  }
+  return toPng(element, {
+    cacheBust: true,
+    pixelRatio: mobile ? 1.5 : 2,
+    backgroundColor: '#ffffff',
+    fontEmbedCSS: embedCSS,
+    style: {
+      fontFamily: "'Vazir', Tahoma, sans-serif",
+    },
+  });
 }
 
 export async function downloadPilgrimCardImage(
@@ -306,35 +256,6 @@ export async function downloadPilgrimCardImage(
   link.style.display = 'none';
   document.body.appendChild(link);
 
-  // #region agent log
-  fetch('http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Debug-Session-Id': '06086f',
-    },
-    body: JSON.stringify({
-      sessionId: '06086f',
-      hypothesisId: 'H5',
-      location: 'pilgrim-card-download.ts:download',
-      message: 'Triggering file download',
-      data: {
-        filename,
-        blobSize: blob.size,
-        userActivationActive:
-          typeof navigator !== 'undefined' &&
-          'userActivation' in navigator &&
-          navigator.userActivation?.isActive,
-        userActivationHasBeenActive:
-          typeof navigator !== 'undefined' &&
-          'userActivation' in navigator &&
-          navigator.userActivation?.hasBeenActive,
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
   link.click();
 
   window.setTimeout(() => {
@@ -351,29 +272,18 @@ export async function printPilgrimCardImage(
   const dataUrl = await capturePilgrimCardPng(element);
   const imageSrc = mobile ? await dataUrlToBlobUrl(dataUrl) : dataUrl;
 
-  agentLog('H2', 'pilgrim-card-download.ts:print-start', 'Print pipeline', {
-    mobile,
-    hasPrintWindow: Boolean(printWindow && !printWindow.closed),
-    imageSrcKind: imageSrc.startsWith('blob:') ? 'blob' : 'data',
-    dataUrlLength: dataUrl.length,
-  });
-
   if (printWindow && !printWindow.closed) {
     try {
       await runPrintInWindow(printWindow, imageSrc, () => {
         if (imageSrc.startsWith('blob:')) URL.revokeObjectURL(imageSrc);
       });
       return;
-    } catch (error) {
-      agentLog('H1', 'pilgrim-card-download.ts:popup-print-failed', 'Popup print failed', {
-        error: error instanceof Error ? error.message : String(error),
-      });
+    } catch {
       printWindow.close();
     }
   }
 
   if (mobile && !printWindow) {
-    agentLog('H2', 'pilgrim-card-download.ts:popup-blocked', 'Print window blocked', {});
     if (imageSrc.startsWith('blob:')) URL.revokeObjectURL(imageSrc);
     throw new Error('POPUP_BLOCKED');
   }
@@ -400,10 +310,6 @@ export async function printPilgrimCardImage(
       .then(resolve)
       .catch((error) => {
         cleanup();
-        agentLog('H1', 'pilgrim-card-download.ts:iframe-print-failed', 'Iframe print failed', {
-          mobile,
-          error: error instanceof Error ? error.message : String(error),
-        });
         reject(error);
       });
   });

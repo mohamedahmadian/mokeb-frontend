@@ -106,9 +106,52 @@ export function isOnOrAfterServiceStart(
   return reservationStart.slice(0, 10) >= serviceStartDate.slice(0, 10);
 }
 
-export const STAY_DURATION_PRESETS = [1, 2, 3, 4, 5] as const;
+export type AlignReservationEndReason = 'below-min' | 'above-max';
 
-export type StayDurationPreset = (typeof STAY_DURATION_PRESETS)[number];
+export type AlignReservationEndResult = {
+  endDate: string;
+  adjusted: boolean;
+  reason?: AlignReservationEndReason;
+  limitDays?: number;
+};
+
+/** Clamp checkout to mawkib min/max stay length; leaves end unchanged when in range. */
+export function alignReservationEndToMawkibLimits(
+  startDate: string,
+  endDate: string,
+  minDays?: number | null,
+  maxDays?: number | null,
+): AlignReservationEndResult {
+  const min = effectiveDefaultReservationDays(minDays);
+  const max = effectiveMaxReservationDays(maxDays);
+  const stayDays = reservationStayDayCount(startDate, endDate);
+
+  if (stayDays < min) {
+    return {
+      endDate: defaultReservationEndDate(startDate, min),
+      adjusted: true,
+      reason: 'below-min',
+      limitDays: min,
+    };
+  }
+
+  if (stayDays > max) {
+    return {
+      endDate: defaultReservationEndDate(startDate, max),
+      adjusted: true,
+      reason: 'above-max',
+      limitDays: max,
+    };
+  }
+
+  return { endDate, adjusted: false };
+}
+
+/** Default max reservation span in days (one week). */
+export const DEFAULT_MAWKIB_MAX_RESERVATION_DAYS = 7;
+
+/** Default stay length in days when creating a reservation. */
+export const DEFAULT_MAWKIB_DEFAULT_RESERVATION_DAYS = 1;
 
 /** Earliest allowed check-in: today or mawkib service start, whichever is later. */
 export function effectiveStayStartDate(
@@ -119,22 +162,6 @@ export function effectiveStayStartDate(
   if (serviceStart && serviceStart > today) return serviceStart;
   return today;
 }
-
-/** Preset stay lengths (1–5 days) allowed for the selected mawkib. */
-export function getAvailableStayDurations(
-  minDays?: number | null,
-  maxDays?: number | null,
-): StayDurationPreset[] {
-  const min = effectiveDefaultReservationDays(minDays);
-  const max = Math.min(5, effectiveMaxReservationDays(maxDays));
-  return STAY_DURATION_PRESETS.filter((days) => days >= min && days <= max);
-}
-
-/** Default max reservation span in days (one week). */
-export const DEFAULT_MAWKIB_MAX_RESERVATION_DAYS = 7;
-
-/** Default stay length in days when creating a reservation. */
-export const DEFAULT_MAWKIB_DEFAULT_RESERVATION_DAYS = 1;
 
 /** @deprecated Use {@link DEFAULT_MAWKIB_DEFAULT_RESERVATION_DAYS} */
 export const DEFAULT_MAWKIB_RESERVATION_DAYS =

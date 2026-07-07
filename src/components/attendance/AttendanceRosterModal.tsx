@@ -48,36 +48,6 @@ export function AttendanceRosterModal({
     try {
       const result = await attendanceRosterApi.get(kind, parsedMawkibId);
       setData(result);
-
-      if (kind === 'absent') {
-        const notArrived = result.rows.filter(
-          (row) => row.absenceKind === 'NOT_ARRIVED',
-        ).length;
-        const tempOut = result.rows.filter(
-          (row) => row.absenceKind === 'TEMPORARILY_OUT',
-        ).length;
-
-        // #region agent log
-        fetch('http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '06086f' },
-          body: JSON.stringify({
-            sessionId: '06086f',
-            location: 'AttendanceRosterModal.tsx:loadRoster',
-            message: 'absent roster loaded',
-            data: {
-              total: result.rows.length,
-              notArrived,
-              tempOut,
-              mawkibId: parsedMawkibId ?? null,
-            },
-            timestamp: Date.now(),
-            runId: 'absent-roster',
-            hypothesisId: 'H1-H3',
-          }),
-        }).catch(() => {});
-        // #endregion
-      }
     } catch (err) {
       setData(null);
       toastApiError(err, 'خطا در بارگذاری لیست');

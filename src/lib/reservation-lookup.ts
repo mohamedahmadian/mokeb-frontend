@@ -1,6 +1,18 @@
 import type { Reservation } from '../types';
 import { normalizeLookupQuery } from './mawkib-owner-dashboard';
 
+export function isConfirmedReservation(
+  reservation: Pick<Reservation, 'status'>,
+): boolean {
+  return reservation.status === 'Confirmed';
+}
+
+export function filterConfirmedLookupMatches(
+  reservations: Reservation[],
+): Reservation[] {
+  return reservations.filter(isConfirmedReservation);
+}
+
 function trackingCodeSequence(trackingCode: string): string | null {
   const dash = trackingCode.lastIndexOf('-');
   if (dash < 0) return null;

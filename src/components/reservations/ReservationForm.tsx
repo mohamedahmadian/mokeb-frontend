@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PersianDateInput, formatPersianDate } from "../ui/PersianDateInput";
 import { formatPersianDateRange } from "../ui/PersianDateRangePicker";
 import {
@@ -8,17 +8,17 @@ import {
   mawkibAvailableMale,
 } from "../../lib/capacity";
 import {
+  alignReservationEndToMawkibLimits,
   buildReservationOccupiedDates,
   defaultReservationEndDate,
   effectiveDefaultReservationDays,
   effectiveMaxReservationDays,
-  effectiveStayStartDate,
   isOnOrAfterServiceStart,
   isWithinMaxReservationDays,
   reservationStayDayCount,
-  type StayDurationPreset,
 } from "../../lib/date-range";
 import { toast, toastApiError } from "../../lib/toast";
+import { reservationStayAlignAlertMessage } from "../../lib/reservation-stay-align";
 import { guestApi } from "../../lib/guest";
 import { buildReservationFromGuestSuccess } from "../../lib/guest-success-reservation";
 import { downloadPilgrimCardForReservation } from "../../lib/pilgrim-card-auto-download";
@@ -60,6 +60,7 @@ import {
   MawkibGuestGalleryDetailsFooter,
   SectionHeader,
   reservationFormInputClass,
+  StayDateAlignAlert,
   todayDateString,
 } from "./reservation-form-ui";
 import {
@@ -71,7 +72,6 @@ import type { GuestReservationMode } from "../guest/GuestReservationModeToggle";
 import { GuestReservationPersonalFields } from "./GuestReservationPersonalFields";
 import { PanelNewPilgrimFields, PanelNewPilgrimOptionalFields, PANEL_OPTIONAL_FIELDS_COLLAPSE_LABEL } from "./PanelNewPilgrimFields";
 import { CollapsibleSection } from "../ui/CollapsibleSection";
-import { StayDurationPicker } from "./StayDurationPicker";
 import {
   MawkibGalleryModal,
   mawkibGalleryUrls,
@@ -202,6 +202,9 @@ export function ReservationForm({
   const [dateEnd, setDateEnd] = useState(() =>
     defaultReservationEndDate(initialDate, 1),
   );
+  const [stayDateAlignAlert, setStayDateAlignAlert] = useState<string | null>(
+    null,
+  );
   const [maleGuestCount, setMaleGuestCount] = useState(1);
   const [femaleGuestCount, setFemaleGuestCount] = useState(0);
   const [selectedMawkibId, setSelectedMawkibId] = useState<number | null>(() =>
@@ -226,7 +229,7 @@ export function ReservationForm({
   const [galleryMawkib, setGalleryMawkib] = useState<Mawkib | null>(null);
   const [detailMawkib, setDetailMawkib] = useState<Mawkib | null>(null);
   const [guestReservationMode, setGuestReservationMode] =
-    useState<GuestReservationMode>(initialGuestReservationMode ?? "fast");
+    useState<GuestReservationMode>(initialGuestReservationMode ?? "normal");
 
   const isGuestFastMode =
     variant === "guest" && guestReservationMode === "fast";
@@ -241,6 +244,10 @@ export function ReservationForm({
     () => parseInitialMawkibId(initialMawkibId ?? null),
     [initialMawkibId],
   );
+
+  const isGuestOpenReserve =
+    variant === "guest" && preselectedMawkibId == null;
+
   const preselectedDatesBootstrappedRef = useRef(false);
   const guestFastDatesBootstrappedRef = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -459,9 +466,6 @@ export function ReservationForm({
       return `— برای ${formatPersianNumber(guestTotal)} نفر`;
     }
     const rangeLabel = formatPersianDateRange(dateStart, dateEnd);
-    // #region agent log
-    fetch('http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'06086f'},body:JSON.stringify({sessionId:'06086f',hypothesisId:'H1',location:'ReservationForm.tsx:staySectionSubtitle',message:'Stay subtitle computed',data:{dateStart,dateEnd,rangeLabel,guestTotal,stayDays:reservationStayDayCount(dateStart,dateEnd)},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     return `${rangeLabel} برای ${formatPersianNumber(guestTotal)} نفر`;
   }, [dateStart, dateEnd, maleGuestCount, effectiveFemaleGuestCount]);
 
@@ -522,32 +526,49 @@ export function ReservationForm({
     return buildReservationOccupiedDates(dateStart, dateEnd);
   }, [dateStart, dateEnd]);
 
+  const stayInventoryEndDate =
+    stayDateRange.length > 0
+      ? stayDateRange[stayDateRange.length - 1]
+      : "";
+
   const capacityCheckEnabled = !(canBypassCapacity && skipCapacityCheck);
 
   const shouldFetchStayCapacity =
     capacityCheckEnabled &&
     activeMawkibIdForCapacity != null &&
     activeMawkibIdForCapacity > 0 &&
-    stayDateRange.length > 0;
+    stayDateRange.length > 0 &&
+    !!dateStart &&
+    !!stayInventoryEndDate;
 
-  const stayCapacityQueries = useQueries({
-    queries: stayDateRange.map((date) => ({
-      queryKey: [
-        "mawkib-capacity",
-        "reservation-form",
-        activeMawkibIdForCapacity,
-        date,
-      ],
-      queryFn: () =>
-        reservationsApi.getCapacity(activeMawkibIdForCapacity!, date),
-      enabled: shouldFetchStayCapacity,
-    })),
+  const { data: stayInventory } = useQuery({
+    queryKey: [
+      "mawkib-inventory",
+      "reservation-form-stay",
+      activeMawkibIdForCapacity,
+      dateStart,
+      stayInventoryEndDate,
+      variant,
+    ],
+    queryFn: () =>
+      variant === "guest"
+        ? mawkibsApi.getPublicInventory(
+            activeMawkibIdForCapacity!,
+            dateStart,
+            stayInventoryEndDate,
+          )
+        : mawkibsApi.getInventory(
+            activeMawkibIdForCapacity!,
+            dateStart,
+            stayInventoryEndDate,
+          ),
+    enabled: shouldFetchStayCapacity,
   });
 
   const stayCapacityReady =
     shouldFetchStayCapacity &&
-    stayCapacityQueries.length > 0 &&
-    stayCapacityQueries.every((query) => query.data != null);
+    stayInventory != null &&
+    stayInventory.days.length === stayDateRange.length;
 
   const capacityMawkibMeta =
     selectedMawkib ?? preselectedMawkibDetail ?? guestPreselectedMawkib;
@@ -557,15 +578,13 @@ export function ReservationForm({
     : undefined;
 
   const rangeAvailableMale = stayCapacityReady
-    ? Math.min(...stayCapacityQueries.map((query) => query.data!.availableMale))
+    ? Math.min(...stayInventory!.days.map((day) => day.availableMale))
     : listMawkibForCapacity
       ? mawkibAvailableMale(listMawkibForCapacity)
       : undefined;
 
   const rangeAvailableFemale = stayCapacityReady
-    ? Math.min(
-        ...stayCapacityQueries.map((query) => query.data!.availableFemale),
-      )
+    ? Math.min(...stayInventory!.days.map((day) => day.availableFemale))
     : listMawkibForCapacity
       ? mawkibAvailableFemale(listMawkibForCapacity)
       : undefined;
@@ -624,6 +643,14 @@ export function ReservationForm({
     today,
   ]);
 
+  const mawkibStayDefaultsAppliedForIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!selectedMawkibId) {
+      mawkibStayDefaultsAppliedForIdRef.current = null;
+    }
+  }, [selectedMawkibId]);
+
   useEffect(() => {
     if (mawkibsLoading || mawkibsError) return;
 
@@ -631,10 +658,29 @@ export function ReservationForm({
       ? mawkibs.filter((m) => isMawkibOnlineReservationEnabled(m))
       : mawkibs;
 
-    if (pool.length === 1) {
+    if (pool.length === 1 && !isGuestOpenReserve) {
+      const sole = pool[0];
       setSelectedMawkibId((current) =>
-        current === pool[0].id ? current : pool[0].id,
+        current === sole.id ? current : sole.id,
       );
+      if (
+        !isGuestFastMode &&
+        !isGuestOpenReserve &&
+        mawkibStayDefaultsAppliedForIdRef.current !== sole.id
+      ) {
+        const result = alignReservationEndToMawkibLimits(
+          dateStart,
+          dateEnd,
+          sole.defaultReservationDays,
+          sole.maxReservationDays,
+        );
+        if (result.adjusted && result.limitDays != null) {
+          const message = reservationStayAlignAlertMessage(result);
+          if (message) setStayDateAlignAlert(message);
+          setDateEnd(result.endDate);
+        }
+        mawkibStayDefaultsAppliedForIdRef.current = sole.id;
+      }
       return;
     }
 
@@ -643,7 +689,17 @@ export function ReservationForm({
       if (current && !pool.some((m) => m.id === current)) return null;
       return current;
     });
-  }, [mawkibs, mawkibsLoading, mawkibsError, restrictedOnlineReserver]);
+  }, [
+    mawkibs,
+    mawkibsLoading,
+    mawkibsError,
+    restrictedOnlineReserver,
+    isGuestFastMode,
+    isGuestOpenReserve,
+    dateStart,
+    dateEnd,
+    today,
+  ]);
 
   useEffect(() => {
     const mawkibDetail =
@@ -968,13 +1024,11 @@ export function ReservationForm({
   };
 
   const handleDateStartChange = (start: string) => {
+    setStayDateAlignAlert(null);
     setDateStart(start);
     if (start) {
       const minEnd = defaultReservationEndDate(start, 1);
       if (!dateEnd || dateEnd < minEnd) {
-        // #region agent log
-        fetch('http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'06086f'},body:JSON.stringify({sessionId:'06086f',hypothesisId:'H3',location:'ReservationForm.tsx:handleDateStartChange',message:'Adjusted end date for minimum stay',data:{start,previousEnd:dateEnd,minEnd},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         setDateEnd(minEnd);
       }
     }
@@ -984,6 +1038,7 @@ export function ReservationForm({
   };
 
   const handleDateEndChange = (end: string) => {
+    setStayDateAlignAlert(null);
     if (end && dateStart) {
       const minEnd = defaultReservationEndDate(dateStart, 1);
       if (end < minEnd) {
@@ -992,9 +1047,6 @@ export function ReservationForm({
         } else {
           toast.error("حداقل مدت اقامت یک روز است");
         }
-        // #region agent log
-        fetch('http://127.0.0.1:7929/ingest/64824c4b-ac44-41b9-87b8-d1ea5f1d3aa4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'06086f'},body:JSON.stringify({sessionId:'06086f',hypothesisId:'H2',location:'ReservationForm.tsx:handleDateEndChange',message:'Rejected end date below minimum stay',data:{dateStart,requestedEnd:end,minEnd},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         setDateEnd(minEnd);
         if (!preselectedMawkibId) {
           setSelectedMawkibId(null);
@@ -1008,12 +1060,20 @@ export function ReservationForm({
     }
   };
 
-  const handleStayDurationSelect = (days: StayDurationPreset) => {
-    const mawkibMeta =
-      selectedMawkib ?? preselectedMawkibDetail ?? guestPreselectedMawkib;
-    const start = effectiveStayStartDate(today, mawkibMeta?.serviceStartDate);
-    setDateStart(start);
-    setDateEnd(defaultReservationEndDate(start, days));
+  const handleSelectMawkib = (mawkib: Mawkib) => {
+    const result = alignReservationEndToMawkibLimits(
+      dateStart,
+      dateEnd,
+      mawkib.defaultReservationDays,
+      mawkib.maxReservationDays,
+    );
+    if (result.adjusted && result.limitDays != null) {
+      const message = reservationStayAlignAlertMessage(result);
+      if (message) setStayDateAlignAlert(message);
+      setDateEnd(result.endDate);
+    }
+    setSelectedMawkibId(mawkib.id);
+    mawkibStayDefaultsAppliedForIdRef.current = mawkib.id;
   };
 
   const scrollToStaySection = () => {
@@ -1185,29 +1245,7 @@ export function ReservationForm({
             subtitle={staySectionSubtitle}
           />
           <div className="space-y-4">
-            <StayDurationPicker
-              today={today}
-              dateStart={dateStart}
-              dateEnd={dateEnd}
-              serviceStartDate={
-                selectedMawkib?.serviceStartDate ??
-                preselectedMawkibDetail?.serviceStartDate ??
-                guestPreselectedMawkib?.serviceStartDate
-              }
-              defaultReservationDays={
-                selectedMawkib?.defaultReservationDays ??
-                preselectedMawkibDetail?.defaultReservationDays ??
-                guestPreselectedMawkib?.defaultReservationDays
-              }
-              maxReservationDays={
-                selectedMawkib?.maxReservationDays ??
-                preselectedMawkibDetail?.maxReservationDays ??
-                guestPreselectedMawkib?.maxReservationDays
-              }
-              mawkibSelected={selectedMawkibId != null}
-              onSelect={handleStayDurationSelect}
-            />
-
+            <StayDateAlignAlert message={stayDateAlignAlert} />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <PersianDateInput
                 label="تاریخ شروع اقامت *"
@@ -1234,20 +1272,14 @@ export function ReservationForm({
                 label="تعداد آقایان *"
                 value={maleGuestCount}
                 disabled={isMaleCapacityFull}
-                onChange={(n) => {
-                  setMaleGuestCount(n);
-                  if (!preselectedMawkibId) setSelectedMawkibId(null);
-                }}
+                onChange={setMaleGuestCount}
               />
               {showFemaleGuestCount ? (
                 <GuestCountStepper
                   label="تعداد بانوان *"
                   value={femaleGuestCount}
                   disabled={isFemaleCapacityFull}
-                  onChange={(n) => {
-                    setFemaleGuestCount(n);
-                    if (!preselectedMawkibId) setSelectedMawkibId(null);
-                  }}
+                  onChange={setFemaleGuestCount}
                 />
               ) : (
                 <NoFemaleAcceptanceHint />
@@ -1369,7 +1401,7 @@ export function ReservationForm({
                         key={mawkib.id}
                         mawkib={mawkib}
                         selected={selectedMawkibId === mawkib.id}
-                        onSelect={() => setSelectedMawkibId(mawkib.id)}
+                        onSelect={() => handleSelectMawkib(mawkib)}
                         reservationBlocked={reservationBlocked}
                         showThumbnail
                         variant={
@@ -1408,6 +1440,7 @@ export function ReservationForm({
                     nationalId={nationalId}
                     gender={gender}
                     birthDate={birthDate}
+                    travelOrigin={travelOrigin}
                     country={country}
                     passportNumber={passportNumber}
                     nationalIdCardImageUrl={nationalIdCardImageUrl}
@@ -1418,6 +1451,7 @@ export function ReservationForm({
                     onNationalIdChange={setNationalId}
                     onGenderChange={setGender}
                     onBirthDateChange={setBirthDate}
+                    onTravelOriginChange={setTravelOrigin}
                     onCountryChange={setCountry}
                     onPassportNumberChange={setPassportNumber}
                     onNationalIdCardImageUrlChange={setNationalIdCardImageUrl}
