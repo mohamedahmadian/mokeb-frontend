@@ -20,6 +20,8 @@ interface PersianDateInputProps {
   maxDate?: string;
   inputClassName?: string;
   disabled?: boolean;
+  /** Render calendar in document body to avoid clipping inside overflow containers */
+  portal?: boolean;
 }
 
 function toGregorianString(date: DateObject): string {
@@ -120,6 +122,7 @@ export function PersianDateInput({
   maxDate,
   inputClassName,
   disabled = false,
+  portal = false,
 }: PersianDateInputProps) {
   const pickerValue = fromGregorianString(value);
   const baseInputClass = inputClassName ?? filterInputClass;
@@ -143,6 +146,7 @@ export function PersianDateInput({
       minDate={minDateValue}
       maxDate={maxDateValue}
       disabled={disabled}
+      portal={portal}
       onChange={(date) => {
         if (!date || Array.isArray(date)) {
           onChange('');

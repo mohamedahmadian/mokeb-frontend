@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { guestTheme } from "../lib/guest-theme";
+import { HomeQuickReserveWizard } from "../components/home/HomeQuickReserveWizard";
 
 function IconMawkibs({ className = "h-5 w-5" }: { className?: string }) {
   return (
@@ -188,30 +189,31 @@ const quickServices = [
 export function HomePage() {
   return (
     <div className="guest-theme text-slate-700">
-      {/* Hero */}
-      <section className="relative overflow-hidden border-b border-slate-200/60 bg-white">
-        <div className="pointer-events-none absolute -left-20 top-0 h-64 w-64 rounded-full bg-[#e8eef6]/60 blur-3xl" />
-        <div className="pointer-events-none absolute -right-16 bottom-0 h-56 w-56 rounded-full bg-[#f3ebe0]/70 blur-3xl" />
+      {/* Hero — Quick reservation wizard */}
+      <section className="relative overflow-hidden border-b border-slate-200/60 bg-gradient-to-b from-white via-[#fafbfd] to-[#f4f6f9]">
+        <div className="pointer-events-none absolute -left-24 top-0 h-72 w-72 rounded-full bg-[#e8eef6]/70 blur-3xl" />
+        <div className="pointer-events-none absolute -right-20 bottom-0 h-64 w-64 rounded-full bg-[#f3ebe0]/60 blur-3xl" />
 
-        <div className="relative mx-auto max-w-6xl px-4 py-12 sm:py-16">
-          <div className="max-w-2xl">
-            <h1 className="text-2xl font-bold leading-tight text-slate-800 sm:text-3xl lg:text-4xl">
+        <div className="relative mx-auto max-w-2xl px-4 py-10 sm:py-14">
+          <div className="mb-8 text-center">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#4a6fa5] shadow-sm ring-1 ring-[#c5d4e8]">
+              <img
+                src="/images/logo.png"
+                alt=""
+                aria-hidden
+                className="h-5 w-5 shrink-0 object-contain"
+              />
+              رزرو آنلاین
+            </span>
+            <h1 className="mt-4 text-2xl font-bold leading-tight text-slate-800 sm:text-3xl">
               در مسیر زیارت، میزبان شما هستیم
             </h1>
-            <p className="mt-4 text-sm leading-8 text-slate-600 sm:text-base">
-              موکب مناسب را بیابید، رزرو کنید و وضعیت اقامت را به‌صورت آنلاین
-              پیگیری نمایید. موکب‌داران نیز می‌توانند ظرفیت و رزروها را در پنل
-              اختصاصی مدیریت کنند.
+            <p className="mx-auto mt-3 max-w-lg text-sm leading-7 text-slate-600 sm:text-base">
+              در سه مرحله ساده موکب مناسب را انتخاب کنید و رزرو خود را ثبت نمایید.
             </p>
-            <div className="mt-7 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
-              <Link to="/guest/reserve" className={guestTheme.btnPrimary}>
-                رزرو سریع موکب
-              </Link>
-              <Link to="/guest/mawkibs" className={guestTheme.btnSecondary}>
-                مشاهده موکب‌ها
-              </Link>
-            </div>
           </div>
+
+          <HomeQuickReserveWizard />
         </div>
       </section>
 

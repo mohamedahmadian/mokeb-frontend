@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { guestTheme } from "../../lib/guest-theme";
 import { buildLoginUrl } from "../../lib/login-portal";
@@ -15,7 +15,13 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 const dropdownLinkClass =
   "flex items-center px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50";
 
-function OwnersMenu() {
+function OwnersMenu({
+  onNavigate,
+  mobile = false,
+}: {
+  onNavigate?: () => void;
+  mobile?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -29,6 +35,42 @@ function OwnersMenu() {
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
+
+  const handleNavigate = () => {
+    setOpen(false);
+    onNavigate?.();
+  };
+
+  if (mobile) {
+    return (
+      <div className="space-y-1">
+        <p className="px-2.5 py-1.5 text-xs font-semibold text-[#4a6fa5]">
+          سامانه موکب‌داران
+        </p>
+        <Link
+          to="/guest/mawkib-owner/register"
+          onClick={handleNavigate}
+          className={dropdownLinkClass}
+        >
+          <DropdownLinkContent icon="honoraryRegister" label="ثبت‌نام موکب‌دار" />
+        </Link>
+        <Link
+          to={buildLoginUrl("mawkib-owner")}
+          onClick={handleNavigate}
+          className={dropdownLinkClass}
+        >
+          <DropdownLinkContent icon="login" label="سامانه موکب‌داران" />
+        </Link>
+        <Link
+          to="/guest/mawkib-owner/guide"
+          onClick={handleNavigate}
+          className={dropdownLinkClass}
+        >
+          <DropdownLinkContent icon="book" label="راهنمای ثبت موکب" />
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div ref={ref} className="relative">
@@ -49,7 +91,7 @@ function OwnersMenu() {
         <div className="absolute right-0 top-full z-50 mt-1 min-w-[11rem] rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
           <Link
             to="/guest/mawkib-owner/register"
-            onClick={() => setOpen(false)}
+            onClick={handleNavigate}
             className={dropdownLinkClass}
           >
             <DropdownLinkContent
@@ -59,14 +101,14 @@ function OwnersMenu() {
           </Link>
           <Link
             to={buildLoginUrl("mawkib-owner")}
-            onClick={() => setOpen(false)}
+            onClick={handleNavigate}
             className={dropdownLinkClass}
           >
             <DropdownLinkContent icon="login" label="سامانه موکب‌داران" />
           </Link>
           <Link
             to="/guest/mawkib-owner/guide"
-            onClick={() => setOpen(false)}
+            onClick={handleNavigate}
             className={dropdownLinkClass}
           >
             <DropdownLinkContent icon="book" label="راهنمای ثبت موکب" />
@@ -79,23 +121,30 @@ function OwnersMenu() {
 
 export function PublicNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
   const { user } = useAuth();
 
-  const mainLinks = (
+  const closeMobile = () => setMobileOpen(false);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname, location.search]);
+
+  const mainLinks = (onNavigate?: () => void) => (
     <>
-      <NavLink to="/" end className={navLinkClass}>
+      <NavLink to="/" end className={navLinkClass} onClick={onNavigate}>
         <NavLinkContent icon="home" label="صفحه اصلی" />
       </NavLink>
-      <NavLink to="/guest/reserve" className={navLinkClass}>
+      <NavLink to="/guest/reserve" className={navLinkClass} onClick={onNavigate}>
         <NavLinkContent icon="quickReserve" label="رزرو سریع" />
       </NavLink>
-      <NavLink to="/guest/mawkibs" className={navLinkClass}>
+      <NavLink to="/guest/mawkibs" className={navLinkClass} onClick={onNavigate}>
         <NavLinkContent icon="mawkibs" label="موکب‌ها" />
       </NavLink>
-      <NavLink to="/guest/track" className={navLinkClass}>
+      <NavLink to="/guest/track" className={navLinkClass} onClick={onNavigate}>
         <NavLinkContent icon="track" label="پیگیری رزرو" />
       </NavLink>
-      <OwnersMenu />
+      <OwnersMenu onNavigate={onNavigate} mobile={Boolean(onNavigate)} />
     </>
   );
 
@@ -144,7 +193,7 @@ export function PublicNavbar() {
         </Link>
 
         <nav className="hidden flex-1 items-center justify-center gap-0.5 md:flex">
-          {mainLinks}
+          {mainLinks()}
         </nav>
 
         <div className="flex items-center gap-2">
@@ -183,13 +232,13 @@ export function PublicNavbar() {
 
       {mobileOpen && (
         <div className="border-t border-slate-100 px-4 py-3 md:hidden">
-          <nav className="flex flex-col gap-1">{mainLinks}</nav>
+          <nav className="flex flex-col gap-1">{mainLinks(closeMobile)}</nav>
           <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-3">
             {user ? (
               <Link
                 to="/dashboard"
                 className={`${guestTheme.btnPrimary} inline-flex items-center justify-center gap-1.5`}
-                onClick={() => setMobileOpen(false)}
+                onClick={closeMobile}
               >
                 <NavIcon name="panel" className="h-4 w-4" />
                 <span>پنل کاربری</span>
@@ -199,7 +248,7 @@ export function PublicNavbar() {
                 <Link
                   to="/login"
                   className={`${guestTheme.btnSecondary} inline-flex items-center justify-center gap-1.5`}
-                  onClick={() => setMobileOpen(false)}
+                  onClick={closeMobile}
                 >
                   <NavIcon name="login" />
                   <span>ورود</span>
@@ -207,7 +256,7 @@ export function PublicNavbar() {
                 <Link
                   to="/register"
                   className={`${guestTheme.btnPrimary} inline-flex items-center justify-center gap-1.5`}
-                  onClick={() => setMobileOpen(false)}
+                  onClick={closeMobile}
                 >
                   <NavIcon name="register" className="h-4 w-4" />
                   <span>ثبت‌نام زائر</span>

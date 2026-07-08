@@ -13,6 +13,7 @@ import {
   defaultReservationEndDate,
   effectiveDefaultReservationDays,
   effectiveMaxReservationDays,
+  effectiveStayStartDate,
   isOnOrAfterServiceStart,
   isWithinMaxReservationDays,
   reservationStayDayCount,
@@ -43,12 +44,15 @@ import {
   type CompanionsFormState,
 } from "../../lib/companions";
 import { splitFullName } from "../../lib/full-name";
+import { hasValidCoords } from "../../lib/geo";
 import {
   isMawkibOnlineReservationEnabled,
   isRestrictedOnlineReserver,
 } from "../../lib/mawkib-online-reservation";
 import {
   GuestCountStepper,
+  GuestCountQuickPick,
+  StayDurationQuickPick,
   NoFemaleAcceptanceHint,
   IconCalendar,
   IconChat,
@@ -58,6 +62,8 @@ import {
   MawkibCard,
   MawkibInfoCard,
   MawkibGuestGalleryDetailsFooter,
+  MawkibGuestGalleryButton,
+  MawkibGuestMapButton,
   SectionHeader,
   reservationFormInputClass,
   StayDateAlignAlert,
@@ -615,6 +621,117 @@ export function ReservationForm({
     }
   }, [isFemaleCapacityFull]);
 
+  const bypassCapacityLimits = skipCapacityCheck && canBypassCapacity;
+
+  const minReservationDays = effectiveDefaultReservationDays(
+    capacityMawkibMeta?.defaultReservationDays ?? selectedMawkib?.defaultReservationDays,
+  );
+  const maxReservationDays = effectiveMaxReservationDays(
+    capacityMawkibMeta?.maxReservationDays ?? selectedMawkib?.maxReservationDays,
+  );
+
+  const stayDays = reservationStayDayCount(dateStart, dateEnd);
+
+  const effectiveStart = useMemo(
+    () =>
+      effectiveStayStartDate(
+        today,
+        capacityMawkibMeta?.serviceStartDate ?? selectedMawkib?.serviceStartDate,
+      ),
+    [
+      today,
+      capacityMawkibMeta?.serviceStartDate,
+      selectedMawkib?.serviceStartDate,
+    ],
+  );
+
+  const clampEndDate = (start: string, end: string) => {
+    const mawkib = capacityMawkibMeta ?? selectedMawkib;
+    if (!mawkib) return end;
+    const result = alignReservationEndToMawkibLimits(
+      start,
+      end,
+      mawkib.defaultReservationDays,
+      mawkib.maxReservationDays,
+    );
+    const message = reservationStayAlignAlertMessage(result);
+    if (message) setStayDateAlignAlert(message);
+    return result.endDate;
+  };
+
+  const handleQuickPickMale = () => {
+    setFemaleGuestCount(0);
+    setMaleGuestCount((current) => {
+      const next = current + 1;
+      if (
+        !bypassCapacityLimits &&
+        rangeAvailableMale !== undefined &&
+        next > rangeAvailableMale
+      ) {
+        return current > 0 ? current : Math.min(1, rangeAvailableMale);
+      }
+      return next;
+    });
+  };
+
+  const handleQuickPickFemale = () => {
+    setMaleGuestCount(0);
+    setFemaleGuestCount((current) => {
+      const next = current + 1;
+      if (
+        !bypassCapacityLimits &&
+        rangeAvailableFemale !== undefined &&
+        next > rangeAvailableFemale
+      ) {
+        return current > 0 ? current : Math.min(1, rangeAvailableFemale);
+      }
+      return next;
+    });
+  };
+
+  const maleQuickPickActive = maleGuestCount > 0 && femaleGuestCount === 0;
+  const femaleQuickPickActive = femaleGuestCount > 0 && maleGuestCount === 0;
+
+  const hideMaleQuickPick =
+    capacityMawkibMeta != null && capacityMawkibMeta.maleCapacity <= 0;
+  const hideFemaleQuickPick =
+    !showFemaleGuestCount ||
+    (capacityMawkibMeta != null && capacityMawkibMeta.femaleCapacity <= 0);
+
+  const maleQuickPickDisabled =
+    hideMaleQuickPick ||
+    (!bypassCapacityLimits &&
+      rangeAvailableMale !== undefined &&
+      (rangeAvailableMale <= 0 ||
+        (maleQuickPickActive && maleGuestCount >= rangeAvailableMale)));
+
+  const femaleQuickPickDisabled =
+    hideFemaleQuickPick ||
+    (!bypassCapacityLimits &&
+      rangeAvailableFemale !== undefined &&
+      (rangeAvailableFemale <= 0 ||
+        (femaleQuickPickActive && femaleGuestCount >= rangeAvailableFemale)));
+
+  const showGuestCountQuickPick =
+    showFemaleGuestCount && !hideMaleQuickPick && !hideFemaleQuickPick;
+
+  const handleStayDurationPick = (days: number) => {
+    setStayDateAlignAlert(null);
+    const start = effectiveStart;
+    const end = clampEndDate(start, defaultReservationEndDate(start, days));
+    setDateStart(start);
+    setDateEnd(end);
+    if (!preselectedMawkibId) {
+      setSelectedMawkibId(null);
+    }
+  };
+
+  const isStayDurationActive = (days: number) =>
+    dateStart === effectiveStart && stayDays === days;
+
+  const isStayDurationDisabled = (days: number) =>
+    days < minReservationDays || days > maxReservationDays;
+
   const selectedMawkibBlocked =
     !!selectedMawkib &&
     restrictedOnlineReserver &&
@@ -1101,6 +1218,28 @@ export function ReservationForm({
           mawkib={guestPreselectedMawkib}
           showThumbnail
           variant="guest-browse"
+          footer={(() => {
+            const showGallery =
+              mawkibGalleryUrls(guestPreselectedMawkib).length > 0;
+            const showMap = hasValidCoords(
+              guestPreselectedMawkib.latitude,
+              guestPreselectedMawkib.longitude,
+            );
+            if (!showGallery && !showMap) return undefined;
+
+            return (
+              <div className="flex flex-wrap gap-2 border-t border-slate-100 px-3.5 py-2">
+                {showGallery && (
+                  <MawkibGuestGalleryButton
+                    onClick={() => setGalleryMawkib(guestPreselectedMawkib)}
+                  />
+                )}
+                {showMap && (
+                  <MawkibGuestMapButton mawkib={guestPreselectedMawkib} />
+                )}
+              </div>
+            );
+          })()}
         />
       )}
       <form
@@ -1246,44 +1385,68 @@ export function ReservationForm({
           />
           <div className="space-y-4">
             <StayDateAlignAlert message={stayDateAlignAlert} />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <PersianDateInput
-                label="تاریخ شروع اقامت *"
-                value={dateStart}
-                onChange={handleDateStartChange}
-                placeholder="انتخاب تاریخ ورود"
-                minDate={today}
-                inputClassName={reservationFormInputClass}
-                clearable={false}
+
+            <div className="rounded-2xl border border-slate-100 bg-gradient-to-b from-slate-50/80 to-white p-4">
+              <StayDurationQuickPick
+                onSelect={handleStayDurationPick}
+                isActive={isStayDurationActive}
+                isDisabled={isStayDurationDisabled}
               />
-              <PersianDateInput
-                label="تاریخ پایان اقامت *"
-                value={dateEnd}
-                onChange={handleDateEndChange}
-                placeholder="انتخاب تاریخ خروج"
-                minDate={minimumEndDate}
-                inputClassName={reservationFormInputClass}
-                clearable={false}
-              />
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <PersianDateInput
+                  label="تاریخ شروع اقامت *"
+                  value={dateStart}
+                  onChange={handleDateStartChange}
+                  placeholder="انتخاب تاریخ ورود"
+                  minDate={effectiveStart}
+                  inputClassName={reservationFormInputClass}
+                  clearable={false}
+                />
+                <PersianDateInput
+                  label="تاریخ پایان اقامت *"
+                  value={dateEnd}
+                  onChange={handleDateEndChange}
+                  placeholder="انتخاب تاریخ خروج"
+                  minDate={minimumEndDate}
+                  inputClassName={reservationFormInputClass}
+                  clearable={false}
+                />
+              </div>
             </div>
 
-            <div className={guestCountGridClass}>
-              <GuestCountStepper
-                label="تعداد آقایان *"
-                value={maleGuestCount}
-                disabled={isMaleCapacityFull}
-                onChange={setMaleGuestCount}
-              />
-              {showFemaleGuestCount ? (
-                <GuestCountStepper
-                  label="تعداد بانوان *"
-                  value={femaleGuestCount}
-                  disabled={isFemaleCapacityFull}
-                  onChange={setFemaleGuestCount}
+            <div className="rounded-2xl border border-slate-100 bg-gradient-to-b from-slate-50/80 to-white p-4">
+              {showGuestCountQuickPick && (
+                <GuestCountQuickPick
+                  onPickMale={handleQuickPickMale}
+                  onPickFemale={handleQuickPickFemale}
+                  maleActive={maleQuickPickActive}
+                  femaleActive={femaleQuickPickActive}
+                  maleDisabled={maleQuickPickDisabled}
+                  femaleDisabled={femaleQuickPickDisabled}
                 />
-              ) : (
-                <NoFemaleAcceptanceHint />
               )}
+
+              <div className={guestCountGridClass}>
+                <GuestCountStepper
+                  label="تعداد آقایان *"
+                  value={maleGuestCount}
+                  disabled={isMaleCapacityFull}
+                  onChange={setMaleGuestCount}
+                  compact
+                />
+                {showFemaleGuestCount ? (
+                  <GuestCountStepper
+                    label="تعداد بانوان *"
+                    value={femaleGuestCount}
+                    disabled={isFemaleCapacityFull}
+                    onChange={setFemaleGuestCount}
+                    compact
+                  />
+                ) : (
+                  <NoFemaleAcceptanceHint />
+                )}
+              </div>
             </div>
           </div>
         </section>
@@ -1478,9 +1641,10 @@ export function ReservationForm({
                     <input
                       type="text"
                       value={travelOrigin}
-                      onChange={(e) => setTravelOrigin(e.target.value)}
-                      className={reservationFormInputClass}
-                      placeholder="مثلاً تهران، مشهد، اصفهان"
+                      readOnly
+                      tabIndex={-1}
+                      className={`${reservationFormInputClass} cursor-not-allowed bg-slate-50 text-slate-700`}
+                      placeholder="—"
                     />
                   </label>
                 </section>

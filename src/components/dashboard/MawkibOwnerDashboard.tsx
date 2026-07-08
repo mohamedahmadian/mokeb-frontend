@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { MawkibFeedbackDetailModal } from "../mawkib-feedback/MawkibFeedbackDetailModal";
 import { MawkibCardPrintButton } from "../mawkibs/MawkibCardPrintButton";
-import { MawkibRulesPrintButton } from "../mawkibs/MawkibRulesPrintButton";
 import { MawkibCapacityViewModal } from "../mawkibs/MawkibCapacityViewModal";
 import { MawkibCapacityMiniDonuts } from "../mawkibs/MawkibCapacityMiniDonut";
 import { MawkibCapacityPills } from "../mawkibs/MawkibInfoCard";
@@ -14,7 +13,6 @@ import { ReservationTrackLookup } from "./ReservationTrackLookup";
 import { NavIcon, type NavIconName } from "../ui/NavIcons";
 import { mawkibCityLabel } from "../../lib/mawkib-locations";
 import { mawkibToCardData } from "../../lib/mawkib-card";
-import { mawkibToRulesPrintData } from "../../lib/mawkib-rules-print";
 import { getApiErrorMessage } from "../../lib/constants";
 import { dashboardApi } from "../../lib/dashboard";
 import {
@@ -183,28 +181,18 @@ function MawkibQuickCard({
   presentFemale: number;
 }) {
   const quickBtn =
-    "inline-flex min-w-0 flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-medium transition sm:px-2.5 sm:text-[11px]";
+    "inline-flex w-full min-w-0 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50 sm:text-xs";
 
   return (
     <div className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm">
       <div
-        className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3"
+        className="flex flex-col gap-3 sm:grid sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start"
         dir="ltr"
       >
         <MawkibCapacityMiniDonuts mawkib={mawkib} size={100} />
 
-        <div className="flex min-w-0 flex-col items-end gap-2">
-          <div className="flex max-w-full items-start gap-2.5">
-            <div className="min-w-0 text-right" dir="rtl">
-              <p className="truncate text-sm font-semibold text-slate-800">
-                {mawkib.name}
-              </p>
-              {mawkib.mawkibCity && (
-                <p className="mt-0.5 text-xs text-slate-500">
-                  {mawkibCityLabel(mawkib.mawkibCity)}
-                </p>
-              )}
-            </div>
+        <div className="flex min-w-0 flex-col items-stretch gap-2 sm:items-end" dir="rtl">
+          <div className="flex w-full flex-col items-center gap-2 sm:flex-row sm:items-start sm:justify-end">
             <div className="relative shrink-0">
               <div
                 className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-[#c5d4e8]/70 to-[#e8eef6]/30 blur-[2px]"
@@ -216,14 +204,25 @@ function MawkibQuickCard({
                 className="relative h-16 w-16 rounded-xl shadow-lg shadow-slate-300/60 ring-2 ring-white"
               />
             </div>
+            <div className="min-w-0 w-full text-center sm:text-right">
+              <p className="text-sm font-semibold leading-snug text-slate-800 sm:truncate">
+                {mawkib.name}
+              </p>
+              {mawkib.mawkibCity && (
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {mawkibCityLabel(mawkib.mawkibCity)}
+                </p>
+              )}
+            </div>
           </div>
 
           <MawkibCapacityPills
             mawkib={mawkib}
             compact
-            fitContent
             presentMale={presentMale}
             presentFemale={presentFemale}
+            maleClassName="min-w-0 flex-1"
+            femaleClassName="min-w-0 flex-1"
           />
         </div>
       </div>
@@ -231,44 +230,28 @@ function MawkibQuickCard({
       <div className="mt-2 space-y-1.5">
         <div className="grid grid-cols-2 gap-1.5">
           <Link
-            to={`/reservations/new?mawkibId=${mawkib.id}`}
-            className={`${quickBtn} bg-[#4a6fa5] text-white hover:bg-[#3d5d8a]`}
+            to={`/reservations/quick?mawkibId=${mawkib.id}`}
+            className={quickBtn}
           >
             <NavIcon name="quickReserve" className="h-3.5 w-3.5 shrink-0" />
-            رزرو جدید
+            رزرو سریع
           </Link>
           <Link
             to={`/reservations?mawkibId=${mawkib.id}`}
-            className={`${quickBtn} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`}
+            className={quickBtn}
           >
             <NavIcon name="reservations" className="h-3.5 w-3.5 shrink-0" />
             تاریخچه رزروها
           </Link>
         </div>
-        <div className="grid grid-cols-3 gap-1.5">
-          <Link
-            to={`/reservations/quick?mawkibId=${mawkib.id}`}
-            className={`${quickBtn} border border-[#4a6fa5]/30 bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6]`}
-          >
-            <NavIcon name="todayReserve" className="h-3.5 w-3.5 shrink-0" />
-            رزرو سریع
-          </Link>
-          <button
-            type="button"
-            onClick={onViewCapacity}
-            className={`${quickBtn} border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100`}
-          >
+        <div className="grid grid-cols-2 gap-1.5">
+          <button type="button" onClick={onViewCapacity} className={quickBtn}>
+            <NavIcon name="reports" className="h-3.5 w-3.5 shrink-0" />
             تقویم ظرفیت
           </button>
-        </div>
-        <div className="grid grid-cols-2 gap-1.5">
           <MawkibCardPrintButton
             data={mawkibToCardData(mawkib)}
-            className={`${quickBtn} border border-[#c5d4e8] bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6]`}
-          />
-          <MawkibRulesPrintButton
-            data={mawkibToRulesPrintData(mawkib)}
-            className={`${quickBtn} border border-[#c5d4e8] bg-[#f0f4fa] text-[#4a6fa5] hover:bg-[#e8eef6]`}
+            className={quickBtn}
           />
         </div>
       </div>

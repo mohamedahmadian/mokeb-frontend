@@ -29,7 +29,7 @@ import { splitFullName } from '../../lib/full-name';
 import { genderFromGuestCounts } from '../../lib/user-gender';
 import { guestTheme } from '../../lib/guest-theme';
 import { useAuth } from '../../contexts/AuthContext';
-import type { UserGender } from '../../types';
+import type { Reservation, UserGender } from '../../types';
 import { MawkibThumbnail } from '../mawkibs/MawkibThumbnail';
 import { btnPrimary, btnSecondary } from '../../lib/styles';
 import {
@@ -38,6 +38,8 @@ import {
 } from '../../lib/format-time';
 import {
   GuestCountStepper,
+  GuestCountQuickPick,
+  StayDurationQuickPick,
   GuestCountCapacityBadge,
   IconCalendar,
   IconUser,
@@ -56,14 +58,16 @@ import { MawkibCapacityPills } from '../mawkibs/MawkibInfoCard';
 
 interface QuickReservationFormProps {
   mawkibId: number;
-  onSuccess: (reservationId: number) => void;
+  onSuccess: (reservation: Reservation) => void;
   onCancel?: () => void;
+  mobileFocusTrigger?: number;
 }
 
 export function QuickReservationForm({
   mawkibId,
   onSuccess,
   onCancel,
+  mobileFocusTrigger = 0,
 }: QuickReservationFormProps) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -124,6 +128,15 @@ export function QuickReservationForm({
   );
 
   const stayDays = reservationStayDayCount(dateStart, dateEnd);
+
+  const effectiveStart = useMemo(
+    () =>
+      mawkib
+        ? effectiveStayStartDate(today, mawkib.serviceStartDate)
+        : today,
+    [mawkib, today],
+  );
+
   const dateRange = useMemo(
     () => buildReservationOccupiedDates(dateStart, dateEnd),
     [dateStart, dateEnd],
@@ -213,6 +226,41 @@ export function QuickReservationForm({
 
   const bypassCapacityLimits = skipCapacityCheck && canBypassCapacity;
 
+  const handleQuickPickMale = () => {
+    setFemaleGuestCount(0);
+    setMaleGuestCount((current) => {
+      const next = current + 1;
+      if (!bypassCapacityLimits && maleMax !== undefined && next > maleMax) {
+        return current > 0 ? current : Math.min(1, maleMax);
+      }
+      return next;
+    });
+  };
+
+  const handleQuickPickFemale = () => {
+    setMaleGuestCount(0);
+    setFemaleGuestCount((current) => {
+      const next = current + 1;
+      if (!bypassCapacityLimits && femaleMax !== undefined && next > femaleMax) {
+        return current > 0 ? current : Math.min(1, femaleMax);
+      }
+      return next;
+    });
+  };
+
+  const maleQuickPickActive = maleGuestCount > 0 && femaleGuestCount === 0;
+  const femaleQuickPickActive = femaleGuestCount > 0 && maleGuestCount === 0;
+  const maleQuickPickDisabled =
+    !bypassCapacityLimits &&
+    maleMax !== undefined &&
+    (maleMax <= 0 ||
+      (maleQuickPickActive && maleGuestCount >= maleMax));
+  const femaleQuickPickDisabled =
+    !bypassCapacityLimits &&
+    femaleMax !== undefined &&
+    (femaleMax <= 0 ||
+      (femaleQuickPickActive && femaleGuestCount >= femaleMax));
+
   const mawkibForCapacityDisplay = useMemo(() => {
     if (!mawkib) return mawkib;
     if (capacityLoading || capacitySnapshots.length !== dateRange.length) {
@@ -266,6 +314,22 @@ export function QuickReservationForm({
 
     setDateEnd(clampEndDate(dateStart, end));
   };
+
+  const handleStayDurationPick = (days: number) => {
+    if (!mawkib) return;
+    setStayDateAlignAlert(null);
+    setConflictInfo(null);
+    const start = effectiveStayStartDate(today, mawkib.serviceStartDate);
+    const end = clampEndDate(start, defaultReservationEndDate(start, days));
+    setDateStart(start);
+    setDateEnd(end);
+  };
+
+  const isStayDurationActive = (days: number) =>
+    dateStart === effectiveStart && stayDays === days;
+
+  const isStayDurationDisabled = (days: number) =>
+    days < minReservationDays || days > maxReservationDays;
 
   const revealDateConflictUi = (conflict: ReservationConflictInfo | null) => {
     if (conflict) {
@@ -369,9 +433,8 @@ export function QuickReservationForm({
         queryKey: ['mawkib-inventory', 'quick-reservation', mawkibId],
       });
 
-      toast.success('رزرو سریع با موفقیت ثبت شد');
       setConflictInfo(null);
-      onSuccess(created.id);
+      onSuccess(created);
     } catch (err) {
       const apiMessage = getApiErrorMessage(err, '');
       const conflict = parseReservationConflictError(err);
@@ -408,8 +471,13 @@ export function QuickReservationForm({
           />
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-bold text-slate-800">{mawkib.name}</h2>
-            <div className="mt-2">
-              <MawkibCapacityPills mawkib={mawkibForCapacityDisplay ?? mawkib} />
+            <div className="mt-2 w-full">
+              <MawkibCapacityPills
+                mawkib={mawkibForCapacityDisplay ?? mawkib}
+                compact
+                maleClassName="min-w-0 flex-1"
+                femaleClassName="min-w-0 flex-1"
+              />
             </div>
           </div>
         </div>
@@ -433,6 +501,7 @@ export function QuickReservationForm({
           submitting={submitting}
           mobileLabel="تلفن همراه"
           autoFocusMobile
+          mobileFocusTrigger={mobileFocusTrigger}
           showLocation={false}
           optionalFields="hidden"
           onFullNameChange={setFullName}
@@ -483,26 +552,34 @@ export function QuickReservationForm({
             </div>
           )}
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <PersianDateInput
-              label="تاریخ شروع اقامت *"
-              value={dateStart}
-              onChange={handleDateStartChange}
-              placeholder="انتخاب تاریخ ورود"
-              minDate={effectiveStayStartDate(today, mawkib.serviceStartDate)}
-              inputClassName={reservationFormInputClass}
-              clearable={false}
+          <div className="rounded-2xl border border-slate-100 bg-gradient-to-b from-slate-50/80 to-white p-4">
+            <StayDurationQuickPick
+              onSelect={handleStayDurationPick}
+              isActive={isStayDurationActive}
+              isDisabled={isStayDurationDisabled}
             />
-            <PersianDateInput
-              label="تاریخ پایان اقامت *"
-              value={dateEnd}
-              onChange={handleDateEndChange}
-              placeholder="انتخاب تاریخ خروج"
-              minDate={minimumEndDate}
-              maxDate={maximumEndDate}
-              inputClassName={reservationFormInputClass}
-              clearable={false}
-            />
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <PersianDateInput
+                label="تاریخ شروع اقامت *"
+                value={dateStart}
+                onChange={handleDateStartChange}
+                placeholder="انتخاب تاریخ ورود"
+                minDate={effectiveStayStartDate(today, mawkib.serviceStartDate)}
+                inputClassName={reservationFormInputClass}
+                clearable={false}
+              />
+              <PersianDateInput
+                label="تاریخ پایان اقامت *"
+                value={dateEnd}
+                onChange={handleDateEndChange}
+                placeholder="انتخاب تاریخ خروج"
+                minDate={minimumEndDate}
+                maxDate={maximumEndDate}
+                inputClassName={reservationFormInputClass}
+                clearable={false}
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -534,36 +611,51 @@ export function QuickReservationForm({
           subtitle={reservationSectionSubtitle}
         />
 
-        <div className={guestCountGridClass}>
-          {showMaleFields && (
-            <GuestCountStepper
-              key={bypassCapacityLimits ? 'male-unlimited' : 'male-limited'}
-              label="تعداد آقایان *"
-              labelSuffix={
-                !capacityLoading && maleMax !== undefined ? (
-                  <GuestCountCapacityBadge available={maleMax} variant="male" />
-                ) : undefined
-              }
-              value={maleGuestCount}
-              max={bypassCapacityLimits ? undefined : maleMax}
-              onChange={setMaleGuestCount}
+        <div className="rounded-2xl border border-slate-100 bg-gradient-to-b from-slate-50/80 to-white p-4">
+          {showMaleFields && showFemaleFields && (
+            <GuestCountQuickPick
+              onPickMale={handleQuickPickMale}
+              onPickFemale={handleQuickPickFemale}
+              maleActive={maleQuickPickActive}
+              femaleActive={femaleQuickPickActive}
+              maleDisabled={maleQuickPickDisabled}
+              femaleDisabled={femaleQuickPickDisabled}
             />
           )}
-          {showFemaleFields && (
-            <GuestCountStepper
-              key={bypassCapacityLimits ? 'female-unlimited' : 'female-limited'}
-              label="تعداد بانوان *"
-              labelSuffix={
-                !capacityLoading && femaleMax !== undefined ? (
-                  <GuestCountCapacityBadge available={femaleMax} variant="female" />
-                ) : undefined
-              }
-              value={femaleGuestCount}
-              min={showMaleFields ? 0 : 1}
-              max={bypassCapacityLimits ? undefined : femaleMax}
-              onChange={setFemaleGuestCount}
-            />
-          )}
+
+          <div className={guestCountGridClass}>
+            {showMaleFields && (
+              <GuestCountStepper
+                key={bypassCapacityLimits ? 'male-unlimited' : 'male-limited'}
+                label="تعداد آقایان *"
+                labelSuffix={
+                  !capacityLoading && maleMax !== undefined ? (
+                    <GuestCountCapacityBadge available={maleMax} variant="male" />
+                  ) : undefined
+                }
+                value={maleGuestCount}
+                max={bypassCapacityLimits ? undefined : maleMax}
+                onChange={setMaleGuestCount}
+                compact
+              />
+            )}
+            {showFemaleFields && (
+              <GuestCountStepper
+                key={bypassCapacityLimits ? 'female-unlimited' : 'female-limited'}
+                label="تعداد بانوان *"
+                labelSuffix={
+                  !capacityLoading && femaleMax !== undefined ? (
+                    <GuestCountCapacityBadge available={femaleMax} variant="female" />
+                  ) : undefined
+                }
+                value={femaleGuestCount}
+                min={showMaleFields ? 0 : 1}
+                max={bypassCapacityLimits ? undefined : femaleMax}
+                onChange={setFemaleGuestCount}
+                compact
+              />
+            )}
+          </div>
         </div>
       </section>
 

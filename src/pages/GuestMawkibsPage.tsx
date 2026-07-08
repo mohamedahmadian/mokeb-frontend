@@ -209,6 +209,7 @@ export function GuestMawkibsPage() {
         key={mawkib.id}
         mawkib={mawkib}
         showThumbnail
+        showLocationQr={false}
         variant="guest-browse"
         onCardClick={() => navigate(guestMawkibDetailPath(mawkib.id))}
         footer={

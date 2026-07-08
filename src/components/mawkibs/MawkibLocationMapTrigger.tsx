@@ -174,7 +174,10 @@ export function MawkibLocationMapTrigger({
       <button
         type="button"
         onClick={() => setMapOpen(true)}
-        className={`${btnSecondary} inline-flex w-full max-w-sm items-center justify-center gap-2 ${className}`}
+        className={
+          className ||
+          `${btnSecondary} inline-flex w-full max-w-sm items-center justify-center gap-2`
+        }
       >
         <MapPinIcon />
         <span>{buttonLabel}</span>

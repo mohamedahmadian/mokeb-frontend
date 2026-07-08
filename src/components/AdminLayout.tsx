@@ -485,7 +485,7 @@ export function AdminLayout() {
 
   useEffect(() => {
     setMenuOpen(false);
-  }, [location.pathname]);
+  }, [location.pathname, location.search, location.key]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -495,6 +495,8 @@ export function AdminLayout() {
       document.body.style.overflow = "";
     };
   }, [menuOpen]);
+
+  const closeMobileMenu = () => setMenuOpen(false);
 
   return (
     <div className="flex min-h-screen min-h-dvh bg-[#f4f6f9] text-slate-700">
@@ -565,37 +567,34 @@ export function AdminLayout() {
 
       {/* Mobile drawer */}
       {menuOpen && (
-        <button
-          type="button"
-          aria-label="بستن منو"
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-          onClick={() => setMenuOpen(false)}
-        />
+        <>
+          <button
+            type="button"
+            aria-label="بستن منو"
+            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+            onClick={closeMobileMenu}
+          />
+          <aside className="fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-slate-200/80 bg-white shadow-xl lg:hidden">
+            {sidebarHeader(false)}
+            {sidebarNav(false, closeMobileMenu)}
+            <div className="border-t border-slate-100 p-4">
+              <Link
+                to="/"
+                onClick={closeMobileMenu}
+                className={`${guestTheme.btnSecondary} inline-flex w-full items-center justify-center gap-1.5`}
+              >
+                <img
+                  src="/images/logo.png"
+                  alt=""
+                  aria-hidden
+                  className="h-5 w-5 object-contain"
+                />
+                <span>بازگشت به صفحه اصلی</span>
+              </Link>
+            </div>
+          </aside>
+        </>
       )}
-
-      <aside
-        className={`fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-slate-200/80 bg-white shadow-xl transition-transform duration-300 ease-in-out lg:hidden ${
-          menuOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        {sidebarHeader(false)}
-        {sidebarNav(false, () => setMenuOpen(false))}
-        <div className="border-t border-slate-100 p-4">
-          <Link
-            to="/"
-            onClick={() => setMenuOpen(false)}
-            className={`${guestTheme.btnSecondary} inline-flex w-full items-center justify-center gap-1.5`}
-          >
-            <img
-              src="/images/logo.png"
-              alt=""
-              aria-hidden
-              className="h-5 w-5 object-contain"
-            />
-            <span>بازگشت به صفحه اصلی</span>
-          </Link>
-        </div>
-      </aside>
     </div>
   );
 }

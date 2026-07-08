@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { MAWKIB_AMENITY_FIELDS } from "./MawkibExtraFields";
 import { formatPersianDate } from "../ui/PersianDateInput";
 import {
@@ -7,9 +8,11 @@ import {
   mawkibAvailableFemale,
   mawkibAvailableMale,
 } from "../../lib/capacity";
+import { buildMawkibLocationMapUrl, hasValidCoords } from "../../lib/geo";
 import { RemainingCapacityHint } from "./RemainingCapacityHint";
 import { MawkibReservationTypeBadges } from "./MawkibReservationTypeBadges";
 import { MawkibThumbnail } from "./MawkibThumbnail";
+import { MawkibLocationMapTrigger } from "./MawkibLocationMapTrigger";
 import type { Mawkib } from "../../types";
 
 export function mawkibCapacitySnapshot(mawkib: Mawkib) {
@@ -384,18 +387,95 @@ function MawkibCardCompactCell({
   );
 }
 
+function MawkibLocationQrCompact({
+  mawkib,
+}: {
+  mawkib: Pick<Mawkib, "latitude" | "longitude" | "name">;
+}) {
+  if (!hasValidCoords(mawkib.latitude, mawkib.longitude)) return null;
+
+  const locationQrUrl = buildMawkibLocationMapUrl(
+    mawkib.latitude,
+    mawkib.longitude!,
+    mawkib.name,
+  );
+
+  return (
+    <div className="flex flex-col items-center justify-start text-center">
+      <p className="mb-1 text-[9px] font-medium text-slate-500">موقعیت مکانی</p>
+      <div className="relative rounded-lg bg-white p-1 ring-1 ring-slate-200/80">
+        <QRCodeSVG value={locationQrUrl} size={64} level="M" />
+        <a
+          href={locationQrUrl}
+          className="absolute inset-0 rounded-lg"
+          aria-label="مسیریابی به موقعیت موکب"
+        />
+      </div>
+    </div>
+  );
+}
+
+function MawkibGuestBrowseAmenitiesLocationRow({
+  mawkib,
+  showLocationQr = true,
+}: {
+  mawkib: Mawkib;
+  showLocationQr?: boolean;
+}) {
+  const amenities = getActiveAmenities(mawkib);
+  const hasLocation =
+    showLocationQr && hasValidCoords(mawkib.latitude, mawkib.longitude);
+
+  if (amenities.length === 0 && !hasLocation) return null;
+
+  if (!hasLocation) {
+    return (
+      <div className="flex flex-wrap gap-1.5 border-t border-slate-100 px-3.5 py-2.5">
+        {amenities.map(({ key, label }) => (
+          <span
+            key={key}
+            className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600 ring-1 ring-slate-200/80"
+          >
+            <span className="text-[#4a6fa5]">{cardIcons.amenity}</span>
+            {label}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-[minmax(0,7fr)_minmax(0,3fr)] items-start gap-3 border-t border-slate-100 px-3.5 py-2.5">
+      <div className="flex min-w-0 flex-wrap content-start gap-1.5">
+        {amenities.map(({ key, label }) => (
+          <span
+            key={key}
+            className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600 ring-1 ring-slate-200/80"
+          >
+            <span className="text-[#4a6fa5]">{cardIcons.amenity}</span>
+            {label}
+          </span>
+        ))}
+      </div>
+      <MawkibLocationQrCompact mawkib={mawkib} />
+    </div>
+  );
+}
+
 function MawkibGuestBrowseCardBody({
   mawkib,
   selectable,
   selected,
   showOnlineReservationStatus = true,
   showThumbnail = false,
+  showLocationQr = true,
 }: {
   mawkib: Mawkib;
   selectable: boolean;
   selected: boolean;
   showOnlineReservationStatus?: boolean;
   showThumbnail?: boolean;
+  showLocationQr?: boolean;
 }) {
   const ownerName = mawkib.owner?.fullName?.trim();
   const contactPhone = (
@@ -404,7 +484,6 @@ function MawkibGuestBrowseCardBody({
   const serviceStart = formatServiceDate(mawkib.serviceStartDate);
   const serviceEnd = formatServiceDate(mawkib.serviceEndDate);
   const showServiceDates = Boolean(serviceStart && serviceEnd);
-  const amenities = getActiveAmenities(mawkib);
   const address = mawkib.address?.trim();
 
   return (
@@ -459,48 +538,48 @@ function MawkibGuestBrowseCardBody({
         </div>
 
         <div className="mt-2.5 space-y-2 border-t border-slate-100 pt-2.5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            {ownerName && (
-              <MawkibCardCompactCell
-                icon={cardIcons.owner}
-                label="مسئول موکب"
-                className="min-w-0 flex-1"
-              >
-                {ownerName}
-              </MawkibCardCompactCell>
-            )}
-            <MawkibCapacityPills
-              mawkib={mawkib}
-              compact
-              fitContent
-              maleClassName="min-w-[8.25rem]"
-            />
-          </div>
+          <MawkibCapacityPills
+            mawkib={mawkib}
+            compact
+            maleClassName="min-w-0 flex-1"
+            femaleClassName="min-w-0 flex-1"
+          />
 
-          {(contactPhone || showServiceDates) && (
+          {(ownerName || contactPhone) && (
             <div
               className={`grid gap-2 ${
-                contactPhone && showServiceDates ? "grid-cols-2" : "grid-cols-1"
+                ownerName && contactPhone ? "grid-cols-2" : "grid-cols-1"
               }`}
             >
+              {ownerName && (
+                <MawkibCardCompactCell
+                  icon={cardIcons.owner}
+                  label="مسئول موکب"
+                  className="min-w-0"
+                >
+                  {ownerName}
+                </MawkibCardCompactCell>
+              )}
               {contactPhone && (
                 <MawkibCardCompactCell
                   icon={cardIcons.phone}
                   label="شماره تماس"
                   dir="ltr"
+                  className="min-w-0"
                 >
                   <span className="font-mono">{contactPhone}</span>
                 </MawkibCardCompactCell>
               )}
-              {showServiceDates && (
-                <MawkibCardCompactCell
-                  icon={cardIcons.calendar}
-                  label="بازه خدمات"
-                >
-                  {serviceStart} — {serviceEnd}
-                </MawkibCardCompactCell>
-              )}
             </div>
+          )}
+
+          {showServiceDates && (
+            <MawkibCardCompactCell
+              icon={cardIcons.calendar}
+              label="بازه خدمات"
+            >
+              {serviceStart} — {serviceEnd}
+            </MawkibCardCompactCell>
           )}
 
           {address && (
@@ -516,19 +595,10 @@ function MawkibGuestBrowseCardBody({
         </div>
       </div>
 
-      {amenities.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 border-t border-slate-100 px-3.5 py-2">
-          {amenities.map(({ key, label }) => (
-            <span
-              key={key}
-              className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600 ring-1 ring-slate-200/80"
-            >
-              <span className="text-[#4a6fa5]">{cardIcons.amenity}</span>
-              {label}
-            </span>
-          ))}
-        </div>
-      )}
+      <MawkibGuestBrowseAmenitiesLocationRow
+        mawkib={mawkib}
+        showLocationQr={showLocationQr}
+      />
     </>
   );
 }
@@ -540,6 +610,7 @@ function MawkibInfoCardBody({
   showOnlineReservationStatus = true,
   showThumbnail = false,
   variant = "default",
+  showLocationQr = true,
 }: {
   mawkib: Mawkib;
   selectable: boolean;
@@ -547,6 +618,7 @@ function MawkibInfoCardBody({
   showOnlineReservationStatus?: boolean;
   showThumbnail?: boolean;
   variant?: "default" | "guest-browse";
+  showLocationQr?: boolean;
 }) {
   if (variant === "guest-browse") {
     return (
@@ -556,6 +628,7 @@ function MawkibInfoCardBody({
         selected={selected}
         showOnlineReservationStatus={showOnlineReservationStatus}
         showThumbnail={showThumbnail}
+        showLocationQr={showLocationQr}
       />
     );
   }
@@ -691,6 +764,44 @@ function MawkibInfoCardBody({
 const guestBrowseActionBtn =
   "inline-flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 rounded-lg border border-[#c5d4e8] bg-[#f0f4fa] px-2.5 py-2 text-xs font-medium text-[#4a6fa5] transition hover:bg-[#e8eef6]";
 
+export function MawkibGuestGalleryButton({
+  onClick,
+  className,
+}: {
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={className ?? guestBrowseActionBtn}
+    >
+      {cardIcons.gallery}
+      گالری تصاویر
+    </button>
+  );
+}
+
+export function MawkibGuestMapButton({
+  mawkib,
+  className,
+}: {
+  mawkib: Pick<Mawkib, "latitude" | "longitude" | "name">;
+  className?: string;
+}) {
+  if (!hasValidCoords(mawkib.latitude, mawkib.longitude)) return null;
+
+  return (
+    <MawkibLocationMapTrigger
+      latitude={mawkib.latitude}
+      longitude={mawkib.longitude}
+      mawkibName={mawkib.name}
+      className={className ?? guestBrowseActionBtn}
+    />
+  );
+}
+
 export function MawkibGuestGalleryDetailsFooter({
   onViewGallery,
   onViewDetails,
@@ -795,6 +906,7 @@ export function MawkibInfoCard({
   reservationBlocked = false,
   showOnlineReservationStatus = true,
   showThumbnail = false,
+  showLocationQr = true,
   variant = "default",
 }: {
   mawkib: Mawkib;
@@ -807,6 +919,7 @@ export function MawkibInfoCard({
   reservationBlocked?: boolean;
   showOnlineReservationStatus?: boolean;
   showThumbnail?: boolean;
+  showLocationQr?: boolean;
   variant?: "default" | "guest-browse";
 }) {
   const canSelect = Boolean(selectable && !reservationBlocked && onSelect);
@@ -833,6 +946,7 @@ export function MawkibInfoCard({
         selected={selected}
         showOnlineReservationStatus={showOnlineReservationStatus}
         showThumbnail={showThumbnail}
+        showLocationQr={showLocationQr}
         variant={variant}
       />
       {footer}
@@ -854,6 +968,7 @@ export function MawkibInfoCard({
               selected={selected}
               showOnlineReservationStatus={showOnlineReservationStatus}
               showThumbnail={showThumbnail}
+              showLocationQr={showLocationQr}
               variant={variant}
             />
           </button>
@@ -887,6 +1002,7 @@ export function MawkibInfoCard({
             selected={false}
             showOnlineReservationStatus={showOnlineReservationStatus}
             showThumbnail={showThumbnail}
+            showLocationQr={showLocationQr}
             variant={variant}
           />
         </button>

@@ -175,9 +175,10 @@ export function PanelNewPilgrimOptionalFields({
           <input
             type="text"
             value={travelOrigin}
-            onChange={(event) => onTravelOriginChange?.(event.target.value)}
-            className={reservationFormInputClass}
-            placeholder="مثلاً تهران، مشهد"
+            readOnly
+            tabIndex={-1}
+            className={`${reservationFormInputClass} cursor-not-allowed bg-slate-50 text-slate-700`}
+            placeholder="—"
           />
         </label>
       </div>
@@ -240,6 +241,8 @@ interface PanelNewPilgrimFieldsProps extends PanelNewPilgrimOptionalFieldsProps 
   mobileLabel?: string;
   /** Focus mobile input when the form mounts (e.g. quick reservation). */
   autoFocusMobile?: boolean;
+  /** Increment to request focus on the mobile field (e.g. after closing success modal). */
+  mobileFocusTrigger?: number;
   /** inline: همه فیلدها باز | collapsible: بقیه در باکس بازشونده | hidden: فقط موبایل و نام */
   optionalFields?: "inline" | "collapsible" | "hidden";
   showCustomTrackingCode?: boolean;
@@ -270,6 +273,7 @@ export function PanelNewPilgrimFields({
   onNationalIdCardImageUrlChange,
   mobileLabel = "شماره موبایل",
   autoFocusMobile = false,
+  mobileFocusTrigger = 0,
   showLocation = true,
   optionalFields = "inline",
   province = "",
@@ -304,6 +308,14 @@ export function PanelNewPilgrimFields({
     });
     return () => cancelAnimationFrame(frameId);
   }, [autoFocusMobile]);
+
+  useEffect(() => {
+    if (mobileFocusTrigger <= 0) return;
+    const frameId = requestAnimationFrame(() => {
+      mobileRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(frameId);
+  }, [mobileFocusTrigger]);
 
   const clearAutoFilledFullName = () => {
     if (

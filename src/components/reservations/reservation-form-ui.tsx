@@ -6,6 +6,8 @@ export {
   MawkibCard,
   MawkibInfoCard,
   MawkibGuestGalleryDetailsFooter,
+  MawkibGuestGalleryButton,
+  MawkibGuestMapButton,
   mawkibCapacitySnapshot,
 } from '../mawkibs/MawkibInfoCard';
 
@@ -169,6 +171,171 @@ export function GuestCountCapacityBadge({
   );
 }
 
+function GuestCountIconMale({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      aria-hidden
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+      />
+    </svg>
+  );
+}
+
+function GuestCountIconFemale({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      aria-hidden
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
+      />
+    </svg>
+  );
+}
+
+export function GuestCountQuickPick({
+  onPickMale,
+  onPickFemale,
+  maleActive,
+  femaleActive,
+  maleDisabled = false,
+  femaleDisabled = false,
+}: {
+  onPickMale: () => void;
+  onPickFemale: () => void;
+  maleActive?: boolean;
+  femaleActive?: boolean;
+  maleDisabled?: boolean;
+  femaleDisabled?: boolean;
+}) {
+  if (maleDisabled && femaleDisabled) return null;
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
+      {!maleDisabled && (
+        <button
+          type="button"
+          onClick={onPickMale}
+          aria-pressed={maleActive}
+          className={`group inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium transition-all active:scale-[0.98] ${
+            maleActive
+              ? 'border-sky-300 bg-gradient-to-b from-sky-50 to-sky-100/80 text-sky-900 shadow-sm ring-2 ring-sky-200/70'
+              : 'border-slate-200/90 bg-white text-slate-600 shadow-sm hover:border-sky-200 hover:bg-sky-50/60 hover:text-sky-800'
+          }`}
+        >
+          <span
+            className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
+              maleActive
+                ? 'bg-sky-500 text-white shadow-sm'
+                : 'bg-sky-100 text-sky-600 group-hover:bg-sky-200/80'
+            }`}
+          >
+            <GuestCountIconMale className="h-3.5 w-3.5" />
+          </span>
+          <span>آقا</span>
+        </button>
+      )}
+      {!femaleDisabled && (
+        <button
+          type="button"
+          onClick={onPickFemale}
+          aria-pressed={femaleActive}
+          className={`group inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium transition-all active:scale-[0.98] ${
+            femaleActive
+              ? 'border-pink-300 bg-gradient-to-b from-pink-50 to-pink-100/80 text-pink-900 shadow-sm ring-2 ring-pink-200/70'
+              : 'border-slate-200/90 bg-white text-slate-600 shadow-sm hover:border-pink-200 hover:bg-pink-50/60 hover:text-pink-800'
+          }`}
+        >
+          <span
+            className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
+              femaleActive
+                ? 'bg-pink-500 text-white shadow-sm'
+                : 'bg-pink-100 text-pink-600 group-hover:bg-pink-200/80'
+            }`}
+          >
+            <GuestCountIconFemale className="h-3.5 w-3.5" />
+          </span>
+          <span>خانم</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
+const STAY_DURATION_OPTIONS = [1, 2, 3, 4] as const;
+
+const STAY_DURATION_LABELS: Record<(typeof STAY_DURATION_OPTIONS)[number], string> = {
+  1: 'یک‌روزه',
+  2: 'دو‌روزه',
+  3: 'سه‌روزه',
+  4: 'چهار‌روزه',
+};
+
+export function StayDurationQuickPick({
+  onSelect,
+  isActive,
+  isDisabled,
+}: {
+  onSelect: (days: number) => void;
+  isActive: (days: number) => boolean;
+  isDisabled?: (days: number) => boolean;
+}) {
+  const visibleOptions = STAY_DURATION_OPTIONS.filter(
+    (days) => !(isDisabled?.(days) ?? false),
+  );
+
+  if (visibleOptions.length === 0) return null;
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
+      {visibleOptions.map((days) => {
+        const active = isActive(days);
+
+        return (
+          <button
+            key={days}
+            type="button"
+            onClick={() => onSelect(days)}
+            aria-pressed={active}
+            className={`group inline-flex items-center justify-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-sm font-medium transition-all active:scale-[0.98] sm:px-3 ${
+              active
+                ? 'border-[#c5d4e8] bg-gradient-to-b from-[#f0f4fa] to-[#e8eef6] text-[#4a6fa5] shadow-sm ring-2 ring-[#c5d4e8]/80'
+                : 'border-slate-200/90 bg-white text-slate-600 shadow-sm hover:border-[#c5d4e8] hover:bg-[#f0f4fa]/70 hover:text-[#4a6fa5]'
+            }`}
+          >
+            <span
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-colors ${
+                active
+                  ? 'bg-[#4a6fa5] text-white shadow-sm'
+                  : 'bg-[#e8eef6] text-[#4a6fa5] group-hover:bg-[#dbe4f0]'
+              }`}
+            >
+              {formatPersianNumber(days)}
+            </span>
+            <span>{STAY_DURATION_LABELS[days]}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function GuestCountStepper({
   value,
   onChange,
@@ -177,6 +344,7 @@ export function GuestCountStepper({
   label,
   labelSuffix,
   disabled = false,
+  compact = false,
 }: {
   value: number;
   onChange: (n: number) => void;
@@ -185,6 +353,7 @@ export function GuestCountStepper({
   label: string;
   labelSuffix?: ReactNode;
   disabled?: boolean;
+  compact?: boolean;
 }) {
   const decrement = () => onChange(Math.max(min, value - 1));
   const increment = () => {
@@ -193,21 +362,37 @@ export function GuestCountStepper({
     onChange(next);
   };
 
+  const buttonClass = compact
+    ? 'flex h-9 w-9 items-center justify-center rounded-xl border text-base font-semibold transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40'
+    : 'flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg font-medium text-slate-700 transition hover:border-[#c5d4e8] hover:bg-[#f0f4fa] disabled:opacity-40';
+
+  const minusClass = compact
+    ? `${buttonClass} border-slate-200/90 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-slate-100`
+    : `${buttonClass} border-slate-200 bg-white text-slate-700 hover:border-[#c5d4e8] hover:bg-[#f0f4fa]`;
+
+  const plusClass = compact
+    ? `${buttonClass} border-[#c5d4e8] bg-[#f0f4fa] text-[#4a6fa5] hover:border-[#4a6fa5]/40 hover:bg-[#e8eef6]`
+    : `${buttonClass} border-slate-200 bg-white text-slate-700 hover:border-[#c5d4e8] hover:bg-[#f0f4fa]`;
+
+  const inputClass = compact
+    ? 'h-9 w-11 rounded-xl border border-slate-200/90 bg-white text-center text-base font-bold tabular-nums text-slate-800 shadow-inner focus:border-[#4a6fa5] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/15 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+    : 'h-11 w-20 rounded-xl border border-slate-200 text-center text-lg font-semibold text-slate-800 focus:border-[#4a6fa5] focus:outline-none';
+
   return (
-    <div className={disabled ? "opacity-50" : undefined}>
+    <div className={disabled ? 'opacity-50' : undefined}>
       <span className="mb-2 flex flex-wrap items-center gap-x-1.5 text-sm text-slate-600">
         <span>{label}</span>
         {labelSuffix}
       </span>
-      <div className="flex items-center gap-3">
+      <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'}`}>
         <button
           type="button"
-          onClick={decrement}
-          disabled={disabled || value <= min}
-          className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg font-medium text-slate-700 transition hover:border-[#c5d4e8] hover:bg-[#f0f4fa] disabled:opacity-40"
-          aria-label="کاهش"
+          onClick={increment}
+          disabled={disabled || (max !== undefined && value >= max)}
+          className={plusClass}
+          aria-label="افزایش"
         >
-          −
+          +
         </button>
         <input
           type="number"
@@ -222,18 +407,18 @@ export function GuestCountStepper({
             else if (max !== undefined && n > max) onChange(max);
             else onChange(n);
           }}
-          className="h-11 w-20 rounded-xl border border-slate-200 text-center text-lg font-semibold text-slate-800 focus:border-[#4a6fa5] focus:outline-none"
+          className={inputClass}
         />
         <button
           type="button"
-          onClick={increment}
-          disabled={disabled || (max !== undefined && value >= max)}
-          className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg font-medium text-slate-700 transition hover:border-[#c5d4e8] hover:bg-[#f0f4fa] disabled:opacity-40"
-          aria-label="افزایش"
+          onClick={decrement}
+          disabled={disabled || value <= min}
+          className={minusClass}
+          aria-label="کاهش"
         >
-          +
+          −
         </button>
-        <span className="text-sm text-slate-500">نفر</span>
+        <span className={`text-slate-500 ${compact ? 'text-xs' : 'text-sm'}`}>نفر</span>
       </div>
     </div>
   );
