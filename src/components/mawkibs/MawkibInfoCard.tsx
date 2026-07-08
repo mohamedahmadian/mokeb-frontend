@@ -1021,6 +1021,7 @@ export function MawkibCard({
   reservationBlocked = false,
   showThumbnail = false,
   variant = "default",
+  showLocationQr = true,
   footer,
 }: {
   mawkib: Mawkib;
@@ -1029,6 +1030,7 @@ export function MawkibCard({
   reservationBlocked?: boolean;
   showThumbnail?: boolean;
   variant?: "default" | "guest-browse";
+  showLocationQr?: boolean;
   footer?: ReactNode;
 }) {
   return (
@@ -1040,6 +1042,7 @@ export function MawkibCard({
       reservationBlocked={reservationBlocked}
       showThumbnail={showThumbnail}
       variant={variant}
+      showLocationQr={showLocationQr}
       footer={footer}
     />
   );

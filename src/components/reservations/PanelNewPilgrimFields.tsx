@@ -83,7 +83,7 @@ export function PanelNewPilgrimOptionalFields({
   onNationalIdChange,
   onGenderChange,
   onBirthDateChange,
-  onTravelOriginChange,
+  onTravelOriginChange: _onTravelOriginChange,
   onCountryChange,
   onPassportNumberChange,
   onNationalIdCardImageUrlChange,

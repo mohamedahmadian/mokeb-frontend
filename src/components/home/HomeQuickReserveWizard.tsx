@@ -408,7 +408,9 @@ export function HomeQuickReserveWizard() {
             <div className="space-y-4">
               <label className="block">
                 <span className="mb-1.5 flex items-center gap-1.5 text-sm text-slate-600">
-                  <IconUser className="h-4 w-4 text-[#4a6fa5]" />
+                  <span className="text-[#4a6fa5] [&_svg]:h-4 [&_svg]:w-4">
+                    <IconUser />
+                  </span>
                   نام و نام خانوادگی *
                 </span>
                 <input
@@ -429,7 +431,9 @@ export function HomeQuickReserveWizard() {
               </label>
               <label className="block">
                 <span className="mb-1.5 flex items-center gap-1.5 text-sm text-slate-600">
-                  <IconPhone className="h-4 w-4 text-[#4a6fa5]" />
+                  <span className="text-[#4a6fa5] [&_svg]:h-4 [&_svg]:w-4">
+                    <IconPhone />
+                  </span>
                   تلفن همراه *
                 </span>
                 <input
