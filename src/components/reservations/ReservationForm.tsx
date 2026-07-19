@@ -191,6 +191,7 @@ export function ReservationForm({
   const [fullName, setFullName] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
   const [nationalId, setNationalId] = useState("");
+  const [carPlate, setCarPlate] = useState("");
   const [gender, setGender] = useState<UserGender | "">("");
   const [birthDate, setBirthDate] = useState("");
   const [country, setCountry] = useState("");
@@ -912,6 +913,7 @@ export function ReservationForm({
       lastName,
       mobileNumber: mobileNumber.trim(),
       nationalId: nationalId.trim() || undefined,
+      carPlate: carPlate.trim() || undefined,
       province: province.trim() || undefined,
       city: city.trim() || undefined,
       gender: gender || undefined,
@@ -1346,6 +1348,7 @@ export function ReservationForm({
                 fullName={fullName}
                 mobileNumber={mobileNumber}
                 nationalId={nationalId}
+                carPlate={carPlate}
                 gender={gender}
                 birthDate={birthDate}
                 country={country}
@@ -1359,6 +1362,7 @@ export function ReservationForm({
                 onFullNameChange={setFullName}
                 onMobileNumberChange={setMobileNumber}
                 onNationalIdChange={setNationalId}
+                onCarPlateChange={setCarPlate}
                 onGenderChange={setGender}
                 onBirthDateChange={setBirthDate}
                 onCountryChange={setCountry}
@@ -1601,6 +1605,7 @@ export function ReservationForm({
                 >
                   <PanelNewPilgrimOptionalFields
                     nationalId={nationalId}
+                    carPlate={carPlate}
                     gender={gender}
                     birthDate={birthDate}
                     travelOrigin={travelOrigin}
@@ -1612,6 +1617,7 @@ export function ReservationForm({
                     province={province}
                     city={city}
                     onNationalIdChange={setNationalId}
+                    onCarPlateChange={setCarPlate}
                     onGenderChange={setGender}
                     onBirthDateChange={setBirthDate}
                     onTravelOriginChange={setTravelOrigin}

@@ -49,6 +49,7 @@ interface FormState {
   lastName: string;
   mobileNumber: string;
   nationalId: string;
+  carPlate: string;
   gender: UserGender | "";
   birthDate: string;
   country: string;
@@ -56,6 +57,7 @@ interface FormState {
   password: string;
   province: string;
   city: string;
+  address: string;
   description: string;
   social: UserSocialFormValues;
   isActive: boolean;
@@ -68,6 +70,7 @@ const emptyForm: FormState = {
   lastName: "",
   mobileNumber: "",
   nationalId: "",
+  carPlate: "",
   gender: "",
   birthDate: "",
   country: "",
@@ -75,6 +78,7 @@ const emptyForm: FormState = {
   password: "",
   province: "",
   city: "",
+  address: "",
   description: "",
   social: emptyUserSocialFields(),
   isActive: true,
@@ -128,6 +132,12 @@ export function UserFormModal({
     isQuickCreate ||
     (isEdit && (user?.roles.some((r) => r.role.name === "Pilgrim") ?? false)) ||
     (!fixedRole && form.roles.includes("Pilgrim"));
+  const showCarPlate =
+    hideRoles ||
+    fixedRole === "Pilgrim" ||
+    isQuickCreate ||
+    (isEdit && (user?.roles.some((r) => r.role.name === "Pilgrim") ?? false)) ||
+    (!fixedRole && form.roles.includes("Pilgrim"));
   const showGender =
     hideRoles ||
     fixedRole === "Pilgrim" ||
@@ -163,6 +173,7 @@ export function UserFormModal({
         lastName: nameParts.slice(1).join(" "),
         mobileNumber: user.mobileNumber,
         nationalId: user.nationalId ?? "",
+        carPlate: user.carPlate ?? "",
         gender: user.gender ?? "",
         birthDate: user.birthDate?.slice(0, 10) ?? "",
         country: user.country ?? "",
@@ -170,6 +181,7 @@ export function UserFormModal({
         password: "",
         province: user.province ?? "",
         city: user.city ?? "",
+        address: user.address ?? "",
         description: user.description ?? "",
         social: userSocialFieldsFromUser(user),
         isActive: user.isActive,
@@ -264,8 +276,10 @@ export function UserFormModal({
         const payload: UpdateUserPayload = {
           fullName: form.fullName,
           nationalId: form.nationalId.trim(),
+          carPlate: form.carPlate.trim() || undefined,
           province: form.province || undefined,
           city: form.city || undefined,
+          address: form.address.trim() || undefined,
           description: form.description || undefined,
           ...userSocialFieldsToPayload(form.social),
         };
@@ -329,6 +343,8 @@ export function UserFormModal({
           password: password || undefined,
           province: form.province || undefined,
           city: form.city || undefined,
+          address: form.address.trim() || undefined,
+          carPlate: form.carPlate.trim() || undefined,
           description: form.description || undefined,
           ...userSocialFieldsToPayload(form.social),
         });
@@ -385,6 +401,8 @@ export function UserFormModal({
           password: form.password,
           province: form.province || undefined,
           city: form.city || undefined,
+          address: form.address.trim() || undefined,
+          carPlate: form.carPlate.trim() || undefined,
           description: form.description || undefined,
           ...userSocialFieldsToPayload(form.social),
           roles: fixedRole ? [fixedRole] : form.roles,
@@ -481,6 +499,7 @@ export function UserFormModal({
           descriptionLabel="درباره کاربر"
           showGender={showGender && !isMawkibOwnerCreate}
           showBirthDate={showBirthDate}
+          showCarPlate={showCarPlate}
         />
 
         {showNationalIdCardUpload && (

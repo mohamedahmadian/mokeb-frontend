@@ -53,6 +53,9 @@ export function QuickReservationPage() {
         mawkibId={mawkibId}
         mobileFocusTrigger={mobileFocusTrigger}
         onSuccess={(reservation) => {
+          if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+          }
           setCompletedReservation(reservation);
           setFormKey((current) => current + 1);
           setSuccessModalOpen(true);

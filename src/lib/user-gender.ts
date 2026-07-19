@@ -24,3 +24,8 @@ export function genderFromGuestCounts(
   if (maleGuestCount === 0 && femaleGuestCount === 1) return 'Female';
   return '';
 }
+
+/** خط اول پیامک: فقط نام موکب */
+export function buildReservationSmsOpeningLine(mawkibName?: string | null): string {
+  return mawkibName?.trim() ?? '';
+}

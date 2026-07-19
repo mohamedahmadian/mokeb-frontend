@@ -54,22 +54,15 @@ export function hasValidCoords(
   );
 }
 
-/** QR / deep-link that opens native map apps (Google Maps, Neshan, etc.) — not the Mokeb website. */
+/** RFC 5870 geo URI — opens native map apps on iOS/Android (Google Maps, Neshan, etc.). */
 export function buildMawkibLocationMapUrl(
   latitude: number,
   longitude: number,
-  label?: string,
+  _label?: string,
 ): string {
   const lat = latitude.toFixed(6);
   const lng = longitude.toFixed(6);
-  const coords = `${lat},${lng}`;
-
-  if (label?.trim()) {
-    const safeLabel = encodeURIComponent(label.trim());
-    return `geo:0,0?q=${coords}(${safeLabel})`;
-  }
-
-  return `geo:${coords}`;
+  return `geo:${lat},${lng}`;
 }
 
 export interface LatLngBounds {

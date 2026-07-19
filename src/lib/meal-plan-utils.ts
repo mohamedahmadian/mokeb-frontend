@@ -11,6 +11,7 @@ export const MEAL_TYPE_LABELS: Record<MealType, string> = {
 
 export interface MealPlanCell {
   id?: number;
+  guestCount: number;
   isRequired: boolean;
   isServed: boolean;
   servedAt?: string | null;
@@ -23,16 +24,16 @@ export interface MealPlanRow {
   Dinner: MealPlanCell;
 }
 
-function emptyCell(): MealPlanCell {
-  return { isRequired: true, isServed: false };
+function emptyCell(guestCount = 1): MealPlanCell {
+  return { guestCount, isRequired: true, isServed: false };
 }
 
-export function emptyMealPlanRow(date: string): MealPlanRow {
+export function emptyMealPlanRow(date: string, guestCount = 1): MealPlanRow {
   return {
     date,
-    Breakfast: emptyCell(),
-    Lunch: emptyCell(),
-    Dinner: emptyCell(),
+    Breakfast: emptyCell(guestCount),
+    Lunch: emptyCell(guestCount),
+    Dinner: emptyCell(guestCount),
   };
 }
 
@@ -47,6 +48,7 @@ export function plansToRows(plans: MealPlan[]): MealPlanRow[] {
     const row = byDate.get(date)!;
     row[plan.mealType] = {
       id: plan.id,
+      guestCount: plan.guestCount,
       isRequired: plan.isRequired,
       isServed: plan.isServed,
       servedAt: plan.servedAt,
@@ -63,6 +65,7 @@ export function rowsToSaveEntries(rows: MealPlanRow[]) {
       date: row.date,
       mealType,
       isRequired: row[mealType].isRequired,
+      guestCount: row[mealType].guestCount,
     })),
   );
 }

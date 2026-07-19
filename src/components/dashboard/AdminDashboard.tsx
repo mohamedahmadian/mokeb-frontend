@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { CancelReservationModal } from "../reservations/CancelReservationModal";
-import { ReservationTrackLookup } from "./ReservationTrackLookup";
+import { DashboardLookupPanels } from "./DashboardLookupPanels";
 import { formatPersianDateRange } from "../ui/PersianDateRangePicker";
 import { formatPersianDateFromIso } from "../ui/PersianDateInput";
 import { NavIcon } from "../ui/NavIcons";
@@ -610,9 +610,10 @@ export function AdminDashboard({ fullName }: AdminDashboardProps) {
         )}
       </section>
 
-      <ReservationTrackLookup
+      <DashboardLookupPanels
         lookupFn={lookupAdminReservation}
         showCheckInOutTimes
+        pilgrimSearchScope="all"
       />
 
       {reservationStats.pendingReservations > 0 && (

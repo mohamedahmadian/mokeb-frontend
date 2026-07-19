@@ -37,8 +37,16 @@ export function MealPlanEditor({
   const [togglingKey, setTogglingKey] = useState<string | null>(null);
   const [servingId, setServingId] = useState<number | null>(null);
 
+  const defaultGuestCount = Math.max(
+    1,
+    reservation.maleGuestCount + reservation.femaleGuestCount,
+  );
+
   const syncedKey = useMemo(
-    () => plans.map((p) => `${p.id}:${p.isRequired}:${p.isServed}`).join('|'),
+    () =>
+      plans
+        .map((p) => `${p.id}:${p.isRequired}:${p.isServed}:${p.guestCount}`)
+        .join('|'),
     [plans],
   );
 
@@ -109,17 +117,17 @@ export function MealPlanEditor({
         ? rows[rows.length - 1].date
         : reservation.reservationDate.slice(0, 10);
     const nextDate = addGregorianDays(lastDate, 1);
-    setRows((prev) => [...prev, emptyMealPlanRow(nextDate)]);
+    setRows((prev) => [...prev, emptyMealPlanRow(nextDate, defaultGuestCount)]);
   };
 
   const handleRemoveDay = (rowIndex: number) => {
     setRows((prev) => prev.filter((_, index) => index !== rowIndex));
   };
 
-  const handleServe = async (mealPlanId: number) => {
+  const handleServe = async (mealPlanId: number, guestCount: number) => {
     setServingId(mealPlanId);
     try {
-      await mealPlansApi.serve(mealPlanId);
+      await mealPlansApi.serve(mealPlanId, guestCount);
       const updated = await mealPlansApi.getByReservation(reservation.id);
       onPlansUpdated(updated);
       toast.success('وعده غذایی تحویل داده شد');
@@ -182,7 +190,13 @@ export function MealPlanEditor({
                       onToggle={(checked) =>
                         void handleToggleRequired(rowIndex, mealType, checked)
                       }
-                      onServe={() => row[mealType].id && handleServe(row[mealType].id!)}
+                      onGuestCountChange={(guestCount) =>
+                        updateCell(rowIndex, mealType, { guestCount })
+                      }
+                      onServe={(guestCount) =>
+                        row[mealType].id &&
+                        handleServe(row[mealType].id!, guestCount)
+                      }
                       toggling={togglingKey === `${rowIndex}-${mealType}`}
                       serving={servingId === row[mealType].id}
                     />

@@ -67,12 +67,13 @@ export function ReservationDetailPage() {
   const extendReservation = useMutation({
     mutationFn: (payload?: { reservationEndDate?: string; stayDays?: number }) =>
       reservationsApi.extend(reservationId, payload),
-    onSuccess: (created) => {
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['reservation', reservationId], updated);
       queryClient.invalidateQueries({ queryKey: ['reservations-admin'] });
       queryClient.invalidateQueries({ queryKey: ['reservations-my'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-      toast.success(extensionSuccessMessage(created.status));
-      navigate(`/reservations/${created.id}`);
+      setExtendOpen(false);
+      toast.success(extensionSuccessMessage());
     },
     onError: (error) => {
       toastApiError(error, 'خطا در ثبت تمدید رزرو');

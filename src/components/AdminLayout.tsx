@@ -113,6 +113,12 @@ function buildNavItems(user: { roles: RoleName[] } | null): NavItem[] {
 
   if (isAdmin) {
     items.push({
+      to: "/admin/capacity",
+      label: "مدیریت ظرفیت",
+      icon: "reports",
+      roles: ["Admin"],
+    });
+    items.push({
       to: "/admin/crons",
       label: "وظایف زمان‌بندی",
       icon: "settings",
@@ -147,6 +153,7 @@ function isNavItemActive(item: NavItem, pathname: string): boolean {
   }
   if (item.to === "/users") return pathname === "/users";
   if (item.to === "/admin/crons") return pathname === "/admin/crons";
+  if (item.to === "/admin/capacity") return pathname === "/admin/capacity";
   if (item.to === "/reservations/new") return pathname === "/reservations/new";
   if (item.to === "/honorary-volunteers/my")
     return pathname === "/honorary-volunteers/my";

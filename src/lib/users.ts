@@ -13,6 +13,8 @@ export interface CreateUserPayload extends UserSocialFields {
   password: string;
   province?: string;
   city?: string;
+  address?: string;
+  carPlate?: string;
   description?: string;
   roles: RoleName[];
 }
@@ -28,6 +30,8 @@ export interface UpdateUserPayload extends UserSocialFields {
   passportNumber?: string | null;
   province?: string;
   city?: string;
+  address?: string;
+  carPlate?: string;
   description?: string;
   isActive?: boolean;
   password?: string;
@@ -52,6 +56,8 @@ export interface CreateQuickPilgrimPayload extends UserSocialFields {
   passportNumber?: string;
   province?: string;
   city?: string;
+  address?: string;
+  carPlate?: string;
   password?: string;
   description?: string;
 }
@@ -65,6 +71,8 @@ export interface UserListFilters {
   birthDate?: string;
   province?: string;
   city?: string;
+  address?: string;
+  carPlate?: string;
   isActive?: boolean;
   search?: string;
   scope?: 'mine' | 'all';
@@ -106,7 +114,8 @@ export const usersApi = {
       .then((r) => r.data),
 
   getPilgrimsPaginated: (
-    filters?: Omit<UserListFilters, 'role' | 'scope'> & {
+    filters?: Omit<UserListFilters, 'role'> & {
+      scope?: 'mine' | 'all';
       page?: number;
       pageSize?: number;
     },
@@ -114,6 +123,21 @@ export const usersApi = {
     api
       .get<PaginatedPilgrimsResponse>('/users/pilgrims', {
         params: { scope: 'mine', ...filters },
+      })
+      .then((r) => r.data),
+
+  searchDashboardPilgrims: (
+    search: string,
+    options?: { scope?: 'mine' | 'all'; pageSize?: number },
+  ) =>
+    api
+      .get<PaginatedPilgrimsResponse>('/users/pilgrims', {
+        params: {
+          scope: options?.scope ?? 'mine',
+          search,
+          page: 1,
+          pageSize: options?.pageSize ?? 10,
+        },
       })
       .then((r) => r.data),
 

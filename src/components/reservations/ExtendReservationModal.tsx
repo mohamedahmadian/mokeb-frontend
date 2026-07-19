@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Modal } from '../Modal';
-import { formatPersianDateRange } from '../ui/PersianDateRangePicker';
+import { PersianDateInput, formatPersianDate } from '../ui/PersianDateInput';
 import { formatPersianNumber } from '../../lib/capacity';
 import {
-  computeExtensionEndDateForStayDays,
-  computeExtensionStartDate,
+  computeExtendedEndDate,
+  currentReservationEndDate,
   defaultExtensionStayDays,
   EXTENSION_DAY_OPTIONS,
   isExtensionStayDaysAllowed,
+  reservationStartDate,
 } from '../../lib/reservation-extend';
 import { btnPrimary, btnSecondary } from '../../lib/styles';
 import type { Reservation } from '../../types';
@@ -32,8 +33,12 @@ export function ExtendReservationModal({
   onClose,
   onSubmit,
 }: ExtendReservationModalProps) {
-  const extensionStart = useMemo(
-    () => computeExtensionStartDate(reservation),
+  const startDate = useMemo(
+    () => reservationStartDate(reservation),
+    [reservation],
+  );
+  const currentEndDate = useMemo(
+    () => currentReservationEndDate(reservation),
     [reservation],
   );
   const defaultStayDays = useMemo(
@@ -41,23 +46,25 @@ export function ExtendReservationModal({
     [reservation],
   );
   const [selectedDays, setSelectedDays] = useState(defaultStayDays);
+  const [newEndDate, setNewEndDate] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const extensionEnd = useMemo(
-    () => computeExtensionEndDateForStayDays(extensionStart, selectedDays),
-    [extensionStart, selectedDays],
-  );
+  const applyDuration = (days: number) => {
+    setSelectedDays(days);
+    setNewEndDate(computeExtendedEndDate(currentEndDate, days));
+  };
 
   useEffect(() => {
     if (!open) return;
     setSelectedDays(defaultStayDays);
-  }, [open, defaultStayDays]);
+    setNewEndDate(computeExtendedEndDate(currentEndDate, defaultStayDays));
+  }, [open, currentEndDate, defaultStayDays]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await onSubmit(extensionEnd);
+      await onSubmit(newEndDate);
       onClose();
     } finally {
       setLoading(false);
@@ -68,23 +75,29 @@ export function ExtendReservationModal({
     <Modal open={open} onClose={onClose} title="تمدید رزرو" size="md">
       <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
         <p className="text-sm leading-relaxed text-slate-600">
-          رزرو جدیدی با همان مشخصات زائر در وضعیت «در انتظار» ثبت می‌شود و پس از
-          تایید موکب‌دار قطعی خواهد شد.
+          تاریخ پایان رزرو «{reservation.pilgrim.fullName} •{' '}
+          {reservation.trackingCode}» تغییر می‌کند و ظرفیت موکب به‌روزرسانی
+          می‌شود.
         </p>
 
-        <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4">
-          <p className="text-xs font-medium text-slate-500">بازه اقامت تمدید</p>
-          <p className="mt-2 text-base font-bold text-slate-800">
-            {formatPersianDateRange(extensionStart, extensionEnd)}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            از تاریخ پایان رزرو فعلی (
-            {(reservation.reservationEndDate ?? reservation.reservationDate).slice(0, 10)})
-          </p>
+        <div className="space-y-3">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-xs font-medium text-slate-500">تاریخ شروع</p>
+            <p className="mt-1 text-sm font-semibold text-slate-800">
+              {formatPersianDate(startDate)}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-xs font-medium text-slate-500">تاریخ پایان فعلی</p>
+            <p className="mt-1 text-sm font-semibold text-slate-800">
+              {formatPersianDate(currentEndDate)}
+            </p>
+          </div>
         </div>
 
         <div className="space-y-2">
-          <p className="text-sm font-medium text-slate-700">مدت اقامت</p>
+          <p className="text-sm font-medium text-slate-700">مدت تمدید</p>
           <div className="flex gap-2">
             {EXTENSION_DAY_OPTIONS.map((days) => {
               const allowed = isExtensionStayDaysAllowed(reservation, days);
@@ -94,7 +107,7 @@ export function ExtendReservationModal({
                   key={days}
                   type="button"
                   disabled={!allowed}
-                  onClick={() => setSelectedDays(days)}
+                  onClick={() => applyDuration(days)}
                   className={`${dayOptionClass(selected)} ${!allowed ? 'cursor-not-allowed opacity-40' : ''}`}
                 >
                   {formatPersianNumber(days)} روز
@@ -108,6 +121,26 @@ export function ExtendReservationModal({
             </p>
           )}
         </div>
+
+        <PersianDateInput
+          label="تاریخ پایان جدید"
+          value={newEndDate}
+          onChange={(value) => {
+            setNewEndDate(value);
+            if (value >= currentEndDate) {
+              const start = new Date(`${currentEndDate}T12:00:00`);
+              const end = new Date(`${value}T12:00:00`);
+              const diff = Math.round(
+                (end.getTime() - start.getTime()) / 86_400_000,
+              );
+              if (diff >= 1 && diff <= 3) {
+                setSelectedDays(diff);
+              }
+            }
+          }}
+          minDate={currentEndDate}
+          portal
+        />
 
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button

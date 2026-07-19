@@ -3,12 +3,15 @@ import { QRCodeSVG } from "qrcode.react";
 import { MAWKIB_AMENITY_FIELDS } from "./MawkibExtraFields";
 import { formatPersianDate } from "../ui/PersianDateInput";
 import {
-  formatCapacityFractionLatin,
   formatLatinNumber,
+  formatOccupiedFractionLatin,
+  isCapacityOverflow,
   mawkibAvailableFemale,
   mawkibAvailableMale,
+  resolveOccupiedCount,
 } from "../../lib/capacity";
 import { buildMawkibLocationMapUrl, hasValidCoords } from "../../lib/geo";
+import { normalizeExternalUrl } from "../../lib/url";
 import { RemainingCapacityHint } from "./RemainingCapacityHint";
 import { MawkibReservationTypeBadges } from "./MawkibReservationTypeBadges";
 import { MawkibThumbnail } from "./MawkibThumbnail";
@@ -21,6 +24,8 @@ export function mawkibCapacitySnapshot(mawkib: Mawkib) {
     femaleCapacity: mawkib.femaleCapacity,
     availableMale: mawkibAvailableMale(mawkib),
     availableFemale: mawkibAvailableFemale(mawkib),
+    reservedMale: mawkib.reservedMaleCapacity,
+    reservedFemale: mawkib.reservedFemaleCapacity,
   };
 }
 
@@ -170,6 +175,7 @@ function CapacityPill({
   compact = false,
   noCapacityMessage,
   presentCount,
+  reserved,
   className = "",
 }: {
   icon: ReactNode;
@@ -180,16 +186,32 @@ function CapacityPill({
   compact?: boolean;
   noCapacityMessage?: string;
   presentCount?: number;
+  reserved?: number;
   className?: string;
 }) {
   const hasAvailability = available > 0;
   const showNoCapacityMessage = total === 0 && noCapacityMessage;
+  const occupied = resolveOccupiedCount({
+    total,
+    available,
+    reserved,
+    presentCount,
+  });
+  const overflow = isCapacityOverflow(occupied, total);
+  const presentOverflow =
+    presentCount !== undefined &&
+    total > 0 &&
+    presentCount > total;
   const toneClass =
     tone === "male"
-      ? "bg-sky-50 text-sky-700 ring-sky-100"
+      ? overflow
+        ? "bg-red-50 text-red-700 ring-red-200"
+        : "bg-sky-50 text-sky-700 ring-sky-100"
       : showNoCapacityMessage
         ? "bg-pink-50 text-pink-500 ring-pink-100"
-        : "bg-rose-50 text-rose-700 ring-rose-100";
+        : overflow
+          ? "bg-red-50 text-red-700 ring-red-200"
+          : "bg-rose-50 text-rose-700 ring-rose-100";
 
   return (
     <span
@@ -216,28 +238,40 @@ function CapacityPill({
         <span className="inline-flex flex-wrap items-center gap-x-1 gap-y-0.5">
           <span className="opacity-80">{icon}</span>
           <span
-            className={`font-mono font-bold tabular-nums ${hasAvailability ? "" : "opacity-70"}`}
-            title="رزرو شده / ظرفیت کل"
-          >
-            {formatCapacityFractionLatin(available, total)}
-          </span>
-          <RemainingCapacityHint
-            available={available}
-            numerals="latin"
-            className="opacity-90"
-            fullClassName={
-              compact
-                ? "text-[9px] font-semibold text-red-600"
-                : "text-[10px] font-semibold text-red-600"
+            className={`font-mono font-bold tabular-nums ${
+              overflow
+                ? "text-red-600"
+                : hasAvailability
+                  ? ""
+                  : "opacity-70"
+            }`}
+            title={
+              overflow
+                ? "ثبت‌شده بیش از ظرفیت کل"
+                : "رزرو شده / ظرفیت کل"
             }
-          />
+          >
+            {formatOccupiedFractionLatin(occupied, total)}
+          </span>
+          {!overflow && (
+            <RemainingCapacityHint
+              available={available}
+              numerals="latin"
+              className="opacity-90"
+              fullClassName={
+                compact
+                  ? "text-[9px] font-semibold text-red-600"
+                  : "text-[10px] font-semibold text-red-600"
+              }
+            />
+          )}
         </span>
       )}
       {presentCount !== undefined && !showNoCapacityMessage && (
         <span
           className={`font-medium opacity-90 ${
             compact ? "text-[9px]" : "text-[10px]"
-          }`}
+          } ${presentOverflow ? "font-semibold text-red-600" : ""}`}
         >
           {formatLatinNumber(presentCount)} نفر حاضر
         </span>
@@ -293,6 +327,7 @@ export function MawkibCapacityPills({
         label="ظرفیت آقایان"
         available={capacity.availableMale}
         total={capacity.maleCapacity}
+        reserved={capacity.reservedMale}
         tone="male"
         className={maleClassName}
         presentCount={presentMale}
@@ -303,6 +338,7 @@ export function MawkibCapacityPills({
         label="ظرفیت بانوان"
         available={capacity.availableFemale}
         total={capacity.femaleCapacity}
+        reserved={capacity.reservedFemale}
         tone="female"
         className={femaleClassName}
         noCapacityMessage={
@@ -485,6 +521,7 @@ function MawkibGuestBrowseCardBody({
   const serviceEnd = formatServiceDate(mawkib.serviceEndDate);
   const showServiceDates = Boolean(serviceStart && serviceEnd);
   const address = mawkib.address?.trim();
+  const neshanUrl = mawkib.neshanAddressUrl?.trim();
 
   return (
     <>
@@ -590,6 +627,24 @@ function MawkibGuestBrowseCardBody({
               multiline
             >
               {address}
+            </MawkibCardCompactCell>
+          )}
+
+          {neshanUrl && (
+            <MawkibCardCompactCell
+              icon={cardIcons.address}
+              label="آدرس نشان"
+              className="items-start"
+            >
+              <a
+                href={normalizeExternalUrl(neshanUrl)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#4a6fa5] underline-offset-2 hover:underline"
+                onClick={(event) => event.stopPropagation()}
+              >
+                مشاهده در نقشه نشان
+              </a>
             </MawkibCardCompactCell>
           )}
         </div>

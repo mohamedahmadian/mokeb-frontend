@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { Modal } from '../Modal';
 import { NavIcon } from '../ui/NavIcons';
 import { btnPrimary, btnSecondary } from '../../lib/styles';
+import { ReservationSendSmsButton } from './ReservationSendSmsButton';
 import type { Reservation } from '../../types';
 
 interface QuickReservationSuccessModalProps {
@@ -42,8 +44,19 @@ export function QuickReservationSuccessModal({
   onViewPilgrimCard,
   onClose,
 }: QuickReservationSuccessModalProps) {
+  useEffect(() => {
+    if (!open) return;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [open]);
+
   return (
-    <Modal open={open} onClose={onClose} title="رزرو با موفقیت ثبت شد" size="sm">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="رزرو با موفقیت ثبت شد"
+      size="sm"
+      mobilePlacement="top"
+    >
       <div className="space-y-4">
         <p className="text-sm leading-relaxed text-slate-600">
           رزرو سریع با موفقیت انجام شد.
@@ -58,23 +71,31 @@ export function QuickReservationSuccessModal({
           ) : null}
         </p>
 
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={onViewPilgrimCard}
-            className={`${btnSecondary} w-full sm:w-auto`}
-          >
-            <IconViewCard />
-            نمایش زائر کارت
-          </button>
+        <div className="flex flex-col gap-2.5">
           <button
             type="button"
             onClick={onQuickReserveAgain}
-            className={`${btnPrimary} w-full sm:w-auto`}
+            className={`${btnPrimary} w-full`}
           >
             <NavIcon name="quickReserve" className="h-4 w-4" />
             رزرو سریع مجدد
           </button>
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={onViewPilgrimCard}
+              className={`${btnSecondary} w-full`}
+            >
+              <IconViewCard />
+              نمایش زائر کارت
+            </button>
+            {reservation ? (
+              <ReservationSendSmsButton
+                reservation={reservation}
+                className={`${btnSecondary} w-full`}
+              />
+            ) : null}
+          </div>
         </div>
       </div>
     </Modal>

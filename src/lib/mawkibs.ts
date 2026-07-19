@@ -43,6 +43,7 @@ export const DEFAULT_MAWKIBS_PAGE_SIZE = 10;
 export interface CreateMawkibPayload extends MawkibExtraFields {
   name: string;
   address: string;
+  neshanAddressUrl?: string;
   latitude?: number;
   longitude?: number;
   phoneNumber: string;
@@ -69,6 +70,7 @@ export interface CreateMawkibPayload extends MawkibExtraFields {
 export interface UpdateMawkibPayload extends MawkibExtraFields {
   name?: string;
   address?: string;
+  neshanAddressUrl?: string | null;
   latitude?: number;
   longitude?: number;
   phoneNumber?: string;
@@ -121,6 +123,14 @@ export interface MawkibInventoryRange {
   endDate: string;
   horizon: MawkibInventoryHorizon;
   days: MawkibDailyInventoryDay[];
+}
+
+export interface MawkibInventoryReconcileResult {
+  mawkibId: number;
+  startDate: string;
+  endDate: string;
+  daysUpdated: number;
+  reservationsProcessed: number;
 }
 
 function buildParams(filters?: MawkibFilters) {
@@ -234,6 +244,14 @@ export const mawkibsApi = {
     api
       .get<MawkibInventoryRange>(`/mawkibs/${id}/inventory`, {
         params: { startDate, endDate },
+      })
+      .then((r) => r.data),
+
+  reconcileInventory: (id: number, startDate: string, endDate: string) =>
+    api
+      .post<MawkibInventoryReconcileResult>(`/mawkibs/${id}/inventory/reconcile`, {
+        startDate,
+        endDate,
       })
       .then((r) => r.data),
 };

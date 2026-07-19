@@ -65,6 +65,7 @@ interface MawkibFormModalProps {
 interface FormState {
   name: string;
   address: string;
+  neshanAddressUrl: string;
   latitude: string;
   longitude: string;
   phoneNumber: string;
@@ -92,6 +93,7 @@ interface FormState {
 const emptyForm: FormState = {
   name: "",
   address: "",
+  neshanAddressUrl: "",
   latitude: DEFAULT_MAWKIB_LATITUDE.toString(),
   longitude: DEFAULT_MAWKIB_LONGITUDE.toString(),
   phoneNumber: "",
@@ -149,6 +151,7 @@ export function MawkibFormModal({
       setForm({
         name: mawkib.name,
         address: mawkib.address,
+        neshanAddressUrl: mawkib.neshanAddressUrl ?? "",
         latitude: mawkib.latitude?.toString() ?? "",
         longitude: mawkib.longitude?.toString() ?? "",
         phoneNumber: mawkib.phoneNumber,
@@ -227,6 +230,9 @@ export function MawkibFormModal({
     const base = {
       name: form.name,
       address: form.address,
+      neshanAddressUrl: isEdit
+        ? form.neshanAddressUrl.trim() || null
+        : form.neshanAddressUrl.trim() || undefined,
       latitude: form.latitude ? parseFloat(form.latitude) : undefined,
       longitude: form.longitude ? parseFloat(form.longitude) : undefined,
       phoneNumber: form.phoneNumber,
@@ -451,6 +457,21 @@ export function MawkibFormModal({
               onChange={(e) => setForm({ ...form, address: e.target.value })}
               rows={2}
               className={inputClass}
+              {...fieldProps}
+            />
+          </label>
+
+          <label className="block">
+            <FieldLabel label="آدرس نشان" hint="اختیاری" />
+            <input
+              type="url"
+              value={form.neshanAddressUrl}
+              onChange={(e) =>
+                setForm({ ...form, neshanAddressUrl: e.target.value })
+              }
+              className={inputClass}
+              placeholder="https://neshan.org/maps/..."
+              dir="ltr"
               {...fieldProps}
             />
           </label>

@@ -9,7 +9,7 @@ import { MawkibCapacityPills } from "../mawkibs/MawkibInfoCard";
 import { MawkibThumbnail } from "../mawkibs/MawkibThumbnail";
 import { CancelReservationModal } from "../reservations/CancelReservationModal";
 import { PendingReservationCard } from "../reservations/PendingReservationCard";
-import { ReservationTrackLookup } from "./ReservationTrackLookup";
+import { DashboardLookupPanels } from "./DashboardLookupPanels";
 import { NavIcon, type NavIconName } from "../ui/NavIcons";
 import { mawkibCityLabel } from "../../lib/mawkib-locations";
 import { mawkibToCardData } from "../../lib/mawkib-card";
@@ -189,7 +189,12 @@ function MawkibQuickCard({
         className="flex flex-col gap-3 sm:grid sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start"
         dir="ltr"
       >
-        <MawkibCapacityMiniDonuts mawkib={mawkib} size={100} />
+        <MawkibCapacityMiniDonuts
+          mawkib={mawkib}
+          size={100}
+          presentMale={presentMale}
+          presentFemale={presentFemale}
+        />
 
         <div className="flex min-w-0 flex-col items-stretch gap-2 sm:items-end" dir="rtl">
           <div className="flex w-full flex-col items-center gap-2 sm:flex-row sm:items-start sm:justify-end">
@@ -415,7 +420,7 @@ export function MawkibOwnerDashboard({ fullName }: MawkibOwnerDashboardProps) {
         </section>
       )}
 
-      <ReservationTrackLookup
+      <DashboardLookupPanels
         onAttendanceSuccess={() => {
           invalidateReservationData();
         }}

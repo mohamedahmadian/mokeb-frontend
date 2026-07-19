@@ -5,6 +5,7 @@ import { MEAL_TYPE_LABELS } from '../../lib/meal-plan-utils';
 import { formatPersianDate } from '../ui/PersianDateInput';
 import type { PresentAttendeesReport } from '../../lib/present-attendees-report';
 import { mealPlanIconClass, mealPlanAccentBtn, mealPlanSecondaryBtn } from './meal-plans-ui';
+import { GuestCountInput, parseGuestCountInput } from './GuestCountInput';
 import { toast } from '../../lib/toast';
 import vazirWoff2 from '../../assets/fonts/Vazir.woff2';
 import vazirMediumWoff2 from '../../assets/fonts/Vazir-Medium.woff2';
@@ -268,20 +269,27 @@ export function ServedStatusBox({ isServed }: { isServed: boolean }) {
 
 interface MealDeliveryCellProps {
   mealPlanId: number | null;
+  guestCount: number;
   isServed: boolean;
   serving?: boolean;
-  onServe?: () => void;
+  guestCountValue: string;
+  onGuestCountChange: (value: string) => void;
+  onServe?: (guestCount: number) => void;
 }
 
 export function MealDeliveryCell({
   mealPlanId,
+  guestCount,
   isServed,
   serving = false,
+  guestCountValue,
+  onGuestCountChange,
   onServe,
 }: MealDeliveryCellProps) {
   if (isServed) {
     return (
-      <div className="flex justify-center">
+      <div className="flex items-center justify-center gap-2">
+        <GuestCountInput value={guestCount} disabled served />
         <ServedStatusBox isServed />
       </div>
     );
@@ -289,11 +297,23 @@ export function MealDeliveryCell({
 
   return (
     <div className="flex items-center justify-center gap-2">
-      <ServedStatusBox isServed={false} />
+      <GuestCountInput
+        value={guestCount}
+        textValue={guestCountValue}
+        disabled={serving}
+        onChange={onGuestCountChange}
+      />
       <button
         type="button"
         disabled={!mealPlanId || serving}
-        onClick={onServe}
+        onClick={() => {
+          const parsed = parseGuestCountInput(guestCountValue);
+          if (parsed == null) {
+            toast.error('تعداد نفرات باید حداقل ۱ باشد');
+            return;
+          }
+          onServe?.(parsed);
+        }}
         className={`${mealPlanAccentBtn} !min-h-8 !px-2.5`}
       >
         {serving ? '...' : 'تحویل'}

@@ -24,6 +24,7 @@ export interface UserFormFieldValues {
   lastName: string;
   mobileNumber: string;
   nationalId: string;
+  carPlate: string;
   gender: UserGender | '';
   birthDate: string;
   country: string;
@@ -31,6 +32,7 @@ export interface UserFormFieldValues {
   password: string;
   province: string;
   city: string;
+  address: string;
   description: string;
   social: UserSocialFormValues;
 }
@@ -63,6 +65,7 @@ export interface UserFormSectionsProps {
   onMobileBlur?: (mobile: string) => void;
   showGender?: boolean;
   showBirthDate?: boolean;
+  showCarPlate?: boolean;
 }
 
 function MobileAvailableIcon() {
@@ -433,6 +436,7 @@ function PrimaryFieldsSection({
   locationInPrimary,
   showGender = false,
   showBirthDate = false,
+  showCarPlate = false,
 }: Pick<
   UserFormSectionsProps,
   | 'values'
@@ -447,6 +451,7 @@ function PrimaryFieldsSection({
   | 'locationInPrimary'
   | 'showGender'
   | 'showBirthDate'
+  | 'showCarPlate'
 >) {
   return (
     <FormSection title="اطلاعات اصلی" icon={<NavIcon name="profile" className="h-4 w-4" />}>
@@ -525,6 +530,20 @@ function PrimaryFieldsSection({
         </label>
       </div>
 
+      {showCarPlate ? (
+        <label className="block max-w-md">
+          <FieldLabel label="پلاک ماشین" hint="اختیاری" />
+          <input
+            type="text"
+            value={values.carPlate}
+            onChange={(e) => onChange({ carPlate: e.target.value })}
+            className={guestTheme.input}
+            placeholder="مثلاً 12ب345-67"
+            dir="ltr"
+          />
+        </label>
+      ) : null}
+
       {showGender ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <GenderField
@@ -573,6 +592,16 @@ function LocationSection({
         onProvinceChange={(province) => onChange({ province, city: '' })}
         onCityChange={(city) => onChange({ city })}
       />
+      <label className="block">
+        <FieldLabel label="آدرس" hint="اختیاری" />
+        <textarea
+          value={values.address}
+          onChange={(e) => onChange({ address: e.target.value })}
+          rows={2}
+          className={`${guestTheme.input} resize-none`}
+          placeholder="آدرس محل سکونت زائر"
+        />
+      </label>
     </FormSection>
   );
 }
@@ -641,6 +670,7 @@ export function UserFormSections({
   onMobileBlur,
   showGender = false,
   showBirthDate = false,
+  showCarPlate = false,
 }: UserFormSectionsProps) {
   const primary =
     primaryLayout === 'quickPilgrim' ? (
@@ -683,6 +713,7 @@ export function UserFormSections({
         locationInPrimary={locationInPrimary}
         showGender={showGender}
         showBirthDate={showBirthDate}
+        showCarPlate={showCarPlate}
       />
     );
 

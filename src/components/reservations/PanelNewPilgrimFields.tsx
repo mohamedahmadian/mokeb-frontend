@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { authApi } from "../../lib/auth";
 import { formatMobileForLookup, normalizeMobileDigits } from "../../lib/mobile";
+import {
+  getMobileValidationError,
+  getNationalIdValidationError,
+} from "../../lib/pilgrim-field-validation";
 import { CollapsibleSection } from "../ui/CollapsibleSection";
 import { ProvinceCitySelect } from "../ui/ProvinceCitySelect";
 import { NationalIdCardUpload } from "../ui/NationalIdCardUpload";
@@ -9,6 +13,7 @@ import { CountrySelect } from "../ui/CountrySelect";
 import { PersianDateInput } from "../ui/PersianDateInput";
 import {
   reservationFormInputClass,
+  FieldValidationErrorIcon,
   todayDateString,
 } from "./reservation-form-ui";
 import type { UserGender } from "../../types";
@@ -41,8 +46,33 @@ function MobileAvailableIcon() {
   );
 }
 
+function FieldValidationAdornment({
+  error,
+  children,
+}: {
+  error: string | null;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-2">
+      <div className="min-w-0 flex-1">{children}</div>
+      {error ? (
+        <span
+          className="mt-2.5 shrink-0"
+          title={error}
+          aria-label={error}
+          role="img"
+        >
+          <FieldValidationErrorIcon title={error} />
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export interface PanelNewPilgrimOptionalFieldsProps {
   nationalId: string;
+  carPlate: string;
   gender: UserGender | "";
   birthDate: string;
   travelOrigin?: string;
@@ -55,6 +85,7 @@ export interface PanelNewPilgrimOptionalFieldsProps {
   province?: string;
   city?: string;
   onNationalIdChange: (value: string) => void;
+  onCarPlateChange: (value: string) => void;
   onGenderChange: (value: UserGender | "") => void;
   onBirthDateChange: (value: string) => void;
   onTravelOriginChange?: (value: string) => void;
@@ -66,10 +97,14 @@ export interface PanelNewPilgrimOptionalFieldsProps {
   onCityChange?: (value: string) => void;
   nationalIdInputRef?: React.RefObject<HTMLInputElement | null>;
   hideNationalId?: boolean;
+  showBlurValidation?: boolean;
+  nationalIdTouched?: boolean;
+  onNationalIdBlur?: () => void;
 }
 
 export function PanelNewPilgrimOptionalFields({
   nationalId,
+  carPlate,
   gender,
   birthDate,
   travelOrigin = "",
@@ -81,6 +116,7 @@ export function PanelNewPilgrimOptionalFields({
   province = "",
   city = "",
   onNationalIdChange,
+  onCarPlateChange,
   onGenderChange,
   onBirthDateChange,
   onTravelOriginChange: _onTravelOriginChange,
@@ -92,10 +128,23 @@ export function PanelNewPilgrimOptionalFields({
   onCityChange,
   nationalIdInputRef,
   hideNationalId = false,
+  showBlurValidation = false,
+  nationalIdTouched: nationalIdTouchedProp = false,
+  onNationalIdBlur,
   password = "",
 }: PanelNewPilgrimOptionalFieldsProps) {
   const localNationalIdRef = useRef<HTMLInputElement>(null);
   const nationalIdRef = nationalIdInputRef ?? localNationalIdRef;
+  const [localNationalIdTouched, setLocalNationalIdTouched] = useState(false);
+  const nationalIdTouched = nationalIdTouchedProp || localNationalIdTouched;
+  const nationalIdError =
+    showBlurValidation && nationalIdTouched
+      ? getNationalIdValidationError(nationalId)
+      : null;
+  const handleNationalIdBlur = () => {
+    if (showBlurValidation) setLocalNationalIdTouched(true);
+    onNationalIdBlur?.();
+  };
 
   return (
     <div className="space-y-3">
@@ -119,16 +168,34 @@ export function PanelNewPilgrimOptionalFields({
         {!hideNationalId ? (
           <label className="block">
             <span className="mb-1.5 block text-sm text-slate-600">کد ملی</span>
+            <FieldValidationAdornment error={nationalIdError}>
+              <input
+                ref={nationalIdRef}
+                type="text"
+                inputMode="numeric"
+                value={nationalId}
+                onChange={(e) => onNationalIdChange(e.target.value)}
+                onBlur={handleNationalIdBlur}
+                className={reservationFormInputClass}
+                placeholder="0123456789"
+                dir="ltr"
+                maxLength={10}
+              />
+            </FieldValidationAdornment>
+          </label>
+        ) : null}
+        {!hideNationalId ? (
+          <label className="block sm:col-span-3">
+            <span className="mb-1.5 block text-sm text-slate-600">
+              پلاک ماشین
+            </span>
             <input
-              ref={nationalIdRef}
               type="text"
-              inputMode="numeric"
-              value={nationalId}
-              onChange={(e) => onNationalIdChange(e.target.value)}
-              className={reservationFormInputClass}
-              placeholder="0123456789"
+              value={carPlate}
+              onChange={(e) => onCarPlateChange(e.target.value)}
+              className={`${reservationFormInputClass} max-w-xs`}
+              placeholder="اختیاری — مثلاً 12ب345-67"
               dir="ltr"
-              maxLength={10}
             />
           </label>
         ) : null}
@@ -249,12 +316,14 @@ interface PanelNewPilgrimFieldsProps extends PanelNewPilgrimOptionalFieldsProps 
   trackingCode?: string;
   onTrackingCodeChange?: (value: string) => void;
   onTrackingCodeEnter?: () => void;
+  showBlurValidation?: boolean;
 }
 
 export function PanelNewPilgrimFields({
   fullName,
   mobileNumber,
   nationalId,
+  carPlate,
   gender,
   birthDate,
   travelOrigin = "",
@@ -265,6 +334,7 @@ export function PanelNewPilgrimFields({
   onFullNameChange,
   onMobileNumberChange,
   onNationalIdChange,
+  onCarPlateChange,
   onGenderChange,
   onBirthDateChange,
   onTravelOriginChange,
@@ -286,6 +356,7 @@ export function PanelNewPilgrimFields({
   trackingCode = "",
   onTrackingCodeChange,
   onTrackingCodeEnter,
+  showBlurValidation = false,
 }: PanelNewPilgrimFieldsProps) {
   const mobileRef = useRef<HTMLInputElement>(null);
   const fullNameRef = useRef<HTMLInputElement>(null);
@@ -295,6 +366,8 @@ export function PanelNewPilgrimFields({
   const autoFilledFullNameRef = useRef<string | null>(null);
   const fullNameValueRef = useRef(fullName);
   fullNameValueRef.current = fullName;
+  const [mobileTouched, setMobileTouched] = useState(false);
+  const [nationalIdTouched, setNationalIdTouched] = useState(false);
   const [mobileCheckStatus, setMobileCheckStatus] =
     useState<PanelMobileCheckStatus>("idle");
   const [existingUserFullName, setExistingUserFullName] = useState<
@@ -390,9 +463,27 @@ export function PanelNewPilgrimFields({
 
   const useOwnerEntryLayout = showCustomTrackingCode && !!onTrackingCodeChange;
 
+  const mobileValidationError =
+    showBlurValidation && mobileTouched
+      ? getMobileValidationError(mobileNumber)
+      : null;
+  const ownerNationalIdError =
+    showBlurValidation && nationalIdTouched
+      ? getNationalIdValidationError(nationalId)
+      : null;
+
+  const optionalFieldValidationProps = {
+    showBlurValidation,
+    nationalIdTouched,
+    onNationalIdBlur: showBlurValidation
+      ? () => setNationalIdTouched(true)
+      : undefined,
+  };
+
   const optionalFieldsContent = (
     <PanelNewPilgrimOptionalFields
       nationalId={nationalId}
+      carPlate={carPlate}
       gender={gender}
       birthDate={birthDate}
       travelOrigin={travelOrigin}
@@ -404,6 +495,7 @@ export function PanelNewPilgrimFields({
       province={province}
       city={city}
       onNationalIdChange={onNationalIdChange}
+      onCarPlateChange={onCarPlateChange}
       onGenderChange={onGenderChange}
       onBirthDateChange={onBirthDateChange}
       onTravelOriginChange={onTravelOriginChange}
@@ -416,6 +508,7 @@ export function PanelNewPilgrimFields({
       hideNationalId={useOwnerEntryLayout}
       password={password}
       onPasswordChange={onPasswordChange}
+      {...optionalFieldValidationProps}
     />
   );
 
@@ -431,12 +524,24 @@ export function PanelNewPilgrimFields({
           required
           value={mobileNumber}
           onChange={(e) => onMobileNumberChange(e.target.value)}
+          onBlur={() => {
+            if (showBlurValidation) setMobileTouched(true);
+          }}
           onKeyDown={handleEnter(() => focusField(fullNameRef))}
           className={`${reservationFormInputClass} min-w-0 flex-1`}
           placeholder="09121234567"
           dir="ltr"
         />
-        {mobileCheckStatus === "available" && (
+        {mobileValidationError ? (
+          <span
+            className="mt-2.5 shrink-0"
+            title={mobileValidationError}
+            aria-label={mobileValidationError}
+            role="img"
+          >
+            <FieldValidationErrorIcon title={mobileValidationError} />
+          </span>
+        ) : mobileCheckStatus === "available" ? (
           <span
             className="mt-2.5 shrink-0 text-green-500"
             title="شماره موبایل قابل ثبت است"
@@ -444,7 +549,7 @@ export function PanelNewPilgrimFields({
           >
             <MobileAvailableIcon />
           </span>
-        )}
+        ) : null}
       </div>
       {mobileCheckStatus === "duplicate" && existingUserFullName && (
         <p className="mt-1.5 rounded-lg border border-amber-100 bg-amber-50/80 px-2.5 py-2 text-xs leading-relaxed text-amber-800">
@@ -487,21 +592,41 @@ export function PanelNewPilgrimFields({
             />
           </label>
 
-          <label className="block">
-            <span className="mb-1.5 block text-sm text-slate-600">کد ملی</span>
-            <input
-              ref={nationalIdRef}
-              type="text"
-              inputMode="numeric"
-              value={nationalId}
-              onChange={(e) => onNationalIdChange(e.target.value)}
-              onKeyDown={handleEnter(() => focusField(trackingCodeRef))}
-              className={reservationFormInputClass}
-              placeholder="0123456789"
-              dir="ltr"
-              maxLength={10}
-            />
-          </label>
+          <div className="space-y-3">
+            <label className="block">
+              <span className="mb-1.5 block text-sm text-slate-600">کد ملی</span>
+              <FieldValidationAdornment error={ownerNationalIdError}>
+                <input
+                  ref={nationalIdRef}
+                  type="text"
+                  inputMode="numeric"
+                  value={nationalId}
+                  onChange={(e) => onNationalIdChange(e.target.value)}
+                  onBlur={() => {
+                    if (showBlurValidation) setNationalIdTouched(true);
+                  }}
+                  onKeyDown={handleEnter(() => focusField(trackingCodeRef))}
+                  className={reservationFormInputClass}
+                  placeholder="0123456789"
+                  dir="ltr"
+                  maxLength={10}
+                />
+              </FieldValidationAdornment>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm text-slate-600">
+                پلاک ماشین
+              </span>
+              <input
+                type="text"
+                value={carPlate}
+                onChange={(e) => onCarPlateChange(e.target.value)}
+                className={reservationFormInputClass}
+                placeholder="اختیاری — مثلاً 12ب345-67"
+                dir="ltr"
+              />
+            </label>
+          </div>
 
           <label className="block">
             <span className="mb-1.5 block text-sm text-slate-600">کد رزرو</span>
@@ -556,6 +681,7 @@ export function PanelNewPilgrimFields({
   const optionalFieldsContentDefault = (
     <PanelNewPilgrimOptionalFields
       nationalId={nationalId}
+      carPlate={carPlate}
       gender={gender}
       birthDate={birthDate}
       travelOrigin={travelOrigin}
@@ -567,6 +693,7 @@ export function PanelNewPilgrimFields({
       province={province}
       city={city}
       onNationalIdChange={onNationalIdChange}
+      onCarPlateChange={onCarPlateChange}
       onGenderChange={onGenderChange}
       onBirthDateChange={onBirthDateChange}
       onTravelOriginChange={onTravelOriginChange}
@@ -578,6 +705,7 @@ export function PanelNewPilgrimFields({
       nationalIdInputRef={nationalIdRef}
       password={password}
       onPasswordChange={onPasswordChange}
+      {...optionalFieldValidationProps}
     />
   );
 

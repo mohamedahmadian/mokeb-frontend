@@ -28,6 +28,23 @@ export function formatMobileForLookup(value: string): string {
 }
 
 export function isCompleteIranMobile(value: string): boolean {
-  const digits = normalizeMobileDigits(value);
-  return digits.length === 11 && digits.startsWith('09');
+  return formatMobileForSms(value) !== null;
+}
+
+/** Canonical 09xxxxxxxxx for sms: links, or null when not a valid Iranian mobile. */
+export function formatMobileForSms(value: string): string | null {
+  let digits = normalizeMobileDigits(value);
+  if (!digits) return null;
+
+  if (digits.length === 12 && digits.startsWith('98')) {
+    digits = `0${digits.slice(2)}`;
+  } else if (digits.length === 10 && digits.startsWith('9')) {
+    digits = `0${digits}`;
+  }
+
+  if (digits.length === 11 && digits.startsWith('09')) {
+    return digits;
+  }
+
+  return null;
 }

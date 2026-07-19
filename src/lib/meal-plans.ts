@@ -6,6 +6,7 @@ export interface SaveMealPlanEntry {
   date: string;
   mealType: MealType;
   isRequired: boolean;
+  guestCount?: number;
 }
 
 export const mealPlansApi = {
@@ -34,8 +35,10 @@ export const mealPlansApi = {
       .delete<MealPlan[]>(`/meal-plans/reservation/${reservationId}/days/${date}`)
       .then((r) => r.data),
 
-  serve: (mealPlanId: number) =>
-    api.patch<MealPlan>(`/meal-plans/${mealPlanId}/serve`).then((r) => r.data),
+  serve: (mealPlanId: number, guestCount: number) =>
+    api
+      .patch<MealPlan>(`/meal-plans/${mealPlanId}/serve`, { guestCount })
+      .then((r) => r.data),
 
   upsertEntry: (
     reservationId: number,

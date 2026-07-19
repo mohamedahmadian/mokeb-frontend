@@ -81,6 +81,7 @@ const emptyForm = (): UserFormFieldValues => ({
   lastName: '',
   mobileNumber: '',
   nationalId: '',
+  carPlate: '',
   gender: '' as UserGender | '',
   birthDate: '',
   country: DEFAULT_USER_COUNTRY,
@@ -88,6 +89,7 @@ const emptyForm = (): UserFormFieldValues => ({
   password: '',
   province: '',
   city: '',
+  address: '',
   description: '',
   social: emptyUserSocialFields(),
 });

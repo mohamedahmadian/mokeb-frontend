@@ -5,6 +5,7 @@ import { isReservationMealPlanLinkVisible } from '../../lib/meal-plan-utils';
 import { btnSecondary } from '../../lib/styles';
 import type { Reservation } from '../../types';
 import { ReservationDeliveredItemsButton } from './ReservationDeliveredItemsButton';
+import { ReservationSendSmsButton } from './ReservationSendSmsButton';
 import { ReservationMealPlanLink } from './ReservationMealPlanLink';
 import { PilgrimCardViewButton } from './PilgrimCardViewButton';
 import { PilgrimCardDownloadButton } from './PilgrimCardDownloadButton';
@@ -73,7 +74,9 @@ export function ReservationToolsCard({
     <ToolsCardShell variant={variant}>
       {showDeliveredItems && reservationId != null && (
         <div
-          className={`grid w-full gap-2 ${mealPlanVisible ? 'grid-cols-2' : 'grid-cols-1'}`}
+          className={`grid w-full gap-2 ${
+            mealPlanVisible ? 'grid-cols-3' : 'grid-cols-2'
+          }`}
         >
           <ReservationDeliveredItemsButton
             reservation={reservation}
@@ -81,7 +84,11 @@ export function ReservationToolsCard({
             onUpdate={onDeliveredItemsUpdate}
             className={`${buttonClass} w-full min-w-0`}
           />
-          {showMealPlanLink && (
+          <ReservationSendSmsButton
+            reservation={reservation}
+            className={`${buttonClass} w-full min-w-0`}
+          />
+          {mealPlanVisible && (
             <ReservationMealPlanLink
               reservation={reservation}
               isAdmin={isAdmin}

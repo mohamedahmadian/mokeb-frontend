@@ -66,7 +66,33 @@ export function formatCapacityFractionLatin(
   total: number,
 ) {
   const occupied = occupiedFromAvailable(total, available);
+  return formatOccupiedFractionLatin(occupied, total);
+}
+
+/** تعداد پرشده / ظرفیت کل — حتی وقتی از ظرفیت بیشتر باشد (مثلاً ۱۲/۱۰) */
+export function formatOccupiedFractionLatin(occupied: number, total: number) {
   return `${formatLatinNumber(occupied)}/${formatLatinNumber(total)}`;
+}
+
+export function isCapacityOverflow(occupied: number, total: number): boolean {
+  return total > 0 && occupied > total;
+}
+
+/** تعداد واقعی ثبت‌شده/حاضر با در نظر گرفتن رزرو، ظرفیت و تعداد حاضر */
+export function resolveOccupiedCount(options: {
+  total: number;
+  available: number;
+  reserved?: number | null;
+  presentCount?: number | null;
+}): number {
+  const { total, available, reserved, presentCount } = options;
+  const fromAvailable = occupiedFromAvailable(total, available);
+  let count =
+    reserved != null && reserved >= 0 ? reserved : fromAvailable;
+  if (presentCount != null && presentCount >= 0) {
+    count = Math.max(count, presentCount);
+  }
+  return count;
 }
 
 /** پرانتز ظرفیت خالی — مثلاً (1 خالی) */

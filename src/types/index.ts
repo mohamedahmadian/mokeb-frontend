@@ -57,6 +57,7 @@ export interface Mawkib extends MawkibExtraFields {
   id: number;
   name: string;
   address: string;
+  neshanAddressUrl?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   phoneNumber: string;
@@ -69,6 +70,8 @@ export interface Mawkib extends MawkibExtraFields {
   femaleCapacity: number;
   availableMaleCapacity?: number;
   availableFemaleCapacity?: number;
+  reservedMaleCapacity?: number;
+  reservedFemaleCapacity?: number;
   presentMaleCount?: number;
   presentFemaleCount?: number;
   capacity?: number;
@@ -135,6 +138,7 @@ export interface Reservation {
     fullName: string;
     mobileNumber: string;
     nationalId?: string | null;
+    gender?: UserGender | null;
   };
   reservedBy: { id: number; fullName: string; mobileNumber?: string };
   lastStatusUpdatedBy?: { id: number; fullName: string } | null;
@@ -151,6 +155,7 @@ export interface MealPlan {
   reservationId: number;
   date: string;
   mealType: MealType;
+  guestCount: number;
   isRequired: boolean;
   isServed: boolean;
   servedAt?: string | null;
@@ -279,6 +284,8 @@ export interface AdminUser extends UserSocialFields {
   passportNumber?: string | null;
   province?: string;
   city?: string;
+  address?: string | null;
+  carPlate?: string | null;
   description?: string;
   imageUrl?: string | null;
   isActive: boolean;

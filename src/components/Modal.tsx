@@ -10,6 +10,8 @@ interface ModalProps {
   elevated?: boolean;
   /** کنار دکمه بستن در سمت چپ هدر (RTL) */
   headerActions?: ReactNode;
+  /** موقعیت مودال در موبایل — پیش‌فرض پایین (bottom sheet) */
+  mobilePlacement?: 'top' | 'bottom';
 }
 
 export function Modal({
@@ -20,6 +22,7 @@ export function Modal({
   size = 'md',
   elevated = false,
   headerActions,
+  mobilePlacement = 'bottom',
 }: ModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -48,9 +51,19 @@ export function Modal({
           ? 'max-w-sm'
           : 'max-w-lg';
 
+  const overlayMobileAlign =
+    mobilePlacement === 'top'
+      ? 'items-start pt-[max(0.5rem,env(safe-area-inset-top))]'
+      : 'items-end';
+
+  const panelMobileRadius =
+    mobilePlacement === 'top'
+      ? 'rounded-b-2xl sm:rounded-2xl'
+      : 'rounded-t-2xl sm:rounded-2xl';
+
   return (
     <div
-      className={`fixed inset-0 flex items-end justify-center sm:items-center sm:p-4 ${elevated ? 'z-[60]' : 'z-50'}`}
+      className={`fixed inset-0 flex ${overlayMobileAlign} justify-center sm:items-center sm:p-4 ${elevated ? 'z-[60]' : 'z-50'}`}
     >
       <div
         className="absolute inset-0 bg-black/40"
@@ -58,7 +71,7 @@ export function Modal({
         aria-hidden="true"
       />
       <div
-        className={`relative z-10 flex max-h-[92dvh] w-full flex-col rounded-t-2xl bg-white shadow-xl sm:max-h-[90vh] sm:rounded-2xl ${maxWidth}`}
+        className={`relative z-10 flex max-h-[92dvh] w-full flex-col bg-white shadow-xl sm:max-h-[90vh] ${panelMobileRadius} ${maxWidth}`}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-4 sm:px-6">
           <h2 className="text-base font-bold text-slate-800 sm:text-lg">{title}</h2>

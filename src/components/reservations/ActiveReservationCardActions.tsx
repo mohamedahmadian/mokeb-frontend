@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { NavIcon } from '../ui/NavIcons';
 import { MawkibCardPrintButton } from '../mawkibs/MawkibCardPrintButton';
@@ -47,7 +47,6 @@ interface ActiveReservationCardActionsProps {
 export function ActiveReservationCardActions({
   reservation,
 }: ActiveReservationCardActionsProps) {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -60,11 +59,11 @@ export function ActiveReservationCardActions({
 
   const extendReservation = useMutation({
     mutationFn: () => reservationsApi.extend(reservation.id),
-    onSuccess: (created) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations-my'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-      toast.success(extensionSuccessMessage(created.status));
-      navigate(`/reservations/${created.id}`);
+      queryClient.invalidateQueries({ queryKey: ['reservation', reservation.id] });
+      toast.success(extensionSuccessMessage());
     },
     onError: (error) => {
       toastApiError(error, 'خطا در ثبت تمدید رزرو');

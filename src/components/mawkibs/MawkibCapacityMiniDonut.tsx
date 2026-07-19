@@ -1,6 +1,7 @@
 import {
-  formatCapacityFractionLatin,
-  occupiedFromAvailable,
+  formatOccupiedFractionLatin,
+  isCapacityOverflow,
+  resolveOccupiedCount,
 } from "../../lib/capacity";
 import type { Mawkib } from "../../types";
 import { mawkibCapacitySnapshot } from "./MawkibInfoCard";
@@ -10,6 +11,8 @@ const CAPACITY_COLORS = {
   female: "#db2777",
 };
 
+const OVERFLOW_COLOR = "#dc2626";
+
 function CapacityMiniDonut({
   label,
   available,
@@ -17,6 +20,8 @@ function CapacityMiniDonut({
   color,
   emptyMessage,
   size = 48,
+  reserved,
+  presentCount,
 }: {
   label: string;
   available: number;
@@ -24,20 +29,28 @@ function CapacityMiniDonut({
   color: string;
   emptyMessage?: string;
   size?: number;
+  reserved?: number;
+  presentCount?: number;
 }) {
   const stroke = Math.max(4, Math.round(size / 12));
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const cx = size / 2;
   const cy = size / 2;
-  const occupied = occupiedFromAvailable(total, available);
+  const occupied = resolveOccupiedCount({
+    total,
+    available,
+    reserved,
+    presentCount,
+  });
+  const overflow = isCapacityOverflow(occupied, total);
   const fraction = total > 0 ? Math.min(1, occupied / total) : 0;
   const dash = circumference * fraction;
   const isFull = fraction >= 0.999;
   const centerText =
     total === 0
       ? (emptyMessage ?? "—")
-      : formatCapacityFractionLatin(available, total);
+      : formatOccupiedFractionLatin(occupied, total);
   const centerTextClass =
     total === 0
       ? size >= 72
@@ -45,13 +58,20 @@ function CapacityMiniDonut({
         : size >= 56
           ? "text-[8px] text-slate-400"
           : "text-[7px] text-slate-400"
-      : size >= 72
-        ? "text-[11px]"
-        : size >= 56
-          ? "text-[10px]"
-          : "text-[8px]";
+      : overflow
+        ? size >= 72
+          ? "text-[10px] text-red-600"
+          : size >= 56
+            ? "text-[9px] text-red-600"
+            : "text-[7px] text-red-600"
+        : size >= 72
+          ? "text-[11px]"
+          : size >= 56
+            ? "text-[10px]"
+            : "text-[8px]";
   const labelClass =
     size >= 72 ? "text-[10px]" : size >= 56 ? "text-[9px]" : "text-[8px]";
+  const ringColor = overflow ? OVERFLOW_COLOR : color;
 
   return (
     <div
@@ -59,7 +79,9 @@ function CapacityMiniDonut({
       title={
         total === 0
           ? `${label}: ${emptyMessage ?? "بدون ظرفیت"}`
-          : `${label}: ${formatCapacityFractionLatin(available, total)}`
+          : `${label}: ${formatOccupiedFractionLatin(occupied, total)}${
+              overflow ? " (بیش از ظرفیت)" : ""
+            }`
       }
     >
       <div
@@ -82,7 +104,7 @@ function CapacityMiniDonut({
               cy={cy}
               r={radius}
               fill="none"
-              stroke={color}
+              stroke={ringColor}
               strokeWidth={stroke}
               strokeDasharray={`${dash} ${circumference - dash}`}
               strokeLinecap={isFull ? "butt" : "round"}
@@ -91,7 +113,9 @@ function CapacityMiniDonut({
         </svg>
         <div className="absolute inset-0 flex items-center justify-center px-0.5">
           <span
-            className={`text-center font-mono font-bold leading-none text-slate-700 ${centerTextClass}`}
+            className={`text-center font-mono font-bold leading-none ${
+              overflow ? "text-red-600" : "text-slate-700"
+            } ${centerTextClass}`}
           >
             {centerText}
           </span>
@@ -107,9 +131,13 @@ function CapacityMiniDonut({
 export function MawkibCapacityMiniDonuts({
   mawkib,
   size = 48,
+  presentMale,
+  presentFemale,
 }: {
   mawkib: Mawkib;
   size?: number;
+  presentMale?: number;
+  presentFemale?: number;
 }) {
   const capacity = mawkibCapacitySnapshot(mawkib);
 
@@ -121,6 +149,8 @@ export function MawkibCapacityMiniDonuts({
         label="آقا"
         available={capacity.availableMale}
         total={capacity.maleCapacity}
+        reserved={capacity.reservedMale}
+        presentCount={presentMale}
         color={CAPACITY_COLORS.male}
         size={size}
       />
@@ -128,6 +158,8 @@ export function MawkibCapacityMiniDonuts({
         label="خانم"
         available={capacity.availableFemale}
         total={capacity.femaleCapacity}
+        reserved={capacity.reservedFemale}
+        presentCount={presentFemale}
         color={CAPACITY_COLORS.female}
         emptyMessage="—"
         size={size}

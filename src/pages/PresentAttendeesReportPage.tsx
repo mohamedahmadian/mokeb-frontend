@@ -12,6 +12,7 @@ import {
   PresentAttendeesPrintButton,
   MealDeliveryCell,
 } from '../components/meal-plans/PresentAttendeesPrintButton';
+import { useGuestCountState } from '../components/meal-plans/GuestCountInput';
 import { todayDateString } from '../components/reservations/reservation-form-ui';
 import { useAuth } from '../contexts/AuthContext';
 import { formatPersianNumber } from '../lib/capacity';
@@ -280,11 +281,27 @@ export function PresentAttendeesReportPage() {
     let served = 0;
     let unserved = 0;
     for (const row of report.rows) {
-      if (row.isServed) served += 1;
-      else unserved += 1;
+      if (row.isServed) served += row.guestCount;
+      else unserved += row.guestCount;
     }
     return { served, unserved };
   }, [report]);
+
+  const guestCountItems = useMemo(
+    () =>
+      (report?.rows ?? [])
+        .filter((row): row is PresentAttendeeRow & { mealPlanId: number } =>
+          row.mealPlanId != null,
+        )
+        .map((row) => ({
+          id: row.mealPlanId,
+          guestCount: row.guestCount,
+          isServed: row.isServed,
+        })),
+    [report],
+  );
+
+  const { guestCounts, setGuestCount } = useGuestCountState(guestCountItems);
 
   const handleSearch = useCallback(async (
     event?: FormEvent,
@@ -345,17 +362,21 @@ export function PresentAttendeesReportPage() {
     toast.success('فایل اکسل دانلود شد');
   };
 
-  const handleServe = async (reservationId: number, mealPlanId: number) => {
+  const handleServe = async (
+    reservationId: number,
+    mealPlanId: number,
+    guestCount: number,
+  ) => {
     setServingReservationIds((current) => [...current, reservationId]);
     try {
-      await mealPlansApi.serve(mealPlanId);
+      await mealPlansApi.serve(mealPlanId, guestCount);
       setReport((current) => {
         if (!current) return current;
         return {
           ...current,
           rows: current.rows.map((row) =>
             row.reservationId === reservationId
-              ? { ...row, isServed: true }
+              ? { ...row, isServed: true, guestCount }
               : row,
           ),
         };
@@ -574,11 +595,27 @@ export function PresentAttendeesReportPage() {
                         <td className="px-3 py-2.5">
                           <MealDeliveryCell
                             mealPlanId={row.mealPlanId}
+                            guestCount={row.guestCount}
                             isServed={row.isServed}
                             serving={servingReservationIds.includes(row.reservationId)}
+                            guestCountValue={
+                              row.mealPlanId
+                                ? guestCounts[row.mealPlanId] ?? String(row.guestCount)
+                                : String(row.guestCount)
+                            }
+                            onGuestCountChange={
+                              row.mealPlanId
+                                ? (value) => setGuestCount(row.mealPlanId!, value)
+                                : undefined
+                            }
                             onServe={
                               row.mealPlanId
-                                ? () => handleServe(row.reservationId, row.mealPlanId!)
+                                ? (guestCount) =>
+                                    handleServe(
+                                      row.reservationId,
+                                      row.mealPlanId!,
+                                      guestCount,
+                                    )
                                 : undefined
                             }
                           />

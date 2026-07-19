@@ -11,6 +11,7 @@ export interface PresentAttendeeRow {
   gender: UserGender | null;
   maleGuestCount: number;
   femaleGuestCount: number;
+  guestCount: number;
   isPresent: boolean;
   presence: string;
   isServed: boolean;

@@ -13,6 +13,7 @@ import { formatPersianDateRange } from "../ui/PersianDateRangePicker";
 import { NavIcon } from "../ui/NavIcons";
 import { ReservationDeliveredItemsButton } from "../reservations/ReservationDeliveredItemsButton";
 import { PilgrimCardViewButton } from "../reservations/PilgrimCardViewButton";
+import { ReservationSendSmsButton } from "../reservations/ReservationSendSmsButton";
 import { ReservationMealPlanLink } from "../reservations/ReservationMealPlanLink";
 import { ReservationUserCardPrintButton } from "../reservations/ReservationUserCardPrintButton";
 import { MawkibCardPrintButton } from "../mawkibs/MawkibCardPrintButton";
@@ -337,6 +338,11 @@ function TrackResultRow({
             reservation={reservation}
             className={dashboardSecondaryBtn}
           />
+          <ReservationSendSmsButton
+            reservation={reservation}
+            className={dashboardSecondaryBtn}
+            iconClassName="h-3.5 w-3.5 shrink-0"
+          />
           <ReservationUserCardPrintButton
             reservation={reservation}
             className={dashboardSecondaryBtn}
@@ -431,7 +437,7 @@ type LookupResult = Awaited<
   ReturnType<typeof lookupOwnerReservation | typeof lookupAdminReservation>
 >;
 
-interface ReservationTrackLookupProps {
+export interface ReservationTrackLookupProps {
   lookupFn?: (
     query: string,
     options?: { exact?: boolean },
@@ -535,15 +541,15 @@ export function ReservationTrackLookup({
     if (extendReservationId === null) return;
     setExtendingId(extendReservationId);
     try {
-      const created = await reservationsApi.extend(extendReservationId, {
+      const updated = await reservationsApi.extend(extendReservationId, {
         reservationEndDate,
       });
       queryClient.invalidateQueries({ queryKey: ["reservations-admin"] });
       queryClient.invalidateQueries({ queryKey: ["reservations-my"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      toast.success(extensionSuccessMessage(created.status));
+      toast.success(extensionSuccessMessage());
       setExtendReservationId(null);
-      navigate(`/reservations/${created.id}`);
+      navigate(`/reservations/${updated.id}`);
     } catch (err) {
       toastApiError(err, "خطا در ثبت تمدید رزرو");
       throw err;
